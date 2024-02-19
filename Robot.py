@@ -43,12 +43,12 @@ class Robot:
         # odometry shared memory values
         self.x = Value('d',0.0)
         self.y = Value('d',0.0)
-        self.th = Value('d',0.0)
-        self.sA = Value('i',0) # last encoder value stored motor port A
-        self.sB = Value('i',0) # last encoder value stored motor port B
+        self.sD = Value('i',0) # last encoder value stored motor port A (right motor)
+        self.sI= Value('i',0) # last encoder value stored motor port D (left motor)
         self.sC = Value('i',0) # last encoder value stored motor cesta
         self.v = Value('d',0.0) # linear speed 
         self.w = Value('d',0.0) # angular speed
+        self.th = Value('d',0.0) # last thita gyro value
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
 
         # if we want to block several instructions to be run together, we may want to use an explicit Lock
@@ -60,7 +60,7 @@ class Robot:
 
     def setSpeed(self, v, w):
 
-        # calcular velocidad angular para cada motor
+        # calculate motors angular speeds 
         A = np.array([[1/self.R,   self.L/(2*self.R)],
                       [1/self.R, - self.L/(2*self.R)]])
         vc  = np.array([v],[w])
@@ -68,17 +68,17 @@ class Robot:
 
         # set speed power
         speedPower = 100
-        self.BP.set_motor_power(self.BP.PORT_B + self.BP.PORT_C, speedPower)
+        self.BP.set_motor_power(self.BP.PORT_A + self.BP.PORT_D, speedPower)
 
         # set each motor speed
-        self.BP.set_motor_dps(self.BP.PORT_B, w_motors[1]) # left
-        self.BP.set_motor_dps(self.BP.PORT_C, w_motors[0]) # right
+        self.BP.set_motor_dps(self.BP.PORT_D, w_motors[1]) # left
+        self.BP.set_motor_dps(self.BP.PORT_A, w_motors[0]) # right
 
         # store speed data (really necessary?)
-        self.lock_odometry.acquire()
-        self.v.value = v
-        self.w.value = w
-        self.lock_odometry.release()
+        #self.lock_odometry.acquire()
+        #self.v.value = v
+        #self.w.value = w
+        #self.lock_odometry.release()
 
 
     def readSpeed(self):
@@ -106,7 +106,6 @@ class Robot:
             tIni = time.clock()
 
             # compute updates
-            ######## UPDATE FROM HERE with your code (following the suggested scheme) ########
 
             # update odometry uses values that require mutex
             # (they are declared as value, so lock is implicitly done for atomic operations, BUT =+ is NOT atomic)
@@ -115,8 +114,8 @@ class Robot:
                 # Each of the following BP.get_motor_encoder functions returns the encoder value
                 # (what we want to store).
                 sys.stdout.write("Reading encoder values .... \n")
-                [encoder1, encoder2] = [self.BP.get_motor_encoder(self.BP.PORT_B),
-                                        self.BP.get_motor_encoder(self.BP.PORT_C)]
+                [encoder1, encoder2] = [self.BP.get_motor_encoder(self.BP.PORT_D),
+                                        self.BP.get_motor_encoder(self.BP.PORT_A)]
             except IOError as error:
                 #print(error)
                 sys.stdout.write(error)
@@ -126,21 +125,26 @@ class Robot:
             with self.x.get_lock():
                 self.x.value+=1
 
-            # 
-            sa = (np.deg2rad(self.sA.value - encoder1)) * self.R # faltaría tratar caso en que se resetee el encoder
-            sb = (np.deg2rad(self.sB.value - encoder2)) * self.R
-
-            # Si el valor de sA es menor que el ultimo valor recogido, hay que hacer el modulo:
-            # (self.sA.value - encoder1) % max siendo max = valor antes de poner sA a 0.
-
-
+            # calculate the arc of circumference traveled by each wheel
+            si = (np.deg2rad(encoder1) - self.sI.value) * self.R # faltaría tratar caso en que se resetee el encoder
+            sd = (np.deg2rad(encoder2) - self.sD.value) * self.R # En grados o radianes?
+            diff_s = (sd - si) / 2 
+            # extract gyroscope data 
+            [th_gyro, w_gyro] = self.BP.get_sensor(self.BP.PORT_1)
+            th_gyro = np.deg2rad(th_gyro) # convert to radians
+            th_gyro = np.arctan2(np.sin(th_gyro), np.cos(th_gyro))
+            diff_th = th_gyro - self.th.value
+            # calculate the increment of x and y
+            diff_x = diff_s * np.cos(th_gyro + (diff_th/2))
+            diff_y = diff_s * np.sin(th_gyro + (diff_th/2))
 
             # to "lock" a whole set of operations, we can use a "mutex"
             self.lock_odometry.acquire()
-            self.x.value = self.R * ( np.sin(self.th.value) )  #xk
-            self.y.value = self.R * ( 1 - np.cos(self.th.value) )  # yk
-            self.th.value = self.w.value * self.P  # MCU
-    
+            self.x.value += diff_x  
+            self.y.value += diff_y
+            self.th.value = th_gyro
+            self.sI.value = np.deg2rad(encoder1)
+            self.sD.value = np.deg2rad(encoder2)
             self.lock_odometry.release()
 
             #sys.stdout.write("Encoder (%s) increased (in degrees) B: %6d  C: %6d " %
@@ -159,7 +163,6 @@ class Robot:
         #print("Stopping odometry ... X= %d" %(self.x.value))
         sys.stdout.write("Stopping odometry ... X=  %.2f, \
                 Y=  %.2f, th=  %.2f \n" %(self.x.value, self.y.value, self.th.value))
-
 
     # Stop the odometry thread.
     def stopOdometry(self):
