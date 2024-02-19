@@ -63,7 +63,7 @@ class Robot:
         # calculate motors angular speeds 
         A = np.array([[1/self.R,   self.L/(2*self.R)],
                       [1/self.R, - self.L/(2*self.R)]])
-        vc  = np.array([v],[w])
+        vc  = np.array([[v],[w]])
         w_motors = np.dot(A, vc) # angular speed: [wd, wi]
 
         # set speed power

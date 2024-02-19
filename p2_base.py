@@ -19,6 +19,7 @@ def main(args):
         print("X value at the beginning from main X= %.2f" %(robot.x.value))
 
         # 1. launch updateOdometry Process()
+        time.sleep(10)
         robot.startOdometry()
 
         # 2. perform trajectory
