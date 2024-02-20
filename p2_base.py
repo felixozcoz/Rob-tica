@@ -5,6 +5,16 @@ import numpy as np
 import time
 from Robot import Robot
 
+def test1(robot):
+    i = 0
+    x,y,th = robot.readOdometry()
+    print('x: %.2f, y: %.2f, th: %.2f' %(x, y, np.rad2deg(th)))
+    robot.setSpeed(0.4,0)
+    while i < 5:
+        i += 1
+        x,y,th = robot.readOdometry()
+        print('x: %.2f, y: %.2f, th: %.2f' %(x, y, np.rad2deg(th)))
+        time.sleep(0.33)
 
 def main(args):
     try:
@@ -19,7 +29,7 @@ def main(args):
         print("X value at the beginning from main X= %.2f" %(robot.x.value))
 
         # 1. launch updateOdometry Process()
-        time.sleep(10)
+        #time.sleep(10)
         robot.startOdometry()
 
         # 2. perform trajectory
@@ -38,8 +48,8 @@ def main(args):
         #robot.lock_odometry.release()
 
         # PART 1:
-        while True:
-            robot.setSpeed(1,0)
+        #while True:
+        #    robot.setSpeed(1,0)
         # until ...
 
         # PART 2:
@@ -48,6 +58,8 @@ def main(args):
 
         # ...
 
+        # Test 1: solo velocidad lineal va recto y no modifica ángulo
+        test1(robot)
 
 
         # 3. wrap up and close stuff ...
