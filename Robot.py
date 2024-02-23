@@ -22,8 +22,8 @@ class Robot:
 ######## UNCOMMENT and FILL UP all you think is necessary (following the suggested scheme) ########
 
         # Robot construction parameters
-        self.R = 3 # inventado, mirar medida correcta (uds en metros)
-        self.L = 15.2 # longitud del eje de las ruedas (uds en metros)
+        self.R = 3 # radio de las ruedas (uds en cm)
+        self.L = 15.2 # longitud del eje de las ruedas (uds en cm)
         # self. ...
 
         ##################################################
@@ -32,24 +32,27 @@ class Robot:
         # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
         self.BP = brickpi3.BrickPi3()
 
-        # Configure sensors, for example a touch sensor.
+        # Configure sensors, for example a touch sensor.                                              
         self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
         #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
 
+        self.PORT_LEFT_MOTOR = self.BP.PORT_C
+        self.PORT_RIGHT_MOTOR = self.BP.PORT_B
+
         # reset encoder B and C (or all the motors you are using)
-        self.BP.offset_motor_encoder(self.BP.PORT_A, self.BP.get_motor_encoder(self.BP.PORT_A))
-        self.BP.offset_motor_encoder(self.BP.PORT_D, self.BP.get_motor_encoder(self.BP.PORT_D))
+        self.BP.offset_motor_encoder(self.PORT_RIGHT_MOTOR, self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR))
+        self.BP.offset_motor_encoder(self.PORT_LEFT_MOTOR, self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR))
 
         ##################################################
         # odometry shared memory values
         self.x = Value('d',0.0)
         self.y = Value('d',0.0)
-        self.sD = Value('i',0) # last encoder value stored motor port A (right motor)
-        self.sI = Value('i',0) # last encoder value stored motor port D (left motor)
+        self.sD = Value('i',0) # last encoder value stored motor right motor
+        self.sI = Value('i',0) # last encoder value stored motor left motor
         self.sC = Value('i',0) # last encoder value stored motor cesta
         self.v = Value('d',0.0) # linear speed 
         self.w = Value('d',0.0) # angular speed
-        self.th = Value('d',0.0) # last thita gyro value
+        self.th = Value('d',0.0) 
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
 
         # Se pueden borrar alegremente cuando ya no se necesiten (son de prueba)
@@ -68,18 +71,16 @@ class Robot:
         A = np.array([[1/self.R,   self.L/(2*self.R)],
                       [1/self.R, - self.L/(2*self.R)]])
         vc  = np.array([[v],[w]])
+
         w_motors = np.dot(A, vc) # angular speed: [wd, wi]
 
-        print("Rueda derecha (Init): %.2f, Rueda izquierda (Init): %.2f" %(w_motors[0], w_motors[1]))
-
-        # set speed power
-        speedPower = 100
-        self.BP.set_motor_power(self.BP.PORT_A + self.BP.PORT_D, speedPower)
+        #print("Velocidad: %.5f, Velocidad Angular: %.5f" %(v, w))
+        #print("Rueda derecha (Init): %.2f, Rueda izquierda (Init): %.2f" %(w_motors[0], w_motors[1]))
 
         # set each motor speed
-        self.BP.set_motor_dps(self.BP.PORT_D, np.rad2deg(w_motors[1])) # left
-        self.BP.set_motor_dps(self.BP.PORT_A, np.rad2deg(w_motors[0])) # right
-        
+        self.BP.set_motor_dps(self.PORT_RIGHT_MOTOR, np.rad2deg(w_motors[0])) 
+        self.BP.set_motor_dps(self.PORT_LEFT_MOTOR, np.rad2deg(w_motors[1]))
+
         # store speed data (really necessary?)
         #self.lock_odometry.acquire()
         #self.v.value = v
@@ -88,9 +89,7 @@ class Robot:
 
 
     def readSpeed(self):
-        return self.vc.value # mutex unnecesary
-        """ To be filled"""
-
+        return self.v.value, self.w.value
 
     def readOdometry(self):
         """ Returns current value of odometry estimation """
@@ -106,7 +105,6 @@ class Robot:
 
     # You may want to pass additional shared variables besides the odometry values and stop flag
     def updateOdometry(self): #, additional_params?):
-        """ To be filled ...  """
 
         while not self.finished.value:
             # current processor time in a floating point value, in seconds
@@ -121,80 +119,77 @@ class Robot:
                 # Each of the following BP.get_motor_encoder functions returns the encoder value
                 # (what we want to store).
                 sys.stdout.write("Reading encoder values .... \n")
-                [left_encoder, right_encoder] = [self.BP.get_motor_encoder(self.BP.PORT_D),
-                                        self.BP.get_motor_encoder(self.BP.PORT_A)]
+                [left_encoder, right_encoder] = [self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR),
+                                                 self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)]
             except IOError as error:
                 #print(error)
                 sys.stdout.write(error)
 
-            
-            
-            # Operations like += which involve a read and write are not atomic.
-            #with self.x.get_lock():
-            #    self.x.value+=1
-
             # Calculate the arc of circumfrence traveled by each wheel
-            left_offset         = left_encoder  - self.sI.value
+            left_offset         = left_encoder - self.sI.value
             left_offset_length  = np.deg2rad(left_offset) * self.R
             right_offset        = right_encoder - self.sD.value
             right_offset_length = np.deg2rad(right_offset) * self.R
-            delta_s = (right_offset_length + left_offset_length)/2
-            # Extract the gyroscope data
-            [th_gyro, w_gyro] = self.BP.get_sensor(self.BP.PORT_1)
-            #th_gyro = np.deg2rad(th_gyro)
-            #th_gyro = np.arctan2(np.sin(th_gyro), np.cos(th_gyro))
-            #delta_th = th_gyro - self.th.value
-            ## Calculate the x and y differente
-            #delta_x = delta_s * np.cos(th_gyro + (delta_th/2))
-            #delta_y = delta_s * np.sin(th_gyro + (delta_th/2))
+            
+            # calculate real speed
+            wi = np.deg2rad(left_offset) / self.P
+            wd = np.deg2rad(right_offset) / self.P
+            vw = np.dot(np.array([[self.R/2, self.R/2],[self.R/self.L, -self.R/self.L]]), np.array([[wd],[wi]]))
+            print("wi = %.5f, wd = %.5f" %(wi, wd))
+            # calculate real delta th
+            delta_th = vw[1] * self.P
+            #delta_th = (right_offset_length - left_offset_length) / self.L
+            th = self.th.value + delta_th
+            delta_x, delta_y = 0, 0
 
-            ## calculate the arc of circumference traveled by each wheel
-            #si = (np.deg2rad(encoder1) - self.sI.value) * self.R # faltaría tratar caso en que se resetee el encoder
-            #sd = (np.deg2rad(encoder2) - self.sD.value) * self.R # En grados o radianes?
-            #diff_s = (sd + si) / 2 
-            ## extract gyroscope data 
-            #[th_gyro, w_gyro] = self.BP.get_sensor(self.BP.PORT_1)
-            #th_gyro = np.deg2rad(th_gyro) # convert to radians
-            #th_gyro = np.arctan2(np.sin(th_gyro), np.cos(th_gyro))
-            #diff_th = th_gyro - self.th.value
-            ## calculate the increment of x and y
-            #diff_x = diff_s * np.cos(th_gyro + (diff_th/2))
-            #diff_y = diff_s * np.sin(th_gyro + (diff_th/2))
+            # calculate delta s  (depends on w) (diapo 14)
+            if vw[1] != 0:
+                delta_s = (vw[0]/vw[1]) * delta_th
+                delta_x = delta_s * np.cos(th + (delta_th * 0.5))
+                delta_y = delta_s * np.sin(th + (delta_th * 0.5))
+            else:
+                delta_s = vw[0] * self.P
+                delta_x = delta_s * np.cos(th)
+                delta_y = delta_s * np.sin(th)
+            
+            print('v: %.2f, w = %.2f' %(vw[0], vw[1]))
+
+            print('left_offset_length: %.2f, right_offset_length: %.2f' %(left_offset_length, right_offset_length))
+            # Extract the gyroscope data (más adelante)
 
             # To "lock" a whole set of operations, we can use a "mutex"
-            print("\n==================================")
-            print("== Left Wheel ====================")
-            print("> Grades offset: %dº -> %dº (+%dº)" %(self.sI.value, left_encoder, left_offset))
-            print("> Length offset: %.5f" %(left_offset_length))
-            print("== Right Wheel ===================")
-            print("> Grades offset: %dº -> %dº (+%dº)" %(self.sD.value, right_encoder, right_offset))
-            print("> Length offset: %.5f" %(right_offset_length))
-            print("==================================")
-            print("> DeltaS: %.5f" %(delta_s))
-
+            #print("\n==================================")
+            #print("== Left Wheel ====================")
+            #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sI.value, left_encoder, left_offset))
+            #print("> Length offset: %.5f" %(left_offset_length))
+            #print("== Right Wheel ===================")
+            #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sD.value, right_encoder, right_offset))
+            #print("> Length offset: %.5f" %(right_offset_length))
+            #print("==================================")
+            #print("> DeltaS: %.5f" %(delta_s))
+            
+            
+            # calculo de delta xWR
+            print('delta_x: %.2f, delta_y: %.2f' %(delta_x, delta_y))
+            
             self.lock_odometry.acquire()
-
+            # update new xWR+
+            
+            self.x.value += delta_x
+            self.y.value += delta_y
+            self.th.value = th
+            
             self.sI.value = left_encoder
             self.sD.value = right_encoder
             self.totalLength.value += delta_s
             self.lock_odometry.release()
 
-            print("> Total Length (+/-): %.5f" %(self.totalLength.value))
-            print("== Gyroscope =====================")
-            print("> Angulo total: %.5f" %(th_gyro))
-            print("> Velocidad angular: %.5f" %(w_gyro))
+            #print("> Total Length (+/-): %.5f" %(self.totalLength.value))
+            print("== Ángulo =====================")
+            print('x: %.2f, y: %.2f, th: %.2f' %(self.x.value, self.y.value, np.rad2deg(self.th.value)))
+            print('delta_s: %.2f' %(delta_s))
+            #print("> Velocidad angular: %.5f" %(w_gyro))
             print("==================================")
-
-            #self.lock_odometry.acquire()
-            #self.x.value += diff_x  
-            #self.y.value += diff_y
-            #self.th.value = th_gyro
-            #self.sI.value = np.deg2rad(encoder1)
-            #self.sD.value = np.deg2rad(encoder2)
-            #self.lock_odometry.release()
-
-            #sys.stdout.write("Encoder (%s) increased (in degrees) B: %6d  C: %6d " %
-            #        (type(encoder1), encoder1, encoder2))
 
 
             # save LOG

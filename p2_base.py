@@ -7,14 +7,22 @@ from Robot import Robot
 
 def test1(robot):
     i = 0
-    x,y,th = robot.readOdometry()
-    print('x: %.2f, y: %.2f, th: %.2f' %(x, y, np.rad2deg(th)))
-    robot.setSpeed(0.4,0)
-    while i < 5:
-        i += 1
-        x,y,th = robot.readOdometry()
-        print('x: %.2f, y: %.2f, th: %.2f' %(x, y, np.rad2deg(th)))
-        time.sleep(0.33)
+    r = 40
+    th1 = np.pi
+    t = 4
+    w = th1 / t
+    v = r * w
+    print('v orig: %.2f, w orig: %.2f' %(v, w))
+    #x,y,th = robot.readOdometry()
+    #print('x: %.2f, y: %.2f, th: %.2f' %(x, y, np.rad2deg(th)))
+    robot.setSpeed(v,w)
+    time.sleep(4)
+
+
+def test_velocidad_lineal(robot, d, t):
+    robot.setSpeed((d/t),0.0)
+    time.sleep(t)
+
 
 def main(args):
     try:
@@ -59,6 +67,8 @@ def main(args):
         # ...
 
         # Test 1: solo velocidad lineal va recto y no modifica ángulo
+        #test_velocidad_lineal(robot, 120, 6)
+        
         test1(robot)
 
 
