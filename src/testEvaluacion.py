@@ -73,29 +73,6 @@ def plot_trace_bicicleta(rad1, rad2, distEjes, x1, y1, x2, y2):
 
 
 
-def bicycle_test(rad1, rad2, distAxes, x1, y1, x2, y2):
-    # turn 90 degrees to the left
-    # ...
-
-    # calculate tangent points
-    (x3, y3), (x4, y4), (x5, y5), (x6, y6) = calculate_tangencial_points(rad1, rad2, distAxes)
-
-    # girar a la derecha con radio rad1, hasta punto de tangencia
-    # ...
-
-    # rectos hasta punto de tangencia
-    # ...
-
-    # girar a la derecha con radio rad2, hasta punto de tangencia
-    # ...
-
-    # rectos hasta punto de tangencia
-    # ...
-
-    # girar a la derecha con radio rad1, hasta punto de tangencia
-    # ...
-    
 
 
 
-plot_trace_bicicleta(3, 5, 10, 3, 0, 3 + 10, 0)
