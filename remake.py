@@ -47,5 +47,13 @@ while True:
         time.sleep(0.2)
 
 
+dir_sup = [x2 - x1, y2 - y1]
+cos-1 [ (a · b) / (|a| |b|) ]
 
 
+while True:
+    x, y, _ = robot.readOdometry()
+    dir_rob = [x2 - x, y2 - y]
+
+    if (angle > -1 and angle < 1):
+        robot.setSpeed(v1, 0)

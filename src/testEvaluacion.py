@@ -73,6 +73,6 @@ def plot_trace_bicicleta(rad1, rad2, distEjes, x1, y1, x2, y2):
 
 
 
-
+plot_trace_bicicleta(20, 40, 100, 0,0, 0, 100)
 
 

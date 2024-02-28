@@ -4,6 +4,8 @@ from __future__ import print_function # use python 3 syntax but make it compatib
 from __future__ import division       #                           ''
 
 import brickpi3 # import the BrickPi3 drivers
+import csv      # write csv
+import datetime # timestamps
 import time     # import the time library for the sleep function
 import sys
 import numpy as np
@@ -19,11 +21,9 @@ class Robot:
         Initialize Motors and Sensors according to the set up in your robot
         """
 
-######## UNCOMMENT and FILL UP all you think is necessary (following the suggested scheme) ########
-
         # Robot construction parameters
         self.R = 2.8 # radio de las ruedas (uds en cm)
-        self.L = 15.2 # longitud del eje de las ruedas (uds en cm)
+        self.L = 15.25 # longitud del eje de las ruedas (uds en cm)
         # self. ...
 
         ##################################################
@@ -52,8 +52,12 @@ class Robot:
         self.sC = Value('i',0) # last encoder value stored motor cesta
         self.v = Value('d',0.0) # linear speed 
         self.w = Value('d',0.0) # angular speed
-        self.th = Value('d',0.0) 
+        self.th = Value('d',0.0)
         self.finished = Value('b',1) # boolean to show if odometry updates are finished
+
+        self.dir = [1, 0]
+        self.ndir_x = Value('d', 0.0)
+        self.ndir_y = Value('d', 0.0)
 
         # Se pueden borrar alegremente cuando ya no se necesiten (son de prueba)
         self.totalLength = Value('d',0.0)
@@ -105,102 +109,107 @@ class Robot:
 
     # You may want to pass additional shared variables besides the odometry values and stop flag
     def updateOdometry(self): #, additional_params?):
+        i = 0
+        LOG_NAME = "ODOMETRYLOG_" + datetime.datetime.now().strftime("%H-%M-%S_%Y-%m-%d") + ".csv"
+        with open(LOG_NAME, "w", newline="") as LOG:
+            # Logger
+            LOG_WRITER = csv.writer(LOG)
+            LOG_WRITER.writerow(["Timestamp", "Posición en x", "Posición en y", "Angulo de giro"])
+            # Bucle principal
+            while not self.finished.value:
+                i += 1
+                # current processor time in a floating point value, in seconds
+                tIni = time.clock()
 
-        while not self.finished.value:
-            # current processor time in a floating point value, in seconds
-            tIni = time.clock()
+                # compute updates
 
-            # compute updates
+                # update odometry uses values that require mutex
+                # (they are declared as value, so lock is implicitly done for atomic operations, BUT =+ is NOT atomic)
 
-            # update odometry uses values that require mutex
-            # (they are declared as value, so lock is implicitly done for atomic operations, BUT =+ is NOT atomic)
+                try:
+                    # Each of the following BP.get_motor_encoder functions returns the encoder value
+                    # (what we want to store).
+                    #sys.stdout.write("Reading encoder values .... \n")
+                    [left_encoder, right_encoder] = [self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR),
+                                                     self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)]
+                except IOError as error:
+                    #print(error)
+                    sys.stdout.write(error)
 
-            try:
-                # Each of the following BP.get_motor_encoder functions returns the encoder value
-                # (what we want to store).
-                #sys.stdout.write("Reading encoder values .... \n")
-                [left_encoder, right_encoder] = [self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR),
-                                                 self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)]
-            except IOError as error:
-                #print(error)
-                sys.stdout.write(error)
+                # Calculate the arc of circumfrence traveled by each wheel
+                left_offset         = left_encoder - self.sI.value
+                #left_offset_length  = np.deg2rad(left_offset) * self.R
+                right_offset        = right_encoder - self.sD.value
+                #right_offset_length = np.deg2rad(right_offset) * self.R
 
-            # Calculate the arc of circumfrence traveled by each wheel
-            left_offset         = left_encoder - self.sI.value
-            left_offset_length  = np.deg2rad(left_offset) * self.R
-            right_offset        = right_encoder - self.sD.value
-            right_offset_length = np.deg2rad(right_offset) * self.R
-            
-            # calculate real speed
-            wi = np.deg2rad(left_offset) / self.P
-            wd = np.deg2rad(right_offset) / self.P
-            vw = np.dot(np.array([[self.R/2, self.R/2],[self.R/self.L, -self.R/self.L]]), np.array([[wd],[wi]]))
-            #print("wi = %.5f, wd = %.5f" %(wi, wd))
-            # calculate real delta th
-            delta_th = vw[1] * self.P
-            #delta_th = (right_offset_length - left_offset_length) / self.L
-            th = self.th.value + delta_th
-            delta_x, delta_y = 0, 0
+                # calculate real speed
+                wi = np.deg2rad(left_offset) / self.P
+                wd = np.deg2rad(right_offset) / self.P
+                vw = np.dot(np.array([[self.R/2, self.R/2],[self.R/self.L, -self.R/self.L]]), np.array([[wd],[wi]]))
+                #print("wi = %.5f, wd = %.5f" %(wi, wd))
+                # calculate real delta th
+                delta_th = vw[1] * self.P
+                #delta_th = (right_offset_length - left_offset_length) / self.L
+                th = self.th.value + delta_th
+                delta_x, delta_y = 0, 0
 
-            # calculate delta s  (depends on w) (diapo 14)
-            if vw[1] != 0:
-                delta_s = (vw[0]/vw[1]) * delta_th
-                delta_x = delta_s * np.cos(th + (delta_th * 0.5))
-                delta_y = delta_s * np.sin(th + (delta_th * 0.5))
-            else:
-                delta_s = vw[0] * self.P
-                delta_x = delta_s * np.cos(th)
-                delta_y = delta_s * np.sin(th)
-            
-            #print('v: %.2f, w = %.2f' %(vw[0], vw[1]))
+                # calculate delta s  (depends on w) (diapo 14)
+                if vw[1] != 0:
+                    delta_s = (vw[0]/vw[1]) * delta_th
+                    delta_x = delta_s * np.cos(th + (delta_th * 0.5))
+                    delta_y = delta_s * np.sin(th + (delta_th * 0.5))
+                else:
+                    delta_s = vw[0] * self.P
+                    delta_x = delta_s * np.cos(th)
+                    delta_y = delta_s * np.sin(th)
 
-            #print('left_offset_length: %.2f, right_offset_length: %.2f' %(left_offset_length, right_offset_length))
-            # Extract the gyroscope data (más adelante)
+                #print('v: %.2f, w = %.2f' %(vw[0], vw[1]))
 
-            # To "lock" a whole set of operations, we can use a "mutex"
-            #print("\n==================================")
-            #print("== Left Wheel ====================")
-            #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sI.value, left_encoder, left_offset))
-            #print("> Length offset: %.5f" %(left_offset_length))
-            #print("== Right Wheel ===================")
-            #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sD.value, right_encoder, right_offset))
-            #print("> Length offset: %.5f" %(right_offset_length))
-            #print("==================================")
-            #print("> DeltaS: %.5f" %(delta_s))
-            
-            
-            # calculo de delta xWR
-            #print('delta_x: %.2f, delta_y: %.2f' %(delta_x, delta_y))
-            
-            self.lock_odometry.acquire()
-            # update new xWR+
-            
-            self.x.value += delta_x
-            self.y.value += delta_y
-            self.th.value = th
-            
-            self.sI.value = left_encoder
-            self.sD.value = right_encoder
-            self.totalLength.value += delta_s
-            self.lock_odometry.release()
+                #print('left_offset_length: %.2f, right_offset_length: %.2f' %(left_offset_length, right_offset_length))
+                # Extract the gyroscope data (más adelante)
 
-            #print("> Total Length (+/-): %.5f" %(self.totalLength.value))
-            #print("== Ángulo =====================")
-            #print('x: %.2f, y: %.2f, th: %.2f' %(self.x.value, self.y.value, np.rad2deg(self.th.value)))
-            #print('delta_s: %.2f' %(delta_s))
-            #print("> Velocidad angular: %.5f" %(w_gyro))
-            #print("==================================")
+                # To "lock" a whole set of operations, we can use a "mutex"
+                #print("\n==================================")
+                #print("== Left Wheel ====================")
+                #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sI.value, left_encoder, left_offset))
+                #print("> Length offset: %.5f" %(left_offset_length))
+                #print("== Right Wheel ===================")
+                #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sD.value, right_encoder, right_offset))
+                #print("> Length offset: %.5f" %(right_offset_length))
+                #print("==================================")
+                #print("> DeltaS: %.5f" %(delta_s))
 
 
-            # save LOG
-            # Need to decide when to store a log with the updated odometry ...
+                # calculo de delta xWR
+                #print('delta_x: %.2f, delta_y: %.2f' %(delta_x, delta_y))
 
-            ######## UPDATE UNTIL HERE with your code ########
+                self.lock_odometry.acquire()
+                # update new xWR+
 
+                self.x.value += delta_x
+                self.y.value += delta_y
+                self.th.value = th
+                self.sI.value = left_encoder
+                self.sD.value = right_encoder
+                self.totalLength.value += delta_s
 
-            tEnd = time.clock()
-            #print("tIni: %.2f, tEnd: %.2f, tEnd-tIni: %.2f, tSleep: %.2f" %(tIni, tEnd, tIni-tEnd, self.P-(tEnd-tIni)))
-            time.sleep(self.P - (tEnd-tIni))
+                self.lock_odometry.release()
+
+                #print("> Total Length (+/-): %.5f" %(self.totalLength.value))
+                #print("== Ángulo =====================")
+                #print('x: %.2f, y: %.2f, th: %.2f' %(self.x.value, self.y.value, np.rad2deg(self.th.value)))
+                #print('delta_s: %.2f' %(delta_s))
+                #print("> Velocidad angular: %.5f" %(w_gyro))
+                #print("==================================")
+
+                # save LOG
+                # Need to decide when to store a log with the updated odometry ...
+                LOG_WRITER.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), round(self.x.value, 4), round(self.y.value, 4), round(self.th.value, 4)])
+
+                ######## UPDATE UNTIL HERE with your code ########
+                tEnd = time.clock()
+                #print("tIni: %.2f, tEnd: %.2f, tEnd-tIni: %.2f, tSleep: %.2f" %(tIni, tEnd, tIni-tEnd, self.P-(tEnd-tIni)))
+                time.sleep(self.P - (tEnd-tIni))
 
         #print("Stopping odometry ... X= %d" %(self.x.value))
         sys.stdout.write("Stopping odometry ... X=  %.2f, \

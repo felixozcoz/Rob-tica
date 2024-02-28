@@ -7,40 +7,61 @@ import time
 from Robot import Robot
 import testEvaluacion as te
 
+def dot(v, w):
+    return (v[0] * w[0]) + (v[1] * w[1])
+
+def mod(v):
+    return math.sqrt(v[0]*v[0] + v[1]*v[1])
+
+def angle(v, w):
+    return np.rad2deg(math.acos((dot(v, w)) / (mod(v) * mod(w))))
+
+
+def get_robot_axis(rot):
+    mat = [[math.cos(rot), -math.sin(rot)], [math.sin(rot), math.cos(rot)]]
+    res  = np.dot([1, 0], mat)
+    return [round(res[0], 2), round(res[1],2)]
+
 def bicycle_test(robot, rad1, rad2, distEjes):
     # Parámetros para primer movimiento (90º izq)
     th1 = np.pi/2  # primero giro para colocacióne en posición 2 (giro a izq)
     w1 = th1 / 3
     
     # Parámetro para rueda
-    t = 8            # tiempo de recorrido de media circunferencia ( segundos )
+    t = 11            # tiempo de recorrido de media circunferencia ( segundos )
     th = - 2 * np.pi   # ángulo a recorrer en cada fase (4 fases)
     w = th / t    
     v1 = -rad1 * w
 
     # Parámetro para rueda
-    v2 = rad2 * w
+    t = 11          # tiempo de recorrido de media circunferencia ( segundos )
+    th = - np.pi   # ángulo a recorrer en cada fase (4 fases)
+    w2 = th / t
+    v2 = - rad2 * w2
 
-    epsilon   = 3          # Margen de error en estimación de la odometría
-    f_epsilon = 0.2        # Margen de error
+    epsilon   = 1          # Margen de error en estimación de la odometría
+    f_epsilon = 0.1        # Margen de error
     # Puntos de tangencia para cambio de trayectorio
     (x1, y1), (x2, y2), (x3, y3), (x4, y4) = te.calculate_tangencial_points(rad1, rad2, distEjes) # sup rueda1, sup rueda 2, inf rueda 1, inf rueda 2
     print("Puntos tangenciales: ", (x1, y1), (x2, y2), (x3, y3), (x4, y4))
+
+    dir_sup = [x2 - x1, y2 - y1]
+    dir_inf = [x3 - x4, y3 - y4]
+
     # rueda 1 (pto superior)
         # zona pto tangencia sup rueda 1
     max_sup_r1       = [x1 + epsilon, y1 + epsilon]
     min_sup_r1       = [x1 - epsilon, y1 - epsilon]
         # zona pto tangencia inf rueda 1
-    max_inf_r1       = [x3 + epsilon, y3 + epsilon]
-    min_inf_r1       = [x3 - epsilon, y3 - epsilon]
+    max_inf_r1       = [x3 + epsilon, y3 + (epsilon+2)]
+    min_inf_r1       = [x3 - epsilon, y3 - (epsilon+2)]
         # zona pto tangencia sup rueda 2
-    max_sup_r2       = [x2 + epsilon, y2 + epsilon]
-    min_sup_r2       = [x2 - epsilon, y2 - epsilon]
+    max_sup_r2       = [x2 + epsilon, y2 + (epsilon+4)]
+    min_sup_r2       = [x2 - epsilon, y2 - (epsilon+4)]
         # zona pto tangencia inf rueda 2
-    max_inf_r2       = [x4 + epsilon, y4 + epsilon]
-    min_inf_r2       = [x4 - epsilon, y4 - epsilon]
+    max_inf_r2       = [x4 + epsilon, y4 + (epsilon+2)]
+    min_inf_r2       = [x4 - epsilon, y4 - (epsilon+2)]
 
-    
     # Primero giro (90º izq)
     robot.setSpeed(0, w1)
     while True:
@@ -53,21 +74,28 @@ def bicycle_test(robot, rad1, rad2, distEjes):
     robot.setSpeed(v1, w)
     while True:
         #robot.setSpeed(v1, w)
-        x, y, _ = robot.readOdometry()
-        print("(X= %.2f, Y= %.2f), (R1MIN.X= %.2f, R1MIN.Y= %.2f), (R1MAX.X= %.2f, R1MAX.Y= %.2f)" %(x, y, min_sup_r1[0], min_sup_r1[1], max_sup_r1[0], max_sup_r1[1]))
+        x, y, th = robot.readOdometry()
+        dir_rob = get_robot_axis(-th)
+        dir_ang = angle(dir_inf, dir_rob)
+        print("DEG: %.2f, ROB(%.2f, %.2f), INF(%.2f, %.2f)" %(dir_ang, dir_rob[0], dir_rob[1], dir_inf[0], dir_inf[1]))
+        #print("(X= %.2f, Y= %.2f), (R1SUPMIN.X= %.2f, R1SUPMIN.Y= %.2f), (R1SUPMAX.X= %.2f, R1SUPMAX.Y= %.2f)" %(x, y, min_sup_r1[0], min_sup_r1[1], max_sup_r2[0], max_sup_r2[1]))
+        #print("(X= %.2f, Y= %.2f), (R1INFMIN.X= %.2f, R1INFMIN.Y= %.2f), (R1INFMAX.X= %.2f, R1INFMAX.Y= %.2f)" %(x, y, min_inf_r1[0], min_inf_r1[1], max_inf_r2[0], max_inf_r2[1]))
         if (x > min_sup_r1[0] and x < max_sup_r1[0]) and (y > min_sup_r1[1] and y < max_sup_r1[1]): # cambio a v linear hacia sup rueda 2
-            print("Hola")
+            #dir_ang = angle(dir_sup, [x2 - x, y2 - y])
+            #if dir_ang > -1 and dir_ang < 1:
             robot.setSpeed(v1, 0)
+        
         elif (x > min_sup_r2[0] and x < max_sup_r2[0]) and (y > min_sup_r2[1] and y < max_sup_r2[1]): # cambio a w hacia inf rueda 2
-            robot.setSpeed(v1, w)
+            robot.setSpeed(v2, w2)
+        
         elif (x > min_inf_r2[0] and x < max_inf_r2[0]) and (y > min_inf_r2[1] and y < max_inf_r2[1]): # cambio a v hacia inf rueda 1
+        #elif (dir_ang > -1 and dir_ang < 1):
             robot.setSpeed(v1, 0)
+
         elif (x > min_inf_r1[0] and x < max_inf_r1[0]) and (y > min_inf_r1[1] and y < max_inf_r1[1]): # cambio a w hacia sup rueda 1
             robot.setSpeed(v1, w)
-            
-        time.sleep(0.2)
 
-
+        time.sleep(robot.P)
 
 
 def test_trace_eight(robot, r):
@@ -158,7 +186,7 @@ def main(args):
         # Test 1: solo velocidad lineal va recto y no modifica ángulo
         #test_velocidad_lineal(robot, 120.0, 6)
         #test_trace_eight(robot, 20)
-        bicycle_test(robot, 20, 20, 60)
+        bicycle_test(robot, 20, 30, 60)
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
         # and restore the LED to the control of the BrickPi3 firmware.
