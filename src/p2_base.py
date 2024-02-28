@@ -92,7 +92,7 @@ def bicycle_test(robot, rad1, rad2, distEjes):
         
         elif (x > min_inf_r2[0] and x < max_inf_r2[0]) and (y > min_inf_r2[1] and y < max_inf_r2[1]): # cambio a v hacia inf rueda 1
         #elif (dir_ang > -1 and dir_ang < 1):
-            time.sleep(0.91 * rad1/20)
+            time.sleep(0.91 * rad2/30)
             robot.setSpeed(v1, 0)
 
         elif (x > min_inf_r1[0] and x < max_inf_r1[0]) and (y > min_inf_r1[1] and y < max_inf_r1[1]): # cambio a w hacia sup rueda 1
@@ -100,10 +100,10 @@ def bicycle_test(robot, rad1, rad2, distEjes):
             robot.setSpeed(v1, w)
             stop = True
         
-        #if stop:
-        #    time.sleep(t/4.5)
-        #    robot.setSpeed(0,0)
-        #    exit(1) 
+        if stop:
+            time.sleep(t/4.5 * rad1/20)
+            robot.setSpeed(0,0)
+            exit(1) 
 
  
 
@@ -149,12 +149,21 @@ def test_trace_eight(robot, r):
     #    if dist < n_epsilon:
     #        sense *= -1
     #        time.sleep(0.2)
+    snd = False
     while True:
         robot.setSpeed(v, sense * w)
         x, y, _ = robot.readOdometry()
         if (x > min[0] and x < max[0]) and (y > min[1] and y < max[1]):
-            sense *= -1
-            time.sleep(0.6)
+            if not ignore:
+                sense *= -1
+                if (sense < 0):
+                    time.sleep(0.2 * r/20)
+                    snd = True
+                else:
+                    time.sleep(0.6 * r/20)
+                ignore = True
+        else:
+            ignore = False
     
 
 def test_velocidad_lineal(robot, d, t):
@@ -197,8 +206,8 @@ def main(args):
 
         # Test 1: solo velocidad lineal va recto y no modifica ángulo
         #test_velocidad_lineal(robot, 120.0, 6)
-        #test_trace_eight(robot, 20)
-        bicycle_test(robot, 20, 30, 60)
+        test_trace_eight(robot, 20)
+        #bicycle_test(robot, 20, 30, 60)
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
         # and restore the LED to the control of the BrickPi3 firmware.
