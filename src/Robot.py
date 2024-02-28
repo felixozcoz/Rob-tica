@@ -66,7 +66,7 @@ class Robot:
         self.lock_odometry = Lock()
 
         # odometry update period
-        self.P = 0.1 # in seconds
+        self.P = 0.05 # in seconds
 
 
     def setSpeed(self, v, w):

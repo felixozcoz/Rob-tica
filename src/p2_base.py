@@ -28,13 +28,13 @@ def bicycle_test(robot, rad1, rad2, distEjes):
     w1 = th1 / 3
     
     # Parámetro para rueda
-    t = 11            # tiempo de recorrido de media circunferencia ( segundos )
+    t = 9            # tiempo de recorrido de media circunferencia ( segundos )
     th = - 2 * np.pi   # ángulo a recorrer en cada fase (4 fases)
     w = th / t    
     v1 = -rad1 * w
 
     # Parámetro para rueda
-    t = 11          # tiempo de recorrido de media circunferencia ( segundos )
+    t = 10         # tiempo de recorrido de media circunferencia ( segundos )
     th = - np.pi   # ángulo a recorrer en cada fase (4 fases)
     w2 = th / t
     v2 = - rad2 * w2
@@ -50,18 +50,20 @@ def bicycle_test(robot, rad1, rad2, distEjes):
 
     # rueda 1 (pto superior)
         # zona pto tangencia sup rueda 1
-    max_sup_r1       = [x1 + epsilon, y1 + epsilon]
-    min_sup_r1       = [x1 - epsilon, y1 - epsilon]
+    max_sup_r1       = [x1 + (epsilon+2), y1 + (epsilon+2)]
+    min_sup_r1       = [x1 - epsilon, y1 - (epsilon+2)]
         # zona pto tangencia inf rueda 1
-    max_inf_r1       = [x3 + epsilon, y3 + (epsilon+2)]
-    min_inf_r1       = [x3 - epsilon, y3 - (epsilon+2)]
+    max_inf_r1       = [x3+(epsilon+6), y3 + (epsilon+6)]
+    min_inf_r1       = [x3-(epsilon+6), y3 - (epsilon+6)]
         # zona pto tangencia sup rueda 2
-    max_sup_r2       = [x2 + epsilon, y2 + (epsilon+4)]
-    min_sup_r2       = [x2 - epsilon, y2 - (epsilon+4)]
+    max_sup_r2       = [x2 + (epsilon+4), y2 + (epsilon+4)]
+    min_sup_r2       = [x2 - (epsilon+4), y2 - (epsilon+4)]
         # zona pto tangencia inf rueda 2
-    max_inf_r2       = [x4 + epsilon, y4 + (epsilon+2)]
-    min_inf_r2       = [x4 - epsilon, y4 - (epsilon+2)]
+    max_inf_r2       = [x4 + (epsilon+3), y4 + (epsilon+3)]
+    min_inf_r2       = [x4 - (epsilon+3), y4 - (epsilon+3)]
 
+    stop = False
+    last = False
     # Primero giro (90º izq)
     robot.setSpeed(0, w1)
     while True:
@@ -90,10 +92,20 @@ def bicycle_test(robot, rad1, rad2, distEjes):
         
         elif (x > min_inf_r2[0] and x < max_inf_r2[0]) and (y > min_inf_r2[1] and y < max_inf_r2[1]): # cambio a v hacia inf rueda 1
         #elif (dir_ang > -1 and dir_ang < 1):
+            time.sleep(0.91 * rad1/20)
             robot.setSpeed(v1, 0)
 
         elif (x > min_inf_r1[0] and x < max_inf_r1[0]) and (y > min_inf_r1[1] and y < max_inf_r1[1]): # cambio a w hacia sup rueda 1
+            time.sleep(0.6 * rad1/20)
             robot.setSpeed(v1, w)
+            stop = True
+        
+        #if stop:
+        #    time.sleep(t/4.5)
+        #    robot.setSpeed(0,0)
+        #    exit(1) 
+
+ 
 
         time.sleep(robot.P)
 
