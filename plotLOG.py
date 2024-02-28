@@ -8,6 +8,10 @@ from plot_robot import dibrobot
 list_of_files = glob.glob('./logs/*') # * means all if need specific format then *.csv
 latest_file = max(list_of_files, key=os.path.getctime)
 
+ocho_bueno = "./logs/ODOMETRYLOG_18-54-29_2024-02-28.csv"
+bicicleta_buena_1 = "./logs/ODOMETRYLOG_18-41-58_2024-02-28.csv"
+bicicleta_buena_2 = "./logs/ODOMETRYLOG_18-37-36_2024-02-28.csv"
+
 with open(latest_file) as file: 
       
     # Create reader object by passing the file  
