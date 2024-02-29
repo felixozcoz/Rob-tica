@@ -6,10 +6,7 @@ import cv2
 import numpy as np;
 
 # Read image
-img = cv2.imread("60.jpg")
-(h,w) = img.shape[:2]
-
-img_BGR = cv2.resize(img, (500, np.int16((500*h)/w)), interpolation= cv2.INTER_LINEAR)
+img_BGR = cv2.imread("red_blue.jpg")
 #img_BGR = cv2.imread("many.jpg")
 
 # Setup default values for SimpleBlobDetector parameters.
@@ -35,7 +32,6 @@ params.filterByColor = False
 #params.blobColor = 0
 params.filterByConvexity = False
 params.filterByInertia = False
-
 
 # Create a detector with the parameters
 ver = (cv2.__version__).split('.')

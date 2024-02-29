@@ -1,6 +1,7 @@
 import csv
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import os
 from plot_robot import dibrobot
 
 # Leemos los ficheros de la carpeta 'logs'
@@ -25,6 +26,11 @@ def plot_log(log_name):
     plt.close()
 
 #        Ocho                               Bicicleta buena 1                  Bicicleta buena 2
-logs = ["ODOMETRYLOG_18-54-29_2024-02-28", "ODOMETRYLOG_18-41-58_2024-02-28", "ODOMETRYLOG_18-37-36_2024-02-28"]
-for log in logs:
-    plot_log(log)
+#logs = ["ODOMETRYLOG_18-54-29_2024-02-28", "ODOMETRYLOG_18-41-58_2024-02-28", "ODOMETRYLOG_18-37-36_2024-02-28"]
+#for log in logs:
+#    plot_log(log)
+
+last_log = os.listdir("./logs")[-1].split('.')[-2]
+plot_log(last_log)
+
+

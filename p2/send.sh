@@ -4,3 +4,4 @@ scp ./src/* pi@10.1.31.230:/home/pi/Robotics2024
 #ssh pi@10.1.31.230 "cd /home/pi/Robotics2024 && python p2_base.py; python stop.py"
 scp pi@10.1.31.230:/home/pi/Robotics2024/*.csv ./logs
 ssh pi@10.1.31.230 rm /home/pi/Robotics2024/*.csv
+python plotLOG.py
