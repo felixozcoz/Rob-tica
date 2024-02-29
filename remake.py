@@ -6,12 +6,7 @@ class Vector2:
         self.y = y
 
     # adding two objects 
-    def __add__(self, v):
-        return Vector2(self.x + v.x, self.y + v.y)
 
-    def __sub__(self, v):
-        return Vector2(self.x - v.x, self.y - v.y)
-    
     def __mul__(self, s: int):
         return Vector2(self.x * s, self.y * s)
     
