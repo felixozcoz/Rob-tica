@@ -95,33 +95,57 @@ class Vector2:
             Multiplicacion de un escalar
         """
         return Vector2(self.x * s, self.y * s, self.h, self.name)
-    # Multiplicacion de un escalar (orden inverso)
+
     def __rmul__(self, s) -> 'Vector2':
+        """
+            Multiplicacion de un escalar (orden inverso)
+        """
         return self * s
-    # Multiplicacion de un escalar y asignacion
+
     def __imul__(self, s) -> None:
+        """
+            Multiplicacion de un escalar y asignacion
+        """
         self.x *= s
         self.y *= s
-    # Division de un escalar
+
     def __div__(self, s) -> 'Vector2':
+        """
+            Division de un escalar
+        """
         return Vector2(self.x / s, self.y / s, self.h, self.name)
-    # Division de un escalar y asignacion
+
     def __idiv__(self, s) -> None:
+        """
+            Division de un escalar y asignacion
+        """
         self.x /= s
         self.y /= s
-    # Igualdad de vectores
+
     def __eq__(self, v: 'Vector2') -> bool:
+        """
+            Igualdad de vectores
+        """
         return self.x == v.x and self.y == v.y
-    # Desigualdad de vectores:
+
     def __ne__(self, v: 'Vector2') -> bool:
+        """
+            Desigualdad de vectores
+        """
         return not (self == v)
-    # Representacion de un vector en lista
-    def __iter__(self) -> list:
+
+    def __iter__(self):
+        """
+            Representacion de un vector en lista
+        """
         yield self.x
         yield self.y
         yield self.h
-    # Representacion de un vector en pantalla
+    
     def __repr__(self) -> str:
+        """
+            Representacion de un vector en pantalla
+        """
         return self.name + "(x=" + str(self.x) + ", y=" + str(self.y) + ", h=" + str(self.h) + ")" 
 
 class Matrix2:
