@@ -19,7 +19,7 @@ def test_lineal_trayectory(robot, d, t):
     """
     robot.setSpeed((d/t),0.0)
     while True:
-        time.sleep(2*robot.P)
+        #time.sleep(2*robot.P)
         x,_,_ = robot.readOdometry()
         print("\t\tx TEST: %.2f" %(x))
         if x >= d:
@@ -95,11 +95,10 @@ def test_trace_eight(robot, r):
                 else:
                     time.sleep(0.6 * r/20)
                 ignore = True
-                steps += 1      
+                steps += 1
         else:
             ignore = False
-        if steps >= 2:
-            time.sleep(t * r/20)
+        if (steps >= 2) and (x > (0 - epsilon) and x < (0 + epsilon)) and (y > (0 - epsilon) and y < (0 + epsilon)):
             robot.setSpeed(0,0)
             break
 
@@ -272,16 +271,17 @@ def main(args):
 
         # 2. perform trajectory
         # PART 0: solo velocidad lineal va recto y no modifica ángulo
-        test_lineal_trayectory(robot, args.lineal_distance, args.lineal_time)
-        input("Press Enter to continue...")
+        if (args.test == 1):
+            test_lineal_trayectory(robot, args.lineal_distance, args.lineal_time)
 
         # PART 1:
-        test_trace_eight(robot, args.radioD)
-        input("Press Enter to continue...")
+        if (args.test == 2):
+            test_trace_eight(robot, args.radioD)
 
         # PART 2:
-        test_bicycle(robot, args.fst_radius_bycicle, args.snd_radius_bycicle, args.dist_bycicle)
-        input("Press Enter to continue...")
+        #print("r1: %.2f, r2: %.2f, d: %.2f" %(args.fst_radius_bycicle, args.snd_radius_bycicle, args.dist_bycicle))
+        if (args.test == 3):
+            test_bicycle(robot, args.fst_radius_bycicle, args.snd_radius_bycicle, args.dist_bycicle)
 
         # 3. wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors,
@@ -300,6 +300,7 @@ if __name__ == "__main__":
     # get and parse arguments passed to main
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
+    parser.add_argument("-t", "--test", help="Test to run: (1) Lineal, (2) 8, (3) Bicycle", type=int, default=1)
     parser.add_argument("-ld", "--lineal-distance", help="Distance to run the Lineal-trajectory (cm)", type=float, default=120.0)
     parser.add_argument("-lt", "--lineal-time", help="Time to run the Lineal-trajectory (s)", type=float, default=6.0)
     parser.add_argument("-d", "--radioD", help="Radio to perform the 8-trajectory (cm)", type=float, default=20.0)

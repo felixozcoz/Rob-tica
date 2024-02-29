@@ -183,10 +183,11 @@ class Robot:
                 self.lock_odometry.acquire()
                 self.x.value += delta_x
                 self.y.value += delta_y
+                
                 self.th.value = th
                 self.sI.value = left_encoder
                 self.sD.value = right_encoder
-                self.tLength.value += delta_s
+                #self.tLength.value += delta_s
                 self.lock_odometry.release()
 
                 # Save LOG

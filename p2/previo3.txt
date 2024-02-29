@@ -1,0 +1,29 @@
+def trackObject(self, colorRangeMin=[0,0,0], colorRangeMax=[255,255,255]):
+    #targetSize=??, target=??, catch=??, ...)
+    finished = False
+    targetFound = False
+    targetPositionReached = False
+
+    while not finished:
+        # 1. search the most promising blob ..
+
+        imagen = get_imagen()
+        blob   = get_best_blob(imagen, colorRangeMin, colorRangeMax)
+
+        while not targetPositionReached:
+            # 2. decide v and w for the robot to get closer to target position
+            a, d = get_blob_parameters(blob)
+            if d == 0
+                self.setSpeed(0,0)
+                targetPositionReached = True
+                targetFound = True
+                finished = True
+            else:
+                v, w = getNewSpeed(a, d)
+                self.setSpeed(v, w)
+
+    return finished
+
+    def catch(self):
+        # decide the strategy to catch the ball once you have reached the target position
+        self.setNestSpeed(0,np.pi / 2)
