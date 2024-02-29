@@ -60,6 +60,7 @@ def test_trace_eight(robot, r):
     ignore    = False # Al detectar que esta dentro de la región, puede volver a detectarla y
                       # volver a cambiar de sentido, por eso, si lo detecta una vez, que las
                       # siguientes veces lo ignore. 
+    steps     = 0
     
     # Primero giro (90º dcha)
     robot.setSpeed(0, w1)
@@ -83,22 +84,24 @@ def test_trace_eight(robot, r):
     #    if dist < n_epsilon:
     #        sense *= -1
     #        time.sleep(0.2)
-    try:
-        while True:
-            robot.setSpeed(v, sense * w)
-            x, y, _ = robot.readOdometry()
-            if (x > min[0] and x < max[0]) and (y > min[1] and y < max[1]):
-                if not ignore:
-                    sense *= -1
-                    if (sense < 0):
-                        time.sleep(0.2 * r/20)
-                    else:
-                        time.sleep(0.6 * r/20)
-                    ignore = True
-            else:
-                ignore = False
-    except KeyboardInterrupt:
-        print("Stopping current trayectory...")
+    while True:
+        robot.setSpeed(v, sense * w)
+        x, y, _ = robot.readOdometry()
+        if (x > min[0] and x < max[0]) and (y > min[1] and y < max[1]):
+            if not ignore:
+                sense *= -1
+                if (sense < 0):
+                    time.sleep(0.2 * r/20)
+                else:
+                    time.sleep(0.6 * r/20)
+                ignore = True
+                steps += 1      
+        else:
+            ignore = False
+        if steps >= 2:
+            time.sleep(t * r/20)
+            robot.setSpeed(0,0)
+            break
 
  
 

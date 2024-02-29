@@ -11,77 +11,141 @@ class Vector2:
         self.x = x
         self.y = y
         self.h = h
-    # Vector absolutizado
+
     def abs(self) -> 'Vector2':
+        """
+            Vector absolutizado
+        """
         return Vector2(abs(self.x), abs(self.y), self.h, self.name)
-    # Angulo entre dos vectores
+    
     def angle(self, v: 'Vector2', format = 'RAD'):
+        """
+            Angulo entre dos vectores
+        """
         res = math.acos((self * v) / (self.magnitude() * v.magnitude()))
         if (format == "DEG"):
             res *= R2D
         return res
-    # Producto cartesiano de dos vectores
+
     def cross(self, v: 'Vector2'):
+        """
+            Producto cartesiano de dos vectores (en 2d, es el 
+            area del paralelogramo que definen).
+        """
         return (self.x * v.y) - (self.y * v.x)
-    # Magnitud de un vector
+    
     def magnitude(self):
+        """
+            Magnitud de un vector
+        """
         return math.sqrt(self.x*self.x + self.y*self.y)
-    # Vector normalizado
+
     def normalize(self, magnitude = 1.0):
+        """
+            Vector normalizado
+        """
         return self * (magnitude/self.magnitude())
-    # Vector redondeado
+
     def round(self, n):
+        """
+            Vector con valores redondeados
+        """
         return Vector2(round(self.x, n), round(self.y, n), self.h, self.name)
-    # Suma de dos vectores
+
     def __add__(self, v: 'Vector2') -> 'Vector2':
+        """
+            Suma de dos vectores
+        """
         return Vector2(self.x + v.x, self.y + v.y)
-    # Suma de un vector y asignacion
+ 
     def __iadd__(self, v: 'Vector2') -> None:
+        """
+            Suma de un vector y asignacion
+        """
         self.x += v.x
         self.y += v.y
-    # Resta de dos vectores
+
     def __sub__(self, v) -> 'Vector2':
+        """
+            Resta de dos vectores
+        """
         return Vector2(self.x - v.x, self.y - v.y)
-    # Resta de un vector y asignacion
+
     def __isub__(self, v) -> 'Vector2':
+        """
+            Resta de un vector y asignacion
+        """
         self.x -= v.x
         self.y -= v.y
-    # Cambiar de signo un vector
+
     def __neg__(self) -> 'Vector2':
+        """
+            Cambiar de signo un vector
+        """
         return Vector2(-self.x, -self.y, self.h, self.name)
-    # Multiplicacion escalar entre dos vectores
+
     def __mul__(self, v: 'Vector2'):
+        """
+            Multiplicacion escalar entre dos vectores
+        """
         return (self.x * v.x) + (self.y * v.y)
-    # Multiplicacion de un escalar
+
     def __mul__(self, s) -> 'Vector2':
+        """
+            Multiplicacion de un escalar
+        """
         return Vector2(self.x * s, self.y * s, self.h, self.name)
-    # Multiplicacion de un escalar (orden inverso)
+
     def __rmul__(self, s) -> 'Vector2':
+        """
+            Multiplicacion de un escalar (orden inverso)
+        """
         return self * s
-    # Multiplicacion de un escalar y asignacion
+
     def __imul__(self, s) -> None:
+        """
+            Multiplicacion de un escalar y asignacion
+        """
         self.x *= s
         self.y *= s
-    # Division de un escalar
+
     def __div__(self, s) -> 'Vector2':
+        """
+            Division de un escalar
+        """
         return Vector2(self.x / s, self.y / s, self.h, self.name)
-    # Division de un escalar y asignacion
+
     def __idiv__(self, s) -> None:
+        """
+            Division de un escalar y asignacion
+        """
         self.x /= s
         self.y /= s
-    # Igualdad de vectores
+
     def __eq__(self, v: 'Vector2') -> bool:
+        """
+            Igualdad de vectores
+        """
         return self.x == v.x and self.y == v.y
-    # Desigualdad de vectores:
+
     def __ne__(self, v: 'Vector2') -> bool:
+        """
+            Desigualdad de vectores
+        """
         return not (self == v)
-    # Representacion de un vector en lista
-    def __iter__(self) -> list:
+
+    def __iter__(self):
+        """
+            Representacion de un vector en lista
+        """
         yield self.x
         yield self.y
         yield self.h
-    # Representacion de un vector en pantalla
+    
     def __repr__(self) -> str:
+        """
+            Representacion de un vector en pantalla
+        """
         return self.name + "(x=" + str(self.x) + ", y=" + str(self.y) + ", h=" + str(self.h) + ")" 
 
 class Matrix2:
