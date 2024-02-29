@@ -2,14 +2,16 @@ import math
 import numpy as np  
 import matplotlib.pyplot as plt
 
-
 # ---------------------------------------------------------------------
 
-# Returns the tangent points of the outer tangent lines of two circumferences
-# rad1: radius of the first circumference
-# rad2: radius of the second circumference
-# distEjes: distance between the centers of the circumferences
-def calculate_tangencial_points(rad1, rad2, distAxes):   
+def calculate_tangencial_points(rad1, rad2, distAxes):
+    """
+        Returns the tangent points of the outer tangent lines of two circumferences
+        
+        - rad1: radius of the first circumference
+        - rad2: radius of the second circumference
+        - distAxes: distance between the centers of the circumferences
+    """
     # coordinates of the centers of the circumferences
     x1, y1 = rad1 ,0    
     x2, y2 = distAxes + rad1 ,0
@@ -35,8 +37,18 @@ def calculate_tangencial_points(rad1, rad2, distAxes):
 
 
 
-# Plot the trace of the bicycle circuit test
 def plot_trace_bicicleta(rad1, rad2, distEjes, x1, y1, x2, y2):
+    """
+        Plot the trace of the bicycle circuit test
+
+        - rad1: Radio de la primera circunferencia.
+        - rad2: Radio de la segunda circunferencia.
+        - distEjes: Distancia entre ambas circunferencias.
+        - x1: Coordenada x de la primera circunferencia
+        - y1: Coordenada y de la primera circunferencia
+        - x2: Coordenada x de la segunda circunferencia
+        - y2: Coordenada y de la segunda circunferencia
+    """
     # calculate the tangent points
     (x3, y3), (x4, y4), (x5, y5), (x6, y6) = calculate_tangencial_points(rad1, rad2, distEjes)
     
@@ -71,8 +83,4 @@ def plot_trace_bicicleta(rad1, rad2, distEjes, x1, y1, x2, y2):
     plt.axis('equal')
     plt.show()
 
-
-
 #plot_trace_bicicleta(20, 40, 100, 0,0, 0, 100)
-
-

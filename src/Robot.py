@@ -186,7 +186,7 @@ class Robot:
                 self.th.value = th
                 self.sI.value = left_encoder
                 self.sD.value = right_encoder
-                self.totalLength.value += delta_s
+                self.tLength.value += delta_s
                 self.lock_odometry.release()
 
                 # Save LOG
