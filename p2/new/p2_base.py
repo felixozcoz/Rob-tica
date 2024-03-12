@@ -42,7 +42,7 @@ class Transform:
             "last": dist
         }
         # ROTATION CHECK
-        ROTATION = self.rotation < transform.rotation
+        ROTATION = self.rotation and self.rotation < transform.rotation
         #ROTATION = (self.rotation_inf <= transform.rotation) and (transform.rotation < self.rotation_sup)
 
         # BOTH CHECK
