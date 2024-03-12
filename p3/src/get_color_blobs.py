@@ -6,9 +6,9 @@ import cv2
 import numpy as np;
 
 # Read image
-img = cv2.imread("60.jpg")
+img = cv2.imread("en_cesta_2.jpg")
 (h,w) = img.shape[:2]
-
+#img_BGR = cv2.resize(img, (259,194), interpolation= cv2.INTER_LINEAR)
 img_BGR = cv2.resize(img, (500, np.int16((500*h)/w)), interpolation= cv2.INTER_LINEAR)
 #img_BGR = cv2.imread("many.jpg")
 
@@ -23,7 +23,7 @@ params.maxThreshold = 200
 # Filter by Area
 params.filterByArea = True
 params.minArea = 200
-params.maxArea = 10000
+params.maxArea = 50000
 
 # Filter by Circularity
 params.filterByCircularity = True
