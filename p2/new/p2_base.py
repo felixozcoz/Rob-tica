@@ -1,5 +1,5 @@
 import math
-from geometry import Vector2
+from geometry import POSITION_ERROR, ROTATION_ERROR, Vector2
 
 # HSV O RGB
 # Distancia con la que detectamos la pelota
@@ -8,50 +8,86 @@ from geometry import Vector2
 # Que coga la pelota y que determine correctamente que la ha cogido
 
 class Transform:
-    def __init__(self, position, point_error : Vector2, modulus_error):
+    # Constructor
+    def __init__(self, position, rotation):
+        # Transform properties
         self.position = position
+        self.rotation = rotation
         # Area error
-        position_shift = point_error.normalize()
-        self.inf_error = position - poin
-        self.point_inf_error = position - point_shift
-        self.point_sup_error = position + point_shift
-        # Modulus error
-        self.modulus_error      = modulus_error
-        self.modulus_last_error = modulus_error
+        position_shift = Vector2.error()
+        self.position_inf = position - position_shift
+        self.position_sup = position + position_shift
+        # Distance error
+        self.lmin         = {
+            "pass": False,
+            "last": math.inf
+        }
+        # Orientation error
+        self.rotation_inf = rotation - ROTATION_ERROR
+        self.rotation_sup = rotation + ROTATION_ERROR
 
-    def check(self, position : Vector2):
-        # Center range check
-        if (position.x > self.point_inf_error.x and position.x <= self.point_sup_error.x) and (position.y > self.point_inf_error.y and position.y <= self.point_sup_error.y):
-            return True
-        # Center distance check
-        dist = (self.position - position).magnitude()
-        if dist < self.point_dist_error:
-            return True
-        # If last error is 
-        if self.modulus_last_error < self.modulus_error:
-            return True
-        
-            
+    # 
+    def __eq__(self, transform):
+        # POSITION CHECK
+        # 1. Area check
+        POSITION = (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
+            (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y)
+        # 2. Distance check
+        dist = (self.position - transform.position).magnitude()
+        POSITION |= POSITION_ERROR > dist
+        # 3. Local minimum check
+        POSITION |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
+        self.distance = {
+            "pass": (self.lmin["last"] >= dist),
+            "last": dist
+        }
+        # ROTATION CHECK
+        ROTATION = self.rotation < transform.rotation
+        #ROTATION = (self.rotation_inf <= transform.rotation) and (transform.rotation < self.rotation_sup)
 
-
-
-
+        # BOTH CHECK
+        return POSITION and ROTATION
 
 ########################################################################
 
-def test_lineal_trayectory(robot, d, v):
+def test_lineal_trayectory(robot, dest, v, w):
     """
         Trayectoria lineal  \
         - robot: El robot
         - d:     Distancia a recorrer (cm).
         - v:     Velocidad lineal del robot (cm/s).   
     """
-    robot.setSpeed(v, 0.0)
+    STATE  = "IDLE"
+    STATES = {
+        "IDLE": None,
+        "A_TO_B": Transform(dest),
+        "ROTATING_IN_B": Transform(dest,  90),
+        "ROTATING_IN_A": Transform(dest, -90)
+    }
+
     while True:
-        x,_,_ = robot.readOdometry()
-        if x >= d:
-            robot.setSpeed(0.0, 0.0)
-            break
+        x, y, th  = robot.readOdometry()
+        transform = Transform(Vector2(x, y), th)
+        # --
+        if STATE == "IDLE":
+            robot.setSpeed(v, 0.0)
+            STATE = "A_TO_B"
+        elif STATE == "A_TO_B":
+            if transform == STATES[STATE]:
+                robot.setSpeed(0.0, w)
+                STATE = "ROTATING_IN_B"
+        elif STATE == "ROTATING_IN_B":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v, 0.0)
+                STATE = "B_TO_A"
+        elif STATE == "B_TO_A":
+            if transform == STATE[STATE]:
+                robot.setSpeed(0.0, -w)
+                STATE = "ROTATING_IN_A"
+        elif STATE == "ROTATING_IN_A":
+            if transform == STATE[STATE]:
+                robot.setSpeed(0.0, 0.0)
+                break
 
 ################################################
 

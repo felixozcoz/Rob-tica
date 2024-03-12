@@ -2,7 +2,8 @@ import math
 
 R2D = 180 / math.pi
 D2R = math.pi / 180
-
+POSITION_ERROR = 0.5
+ROTATION_ERROR = 2
 # Vector 2d
 class Vector2:
     # Constructor 
@@ -33,6 +34,9 @@ class Vector2:
             area del paralelogramo que definen).
         """
         return (self.x * v.y) - (self.y * v.x)
+    
+    def error(self):
+        return Vector2(EPSILON_ERROR, EPSILON_ERROR).normalize()
     
     def magnitude(self):
         """
