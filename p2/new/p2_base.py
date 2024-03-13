@@ -1,5 +1,6 @@
 import math
-from geometry import POSITION_ERROR, ROTATION_ERROR, Vector2
+import time
+from geometry import POSITION_ERROR, ROTATION_ERROR, Matrix2, Vector2
 
 # HSV O RGB
 # Distancia con la que detectamos la pelota
@@ -11,8 +12,10 @@ class Transform:
     # Constructor
     def __init__(self, position, rotation):
         # Transform properties
-        self.position = position
-        self.rotation = rotation
+        self.position    = position
+        self.rotation    = rotation
+        self.forward     = Vector2(1,0) * Matrix2.transform(Vector2.zero, rotation)
+        self.right       = self.forward * Matrix2.transform(Vector2.zero, 90)
         # Area error
         position_shift = Vector2.error()
         self.position_inf = position - position_shift
@@ -42,7 +45,7 @@ class Transform:
             "last": dist
         }
         # ROTATION CHECK
-        ROTATION = self.rotation and self.rotation < transform.rotation
+        ROTATION = ROTATION_ERROR > self.rotation
         #ROTATION = (self.rotation_inf <= transform.rotation) and (transform.rotation < self.rotation_sup)
 
         # BOTH CHECK
@@ -60,9 +63,10 @@ def test_lineal_trayectory(robot, dest, v, w):
     STATE  = "IDLE"
     STATES = {
         "IDLE": None,
-        "A_TO_B": Transform(dest),
-        "ROTATING_IN_B": Transform(dest,  90),
-        "ROTATING_IN_A": Transform(dest, -90)
+        "A_TO_B": Transform(dest, 0),
+        "B_TO_A": Transform(dest, 180),
+        "ROTATING_IN_B": Transform(dest, 180),
+        "ROTATING_IN_A": Transform(dest, 0)
     }
 
     while True:

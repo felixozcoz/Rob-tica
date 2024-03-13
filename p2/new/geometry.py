@@ -1,17 +1,24 @@
+from numbers import Number
 import math
 
 R2D = 180 / math.pi
 D2R = math.pi / 180
 POSITION_ERROR = 0.5
 ROTATION_ERROR = 2
+
 # Vector 2d
 class Vector2:
     # Constructor 
-    def __init__(self, x=0.0, y=0.0, h=1.0, name="") -> None:
+    def __init__(self, x=0.0, y=0.0, h=1.0, name="", iter=None) -> None:
         self.name = name
-        self.x = x
-        self.y = y
-        self.h = h
+        if iter and isinstance(iter, list) and len(iter) == 3:
+            self.x = iter[0]
+            self.y = iter[1]
+            self.h = iter[2]
+        else:
+            self.x = x
+            self.y = y
+            self.h = h
 
     def abs(self) -> 'Vector2':
         """
@@ -34,10 +41,7 @@ class Vector2:
             area del paralelogramo que definen).
         """
         return (self.x * v.y) - (self.y * v.x)
-    
-    def error(self):
-        return Vector2(EPSILON_ERROR, EPSILON_ERROR).normalize()
-    
+
     def magnitude(self):
         """
             Magnitud de un vector
@@ -61,7 +65,7 @@ class Vector2:
             Suma de dos vectores
         """
         return Vector2(self.x + v.x, self.y + v.y)
- 
+
     def __iadd__(self, v: 'Vector2') -> None:
         """
             Suma de un vector y asignacion
@@ -88,17 +92,15 @@ class Vector2:
         """
         return Vector2(-self.x, -self.y, self.h, self.name)
 
-    def __mul__(self, v: 'Vector2'):
+    def __mul__(self, other):
         """
-            Multiplicacion escalar entre dos vectores
+            1. Multiplicacion de un escalar
+            2. Multiplicacion escalar entre dos vectores
         """
-        return (self.x * v.x) + (self.y * v.y)
-
-    def __mul__(self, s) -> 'Vector2':
-        """
-            Multiplicacion de un escalar
-        """
-        return Vector2(self.x * s, self.y * s, self.h, self.name)
+        if isinstance(other, Number):
+            return Vector2(self.x * other, self.y * other, self.h, self.name)
+        elif isinstance(other, Vector2):
+            return (self.x * other.x) + (self.y * other.y)
 
     def __rmul__(self, s) -> 'Vector2':
         """
@@ -145,22 +147,83 @@ class Vector2:
         yield self.x
         yield self.y
         yield self.h
+ 
+    def __repr__(self) -> str:
+        """
+            Representacion de un vector en pantalla
+        """
+        return self.name + "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
+    
+Vector2.zero  = Vector2(0,0,0)
+Vector2.one   = Vector2(1,1,1)
+Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR, POSITION_ERROR).normalize()
+
+# Matrix2
+class Matrix2:
+    # Constructor
+    def __init__(self, A):
+        self.A = [[],[],[]]
+        self.T = [[],[],[]]
+        for i in range(3):
+            for j in range(3):
+                self.A[i].append(A[i][j])
+                self.T[i].append(A[j][i])
+
+    def identity():
+        return Matrix2([
+            [1,0,0],
+            [0,1,0],
+            [0,0,1]
+        ])
+
+    def transform(translate: Vector2, rotate: float, format="DEG"):
+        if format == "DEG":
+            rotate = rotate * D2R
+        return Matrix2([
+            [math.cos(rotate), -math.sin(rotate), translate.x],
+            [math.sin(rotate),  math.cos(rotate), translate.y],
+            [               0,                 0,           1]
+        ])
+    
+    def __mul__(self: "Matrix2", other): 
+        if isinstance(other, Number):
+            return Matrix2([
+                [x * other for x in self.A[0]],
+                [x * other for x in self.A[1]],
+                [x * other for x in self.A[2]]
+            ])
+        elif isinstance(other, Vector2):
+            v = list(other)
+            return Vector2(
+                sum(x * y for x, y in zip(self.A[0], v)),
+                sum(x * y for x, y in zip(self.A[1], v)),
+                sum(x * y for x, y in zip(self.A[2], v)),
+                other.name
+            )
+        elif isinstance(other, Matrix2):
+            A = []
+            for i in range(3):
+                A.append([])
+                for j in range(3):
+                    A[i].append(sum(x * y for x, y in zip(self.A[i], other.T[j])))
+            return Matrix2(A)
     
     def __repr__(self) -> str:
         """
             Representacion de un vector en pantalla
         """
-        return self.name + "(x=" + str(self.x) + ", y=" + str(self.y) + ", h=" + str(self.h) + ")" 
+        row_str = []
+        for i in range(3):
+            row_str.append("\n  [ " + str(round(self.A[i][0], 7)) + "," + str(round(self.A[i][1], 7)) + "," + str(round(self.A[i][2], 7)) + " ]")
+        return "(" + row_str[0] + row_str[1] + row_str[2] + "\n)" 
 
-class Matrix2:
-    # Constructor
-    def __init__(self):
-        self.a = "hola"
 
-v = Vector2(1,1,1, "v")
-w = Vector2(1,1,1, "w")
-print(v + w)
-print(v - w)
-print(v * 2.0)
-print(2 * v)
-print(((v*2).normalize(2)).magnitude())
+a = Matrix2.identity() * 3
+b = Matrix2.identity() * 2
+print(a)
+print(b)
+print(a*b)
+
+v = Vector2(1,0)
+print(Matrix2.transform(Vector2.zero,  90) * v)
+print(Matrix2.transform(Vector2.zero, -90) * v)
