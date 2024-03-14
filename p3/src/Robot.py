@@ -9,6 +9,9 @@ import datetime # timestamps
 import time     # import the time library for the sleep function
 import sys
 import numpy as np
+import cv2
+import picamera
+from picamera.array import PiRGBArray
 
 # tambien se podria utilizar el paquete de threading
 from multiprocessing import Process, Value, Array, Lock
@@ -31,8 +34,8 @@ class Robot:
         # Configure sensors, for example a touch sensor.                                              
         self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
         #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
-        self.PORT_LEFT_MOTOR  = self.BP.PORT_C
-        self.PORT_RIGHT_MOTOR = self.BP.PORT_B
+        self.PORT_LEFT_MOTOR  = self.BP.PORT_D
+        self.PORT_RIGHT_MOTOR = self.BP.PORT_A
         # Reset encoder B and C (or all the motors you are using)
         self.BP.offset_motor_encoder(self.PORT_RIGHT_MOTOR, self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR))
         self.BP.offset_motor_encoder(self.PORT_LEFT_MOTOR, self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR))
@@ -227,3 +230,224 @@ class Robot:
         self.finished.value = True
         self.BP.reset_all()
 
+
+    #--------- Tracking Object ------------
+        
+    def _get_best_blob(self, blobs):
+        # Criterio: más grande y más centrado si son iguales, sino el más grande
+        
+        ind_centrado = max(enumerate(blobs), key=lambda x: x[1].pt[0])[0]
+        ind_grande = max(enumerate(blobs), key=lambda x: x[1].size)[0]
+
+        
+
+        # devuelve el blob más grande si es el más centrado, sino el más grande
+        best = blobs[ind_centrado] if ind_centrado == ind_grande else blobs[ind_grande]
+        print("\nBest blob: ", best.pt[0], best.pt[1], best.size)
+        return best
+
+
+    def _init_my_blob_detector(self):
+        # Setup default values for SimpleBlobDetector parameters.
+        params = cv2.SimpleBlobDetector_Params()
+
+        # These are just examples, tune your own if needed
+        # Change thresholds
+        # indica el brillo del píxel
+        # params.minThreshold = 10
+        # params.maxThreshold = 200
+
+        # Filter by Area (en píxeles cuadrados)
+        params.filterByArea = True
+        params.minArea = 40
+        params.maxArea = 5000
+
+        # Filter by Circularity
+        params.filterByCircularity = False
+        params.minCircularity = 0.1
+
+        # Filter by Color 
+        params.filterByColor = False
+        # not directly color, but intensity on the channel input
+        # This filter compares the intensity of a binary image at the center of a blob to blobColor.
+        params.blobColor = 100
+
+        params.filterByConvexity = False
+        params.filterByInertia = False
+
+
+        # Create a detector with the parameters
+        ver = (cv2.__version__).split('.')
+        if int(ver[0]) < 3 :
+            detector = cv2.SimpleBlobDetector(params)
+        else :
+            detector = cv2.SimpleBlobDetector_create(params)
+
+        return detector	
+    
+
+    def _blobs_capture(self, img, detector, mask):
+        '''
+            Capture the blobs
+
+            Parameters:
+                img = image
+                detector = blob detector
+                colorRangeMin = minimum color range
+                colorRangeMax = maximum color range
+            
+            Returns:
+                keypoints_red = keypoints of the red blobs
+        '''
+        # define red mask
+        #mask = cv2.inRange(img, colorRangeMin, colorRangeMax)
+
+        # detector finds "dark" blobs by default, so invert image for results with same detector
+        keypoints = detector.detect(cv2.bitwise_not(mask))
+
+        # kp.p[0] = x coordenate on the image 
+        # kp.p[1] = y coordenate on the image
+        # kp.size = diameter of the blob
+        print("\n New frame")
+        for kp in keypoints:
+            print(kp.pt[0], kp.pt[1], kp.size)
+
+        return keypoints
+    
+
+    def _center_ball(self, blob):
+        '''
+            Center the ball in the middle of the image
+
+            Parameters: 
+                blob = most promising blob
+        '''
+        epsilon = 2 # error range
+
+        if blob.pt[0] < 160 - epsilon:
+            self.setSpeed(0, np.pi / 8)
+        elif blob.pt[0] > 160 + epsilon:
+            self.setSpeed(0, -np.pi / 8)
+        else:
+            return True
+        
+        return False
+    
+
+
+    def _init_camera(self, resolution=(320, 240), framerate=32):
+        '''
+            Initialize the camera
+
+            Parameters:
+                resolution = resolution of the camera
+                framerate = framerate of the camera
+
+            Returns:
+                cam = camera object
+                rawCapture = object to manage the camera
+        '''
+
+        cam = picamera.PiCamera()
+
+        cam.resolution = resolution
+        # cam.resolution = (640, 480)
+        cam.framerate = framerate # los profes lo pusieron a 32
+        rawCapture = PiRGBArray(cam, size=resolution)
+        # rawCapture = PiRGBArray(cam, size=(640, 480))
+
+        # allow the camera to warmup
+        time.sleep(0.1)
+
+        return cam, rawCapture  
+    
+
+    def trackObject(self, colorRangeMinLower=(0, 100, 150), colorRangeMaxLower=(10, 255, 255), colorRangeMinUpper=(160,100,20), colorRangeMaxUpper=(179,255,255)):
+        #targetSize=??, target=??, catch=??, ...)
+        '''
+            Track the object
+
+            Parameters:
+                colorRangeMin = minimum color range
+                colorRangeMax = maximum color range
+
+            Returns:
+                finished = True if the tracking is finished
+        '''
+        # flags
+        finished = False
+        targetFound = False
+        targetPositionReached = False
+
+        # initializations
+        detector = self._init_my_blob_detector()
+        cam, rawCapture = self._init_camera(resolution=(320, 240), framerate=10) 
+
+
+
+        # main loop
+        while not finished:
+
+            for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+
+                frame = cv2.cvtColor(img.array, cv2.COLOR_BGR2HSV)
+
+                mask1  = cv2.inRange(frame, colorRangeMinLower, colorRangeMaxLower)
+                mask2 = cv2.inRange(frame, colorRangeMinUpper, colorRangeMaxUpper)
+                mask = cv2.bitwise_or(mask1, mask2)
+                
+                # detect blobs
+                kp = self._blobs_capture(frame, detector, mask)
+                img_show = cv2.drawKeypoints(frame, kp, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                cv2.imshow('Captura', img_show)
+                
+                # if no blobs found, rotate until found
+                if kp:
+                    print("Blob found")
+                    # search the most promising blob
+                    best_blob = self._get_best_blob(kp) 
+
+                    # center the ball
+                    if self._center_ball(best_blob): 
+                       print("Ball centered")
+                       self.setSpeed(0, 0)
+                       break
+
+                else:
+                    print("Blob not found, rotating ...")
+                    self.setSpeed(0, np.pi / 8) 
+                
+                rawCapture.truncate(0)   # clear the stream in preparation for the next frame
+                
+                # 'ESC' = 27
+                if cv2.waitKey(1) & 0xff == 27:
+                    cam.close()
+                    finished = True
+                    break
+
+
+            print("Fin tracking")
+            finished = True
+            # 1. search the most promising blob ..
+             
+            # while not targetPositionReached:
+                # 2. decide v and w for the robot to get closer to target position
+
+               
+                # a, d = get_blob_parameters(blob)
+                # if d == 0
+                #     self.setSpeed(0,0)
+                #     targetPositionReached = True
+                #     targetFound = True
+                #     finished = True
+                # else:
+                #     v, w = getNewSpeed(a, d)
+                #     self.setSpeed(v, w)
+
+        return finished
+
+    def catch(self):
+        # decide the strategy to catch the ball once you have reached the target position
+        self.setNestSpeed(0,np.pi / 2)
+
+    
