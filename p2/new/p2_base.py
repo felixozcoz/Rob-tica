@@ -1,6 +1,6 @@
 import math
 import time
-from geometry import POSITION_ERROR, ROTATION_ERROR, Matrix2, Vector2
+from geometry import POSITION_ERROR, ROTATION_ERROR, Matrix2, Vector2, circunferences_secant_points
 
 # HSV O RGB
 # Distancia con la que detectamos la pelota
@@ -8,14 +8,28 @@ from geometry import POSITION_ERROR, ROTATION_ERROR, Matrix2, Vector2
 # Algoritmo de detección = Explicar (blob, deteccion de areas, conexas)
 # Que coga la pelota y que determine correctamente que la ha cogido
 
+
+# COSAS A TENER EN CUENTA:
+# - El sistema de referencia empieza en el (0,0)
+#
+
 class Transform:
     # Constructor
-    def __init__(self, position, rotation):
+    def __init__(self, position, rotation: float =None, forward : Vector2 =None):
         # Transform properties
         self.position    = position
-        self.rotation    = rotation
-        self.forward     = Vector2(1,0) * Matrix2.transform(Vector2.zero, rotation)
-        self.right       = self.forward * Matrix2.transform(Vector2.zero, 90)
+        if rotation is None and forward is None:
+            self.rotation = 0
+            self.forward  = Vector2(1,0)
+            self.right    = Vector2(0,1)
+        elif not rotation is None:
+            self.rotation = rotation
+            self.forward  = Vector2(1,0) * Matrix2.transform(Vector2.zero, rotation)
+            self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
+        else:
+            self.rotation = forward.angle(Vector2(1, 0))
+            self.forward  = self.forward * Matrix2.transform(Vector2.zero, 90)
+
         # Area error
         position_shift = Vector2.error()
         self.position_inf = position - position_shift
@@ -57,16 +71,16 @@ def test_lineal_trayectory(robot, dest, v, w):
     """
         Trayectoria lineal  \
         - robot: El robot
-        - d:     Distancia a recorrer (cm).
+        - dest:  Distancia a recorrer (cm).
         - v:     Velocidad lineal del robot (cm/s).   
     """
     STATE  = "IDLE"
     STATES = {
         "IDLE": None,
         "A_TO_B": Transform(dest, 0),
-        "B_TO_A": Transform(dest, 180),
         "ROTATING_IN_B": Transform(dest, 180),
-        "ROTATING_IN_A": Transform(dest, 0)
+        "B_TO_A": Transform(Vector2.zero, 180),
+        "EXIT": Transform(Vector2.zero, 0)
     }
 
     while True:
@@ -87,110 +101,108 @@ def test_lineal_trayectory(robot, dest, v, w):
         elif STATE == "B_TO_A":
             if transform == STATE[STATE]:
                 robot.setSpeed(0.0, -w)
-                STATE = "ROTATING_IN_A"
-        elif STATE == "ROTATING_IN_A":
+                STATE = "EXIT"
+        elif STATE == "EXIT":
             if transform == STATE[STATE]:
                 robot.setSpeed(0.0, 0.0)
                 break
+        time.sleep(robot.P)
 
 ################################################
 
-def test_trace_eight(robot, r):
-    """
-        Trayectoria del 8 \
-        - robot:    El robot
-        - r:        Radio de ambas circunferencias
-    """
-    # Primero giro (90º dcha)
-    rot_range = [math.pi/2, math.pi/2 + 0.2]
-    robot.setSpeed(0, -math.pi/2)
+def test_trace_eight(robot, v, radius):
+
+    w      = v/radius 
+    STATE  = "IDLE"
+    STATES = {
+        "IDLE": None,
+        "ROTATING_IN_A": Transform(Vector2.zero, 90),
+        "TURNING_TOWARDS_B": Transform(Vector2(2*radius, 0), -90),
+        "TURNING_BACK_TO_B": Transform(Vector2(2*radius, 0),  90),
+        "TURNING_BACK_TO_A": Transform(Vector2.zero, 90),
+        "EXIT": Transform(Vector2.zero, 0)
+    }
     while True:
-        _, _, th = robot.readOdometry()
-        th = abs(th)
-        if th >= rot_range[0] and th < rot_range[1]:
-            break
+        x, y, th  = robot.readOdometry()
+        transform = Transform(Vector2(x,y), th)
+        # Path states
+        if STATE == "IDLE":
+            robot.setSpeed(0, w)
+            STATE = "ROTATING_IN_A"
+        elif STATE == "ROTATING_IN_A":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v,  -w)
+                STATE = "TURNING_TOWARDS_B"
+        elif STATE == "TURNING_TOWARDS_B":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v,  w)
+                STATE = "TURNING_BACK_TO_B"
+        elif STATE == "TURNING_BACK_TO_B":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v, -w)
+                STATE = "TURNING_BACK_TO_A"
+        elif STATE == "TURNING_BACK_TO_A":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v,  w)
+                STATE = "EXIT"
+        elif STATE == "EXIT":
+            if transform == STATES[STATE]:
+                robot.setSpeed(0,  0)
+                break
+        time.sleep(robot.P)
 
-    # Movimientos del 8
-    # - Positions check
-    point_error = 1
-    point_shift = Vector2(point_error, point_error).normalize()
-    moved = False
-    start = Vector2()
-    start_range = [start - point_shift, start + point_shift ]
+def test_bicycle(robot, v, fst_radius, snd_radius, axis_dist):
 
-    center = Vector2(2*r, 0)
-    center_range = [center - point_shift, center + point_shift]
-    # - Magnitude check
-    center_dist_error = 1
-    center_last_dist  = center.magnitude()
-    # - Robot speed
-    w = (2*math.pi)/10 # Velocidad angular del robot.
-    v = r * w          # Velocidad lineal del robot.
-    sense = 1          # Sentido de movimiento.
-    # - Run conditions
-    ignore = False
-
+    w = v/((fst_radius + snd_radius)/2)
+    P1, P2, P3, P4 = circunferences_secant_points(fst_radius, snd_radius, axis_dist)
+    STATE  = "IDLE"
+    STATES = {
+        "IDLE": None,
+        "ROTATING_IN_A": Transform(Vector2.zero, -90),
+        "TURNING_TOWARDS_P1": Transform(P1, forward=P2-P1),
+        "P1_TO_P2": Transform(P2, forward=P2-P1),
+        "TURNING_TOWARDS_P3": Transform(P3, forward=P4-P3),
+        "P3_TO_P4": Transform(P4, forward=P4-P3),
+        "TURNING_TOWARDS_A": Transform(Vector2.zero, -90),
+        "EXIT": Transform(Vector2.zero, 0)
+    }
+    # 
     while True:
-        robot.setSpeed(v, sense * w)
-        x,y,_ = robot.readOdometry()
+        x, y, th = robot.readOdometry()
+        transform = Transform(Vector2(x,y), th)
+        # Pâth states
+        if STATE == "IDLE":
+            robot.setSpeed(0, -w)
+            STATE = "ROTATING_IN_A"
+        elif STATE == "ROTATING_IN_A":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v, w)
+                STATE = "TURNING_TOWARDS_P1"
+        elif STATE == "TURNING_TOWARDS_P1":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v, 0)
+                STATE = "P1_TO_P2"
+        elif STATE == "P1_TO_P2":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v, w)
+                STATE = "TURNING_TOWARDS_P3"
+        elif STATE == "TURNING_TOWARDS_P3":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v, 0)
+                STATE = "P3_TO_P4"
+        elif STATE == "P3_TO_P4":
+            if transform == STATES[STATE]:
+                robot.setSpeed(v, w)
+                STATE = "TURNING_TOWARDS_A"
+        elif STATE == "TURNING_TOWARDS_A":
+            if transform == STATES[STATE]:
+                robot.setSpeed(0, w)
+                STATE = "EXIT"
+        elif STATE == "EXIT":
+            if transform == STATES[STATE]:
+                robot.setSpeed(0, 0)
+                break
 
-            #if not ignore:
-            #    sense  *= -1
-            #    ignore  = True
-            #    moved   = True
-        
-        ignore = False
-        if moved and (x > start_range[0].x and x < start_range[1].x) and (y > start_range[0].y and y < start_range[1].y):
-            break
+        time.sleep(robot.P)
 
 
-    center    = [2 * r, 0] # Localización de cambio de fase 
-    epsilon   = 3          # Margen de error en estimación de la odometría
-    n_epsilon = 0.02       # Margen de error para el metodo con distancia vectorial
-
-    # Es un primer metodo que se tenia en mente, coger el punto central y añadirle
-    # unos margenes de error porque el robot no iba a pasar perfectamente por ese punto,
-    # entonces, se calculan dos puntos minimo y superior alrededor del punto central
-    # para añadir mas margen de detección
-    # Punto central del circuito
-    min       = [center[0] - epsilon, center[1] - epsilon]
-    max       = [center[0] + epsilon, center[1] + epsilon]
-    ignore    = False # Al detectar que esta dentro de la región, puede volver a detectarla y
-                      # volver a cambiar de sentido, por eso, si lo detecta una vez, que las
-                      # siguientes veces lo ignore. 
-    steps     = 0
-    
-
-    
-    # Resto de movimientos
-    robot.setSpeed(v, sense * w)
-    # En un segundo metodo, la idea es prescindir de las areas y utilizar el modulo del vector,
-    # si la distancia del centro del robot al punto es menor que tanta distancia x, quiere decir
-    # que esta cerca, pero habia que pulir un metodo que funcionara antes.
-    #while True:
-    #    robot.setSpeed(v, sense * w)
-    #    x, y, _ = robot.readOdometry()
-    #    rcvec   = [center[0] - x, center[1] - y]
-    #    dist    = math.sqrt(rcvec[0]*rcvec[0] + rcvec[1]*rcvec[1])
-    #    print("X= %.2f, Y= %.2f, DIST= %.2f" %(x, y, dist))
-    #    if dist < n_epsilon:
-    #        sense *= -1
-    #        time.sleep(0.2)
-    while True:
-        robot.setSpeed(v, sense * w)
-        x, y, _ = robot.readOdometry()
-        if (x > min[0] and x < max[0]) and (y > min[1] and y < max[1]):
-            if not ignore:
-                sense *= -1
-                if (sense < 0):
-                    time.sleep(0.2 * r/20)
-                else:
-                    time.sleep(0.6 * r/20)
-                ignore = True
-                steps += 1
-        else:
-            ignore = False
-        if (steps >= 2) and (x > (0 - epsilon) and x < (0 + epsilon)) and (y > (0 - epsilon) and y < (0 + epsilon)):
-            robot.setSpeed(0,0)
-            break
-    

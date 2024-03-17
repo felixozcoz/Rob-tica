@@ -1,12 +1,14 @@
 from numbers import Number
 import math
+import numpy as np
+import matplotlib.pyplot as plt
 
 R2D = 180 / math.pi
 D2R = math.pi / 180
 POSITION_ERROR = 0.5
 ROTATION_ERROR = 2
 
-# Vector 2d
+# Vector2
 class Vector2:
     # Constructor 
     def __init__(self, x=0.0, y=0.0, h=1.0, name="", iter=None) -> None:
@@ -218,12 +220,73 @@ class Matrix2:
         return "(" + row_str[0] + row_str[1] + row_str[2] + "\n)" 
 
 
-a = Matrix2.identity() * 3
-b = Matrix2.identity() * 2
-print(a)
-print(b)
-print(a*b)
+def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
+    """
+        Returns the tangent points of the outer tangent lines of two circumferences
+        - rad1: radius of the first circumference
+        - rad2: radius of the second circumference
+        - distAxes: distance between the centers of the circumferences
+    """
 
-v = Vector2(1,0)
-print(Matrix2.transform(Vector2.zero,  90) * v)
-print(Matrix2.transform(Vector2.zero, -90) * v)
+    # Coordinates of the centers of the circumferences
+    C1 = Vector2(fst_radius, 0)
+    C2 = Vector2(fst_radius + axis_dist, 0)
+    CV = C2 - C1
+
+    # Angle between the centers of the circumferences
+    gamma = -math.atan2(CV.y, CV.x)
+    beta  =  math.asin((snd_radius-fst_radius)/axis_dist)
+    alpha =  gamma - beta
+
+    # Calculate the tangent points 
+    #     (1)                (2)
+    #     = x = ----------- = x =
+    #  =        =        =        =
+    # =          =      =          =
+    # =          =      =          =
+    #  =        =        =        =
+    #     = x = ----------- = x =
+    #     (4)                (3)
+    P1 = C1 + (fst_radius * Vector2(math.cos( (math.pi/2) - alpha), math.sin( (math.pi/2) - alpha)))
+    P2 = C2 + (snd_radius * Vector2(math.cos( (math.pi/2) - alpha), math.sin( (math.pi/2) - alpha)))
+    P3 = C2 + (snd_radius * Vector2(math.cos(-(math.pi/2) + alpha), math.sin(-(math.pi/2) + alpha)))
+    P4 = C1 + (fst_radius * Vector2(math.cos(-(math.pi/2) + alpha), math.sin(-(math.pi/2) + alpha)))
+
+    # Plot if needed
+    if plot:
+        ang = np.linspace(0, 2*np.pi, 100)
+        # Plot the circumferences
+        plt.plot(fst_radius * np.cos(ang) + C1.x, fst_radius * np.sin(ang) + C1.y, "b")
+        plt.plot(snd_radius * np.cos(ang) + C2.x, snd_radius * np.sin(ang) + C2.y, "g")
+        # Plot the circumferences centers
+        plt.plot(C1.x, C1.y, "bo")
+        plt.plot(C2.x, C2.y, "go")
+        # Plot the tangent points
+        plt.plot(P1.x, P1.y, "ro")
+        plt.plot(P2.x, P2.y, "ro")
+        plt.plot(P3.x, P3.y, "ro")
+        plt.plot(P4.x, P4.y, "ro")
+        # Plot the tangent lines
+        plt.plot([C1.x, P1.x], [C1.y, P1.y], 'y')
+        plt.plot([C2.x, P2.x], [C2.y, P2.y], 'y')
+        plt.plot([P1.x, P2.x], [P1.y, P2.y], 'y')
+        plt.plot([P1.x, P3.x], [P4.y, P3.y], 'y')
+        plt.plot([C1.x, P4.x], [C1.y, P4.y], 'y')
+        plt.plot([C2.x, P3.x], [C2.y, P3.y], 'y')
+
+        plt.axis("equal")
+        plt.show()
+
+    # Returning the points
+    return P1, P2, P3, P4
+
+#a = Matrix2.identity() * 3
+#b = Matrix2.identity() * 2
+#print(a)
+#print(b)
+#print(a*b)
+#
+#v = Vector2(1,0)
+#print(Matrix2.transform(Vector2.zero,  90) * v)
+#print(Matrix2.transform(Vector2.zero, -90) * v)
+#circunferences_secant_points(5, 10, 25, True)
