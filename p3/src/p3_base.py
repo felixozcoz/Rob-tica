@@ -19,6 +19,7 @@ def main():
         # Initialize Odometry. Default value will be 0,0,0
         robot = Robot() 
         print("Vamos a seguir la pelota")
+
         robot.trackObject(colorRangeMinLower=redMin1, colorRangeMaxLower=redMax1, colorRangeMinUpper=redMin2, colorRangeMaxUpper=redMax2)
         # 1. launch updateOdometry thread()
         #robot.startOdometry()

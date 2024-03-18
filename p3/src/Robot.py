@@ -314,24 +314,6 @@ class Robot:
 
         return keypoints
     
-
-    def _center_ball(self, blob):
-        '''
-            Center the ball in the middle of the image
-
-            Parameters: 
-                blob = most promising blob
-        '''
-        epsilon = 2 # error range
-
-        if blob.pt[0] < 160 - epsilon:
-            self.setSpeed(0, np.pi / 8)
-        elif blob.pt[0] > 160 + epsilon:
-            self.setSpeed(0, -np.pi / 8)
-        else:
-            return True
-        
-        return False
     
 
 
@@ -381,9 +363,14 @@ class Robot:
 
         # initializations
         detector = self._init_my_blob_detector()
-        cam, rawCapture = self._init_camera(resolution=(320, 240), framerate=10) 
 
+        
+        resolution = (320, 240)
+        center     = (resolution[0]//2, resolution[1]//2)
+        cam, rawCapture = self._init_camera(resolution=resolution, framerate=32)
 
+        sense = 0 # 
+        side  = 1 # Left = -1, Right = 1
 
         # main loop
         while not finished:
@@ -398,25 +385,71 @@ class Robot:
                 
                 # detect blobs
                 kp = self._blobs_capture(frame, detector, mask)
-                img_show = cv2.drawKeypoints(frame, kp, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                cv2.imshow('Captura', img_show)
                 
+                # img_show = cv2.drawKeypoints(frame, kp, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                # cv2.imshow('Captura', img_show)
+                epsilon = 10
                 # if no blobs found, rotate until found
                 if kp:
                     print("Blob found")
                     # search the most promising blob
-                    best_blob = self._get_best_blob(kp) 
+                    best_blob = self._get_best_blob(kp)
+                    x = best_blob.pt[0] - center[0]
+                    y = best_blob.pt[1] - center[1]
+                    #A = 2 * np.pi * ((kp.size/2)**2)
+                    # w = np.log(abs(x)) - 1
+                    w = np.abs(np.exp(0.02*x) - 1)
+                    print("W=%.2f" % w)
 
-                    # center the ball
-                    if self._center_ball(best_blob): 
-                       print("Ball centered")
-                       self.setSpeed(0, 0)
-                       break
+                    if x >= -epsilon and x < epsilon:
+                        self.setSpeed(0, 0)
+                    elif x < -epsilon:
+                        self.setSpeed(0, w)
+                        side = -1
+                    elif x >= epsilon:
+                        self.setSpeed(0,-w)
+                        side = 1
+
+                    # center the ball.
+                    #if best_blob.pt[0] > (center[0]-30) and best_blob.pt[0] < (center[0]+30):
+                    #    self.setSpeed(3, 0)
+                    #elif best_blob.pt[0] < center[0]:
+                    #    self.setSpeed(3, np.pi/4)
+                    #    #if sense == 0:
+                    #    #    self.setSpeed(2, np.pi/4)
+                    #    #    sense = -1
+                    #    #elif sense == 1:
+                    #    #    self.setSpeed(2,0)
+                    #    side = 1
+                    #elif best_blob.pt[0] > center[0]:
+                    #    self.setSpeed(3, -np.pi/4)
+                    #    #if sense == 0:
+                    #    #    self.setSpeed(2, -np.pi/4)
+                    #    #    sense = 1
+                    #    #elif sense == -1:
+                    #    #    self.setSpeed(2,0)
+                    #    side = -1
+                    
+                    #if best_blob.pt[0] < center[0]:
+                    #    side = 1
+                    #    if sense == 0:
+                    #        sense = -1
+                    #else:
+                    #    side = -1
+                    #    if sense == 0:
+                    #        sense = 1
+                    #    
+                    #if sense == -1 and best_blob.pt[0] < center[0]:
+                    #    self.setSpeed(0,  np.pi / 4)
+                    #elif sense == 1 and best_blob.pt[0] > center[0]:
+                    #    self.setSpeed(0, -np.pi / 4)
+                    #else:
+                    #    self.setSpeed(0,0)
 
                 else:
                     print("Blob not found, rotating ...")
-                    self.setSpeed(0, np.pi / 8) 
-                
+                    self.setSpeed(0, side*np.pi/2)
+                     
                 rawCapture.truncate(0)   # clear the stream in preparation for the next frame
                 
                 # 'ESC' = 27
