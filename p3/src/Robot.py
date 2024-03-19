@@ -12,7 +12,7 @@ import numpy as np
 import cv2
 import picamera
 from picamera.array import PiRGBArray
-from geometry import Vector3, Transform
+from geometry import Vector2, Transform
 
 # tambien se podria utilizar el paquete de threading
 from multiprocessing import Process, Value, Array, Lock
@@ -37,10 +37,11 @@ class Robot:
         #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
-        self.PORT_BASKET_MOTOR = self.BP.PORT_C
+        self.PORT_BASKET_MOTOR = self.BP.PORT_B
         # Reset encoder B and C (or all the motors you are using)
         self.BP.offset_motor_encoder(self.PORT_RIGHT_MOTOR, self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR))
         self.BP.offset_motor_encoder(self.PORT_LEFT_MOTOR, self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR))
+        self.BP.offset_motor_encoder(self.PORT_BASKET_MOTOR, self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR))
         ##################################################
         # Odometry shared memory values
         self.x  = Value('d', init_position[0]) # Robot X coordinate.
@@ -158,7 +159,7 @@ class Robot:
                 # Calculate real delta th. (extraer del giroscopio más adelante)
                 delta_th = w * self.P
                 th = self.th.value + delta_th
-                b  = self.b.value  + basket_offset
+                b  = self.b.value  + basket_encoder - self.sB.value
                 # Calculo de delta xWR. Calculo de delta s (depends on w) (diapo 14)
                 delta_x, delta_y = 0, 0
                 if w != 0:
@@ -282,9 +283,8 @@ class Robot:
         # kp.p[0] = x coordenate on the image 
         # kp.p[1] = y coordenate on the image
         # kp.size = diameter of the blob
-        print("\n New frame")
-        for kp in keypoints:
-            print(kp.pt[0], kp.pt[1], kp.size)
+        # print("\n New frame")
+        # for kp in keypoints:
 
         return keypoints
 
@@ -293,12 +293,24 @@ class Robot:
         if not blobs:
             return None
         # Criterio: más grande y más centrado si son iguales, sino el más grande
-        ind_centrado = max(enumerate(blobs), key=lambda x: x[1].pt[0])[0]
-        ind_grande   = max(enumerate(blobs), key=lambda x: x[1].size)[0]
-        # Devuelve el blob más grande si es el más centrado, sino el más grande
-        best = blobs[ind_centrado] if ind_centrado == ind_grande else blobs[ind_grande]
-        print("\nBest blob: ", best.pt[0], best.pt[1], best.size)
-        return best
+        best_blob = None
+        for blob in blobs:
+            # Filtro
+            if blob.pt[1] >= self.cam_center.y:
+                print("Current filtered blob:", blob.pt, blob.size)
+                if not best_blob:
+                    best_blob = blob
+                    continue
+                else:
+                    if best_blob.size < blob.size:
+                        best_blob = blob
+                    elif (best_blob.size == blob.size) and (abs(best_blob.pt[0]) > abs(blob.pt[0])):
+                        best_blob = blob
+        if best_blob:
+            print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
+            
+        return best_blob
+
     
     def trackObject(self, colorRangeMin, colorRangeMax, showFrame=False):
         # targetSize=??, target=??, catch=??, ...)
@@ -314,15 +326,18 @@ class Robot:
         '''
         # flags
         finished = False
-        targetFound = False
+        #targetFound = False
+        targetRotationReached = False
         targetPositionReached = False
         targetCatched = False
 
         # Initializations
         cam, rawCapture = self._init_camera()
         cam_center_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
-        wmax = np.log10(resolution_center[0] - 1)
         detector = self._init_my_blob_detector()
+
+        side = 1
+        wmax = (-2*self.cam_center.x)/self.cam_center.x
 
         # main loop
         while not finished:
@@ -337,54 +352,57 @@ class Robot:
                 keypoints = self._blobs_capture(frame, detector, mask)
                 # 2. Search for the most promising blob...
                 best_blob = self._get_best_blob(keypoints)
-                blob_side = 1
                 # 3. Decide v and w for the robot to get closer to target position
                 v = 0; w = 0
-                if not best_blob is None:
-                    # a. Center the most promising blob...
-                    print("Best blob found")
+                if best_blob:
+                    # Targer rotation
                     blob_transform = Transform(Vector2(x=best_blob.pt[0]-self.cam_center.x, y=0))
                     if not blob_transform == cam_center_transform:
                         # Ultima posicion vista. Si sign < 0, esta a la izquierda, si sign > 0, esta a la derecha
-                        blob_side = np.sign(blob_transform.position.x)
+                        side = np.sign(blob_transform.position.x)
                         # Velocidades. Si sign < 0 -> w > 0 (-1*sign*w = -1*-1*w), si sign > 0 -> w < 0 (-1*sign*w = -1*1*w)
-                        w = -np.sign(blob_transform.position.x) * np.log10(abs(blob_transform.position.x)-1) # np.abs(np.exp(0.02*x) - 1)
+                        w = (-2*blob_transform.position.x)/self.cam_center.x
+                    #else:
+                    #    targetRotationReached = True
+                    # Target position
+                    blob_transform = Transform(Vector2(x=0, y=best_blob.pt[1]-self.cam_center.y))
+                    #if targetRotationReached and blob_transform == cam_center_transform:
+                    if not blob_transform == cam_center_transform:
+                        # Calculamos el area del blob
+                        blob_area = np.pi * (best_blob.size/2)**2
+                        # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
+                        v= 8/(np.sqrt(blob_area/(self.resolution[0] * self.resolution[1]))+2)
                     else:
-                        blob_transform.position.y = best_blob.pt[1]-self.cam_center.y
-                        blob_area = 2 * np.pi * (best_blob.size/2)**2
-                        if not blob_transform == cam_center_transform:
-                            v = np.log10(abs(blob_transform.position.x)-1)
-                        else:
-                            targetPositionReached = true
+                        print("Hola")
+                        #targetPositionReached = True
                 else:
                     # b. Rotate until found
-                    print("Blob not found, rotating ...")
-                    w = blob_side*wmax
-                    targetPositionReached = False
-                    targetCatched = False
+                    #print("Blob not found, rotating ...")
+                    w = side * wmax
+                    #targetPositionReached = False
+                    #targetCatched = False
 
                 # Robot speed
-                # print("V=%.2f, W=%.2f" % v, w)
                 self.setSpeed(v, w)
                 # Capture the target
-                if targetPositionReached:
-                    if not targetCatched:
-                        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg( 5))
-                    if self.b >= 85:
-                        targetCatched = True
-                elif self.b > 5:
-                        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(-5))
+                #if targetPositionReached:
+                #    if not targetCatched:
+                #        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg( 5))
+                #    if self.b.value >= 85:
+                #        targetCatched = True
+                #elif self.b.value > 5:
+                #        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(-5))
                 # Clear the stream in preparation for the next frame
                 rawCapture.truncate(0)
                 # Show the captured frame if needed
-                if showFrame:
-                    image = cv2.drawKeypoints(frame, keypoints, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                    cv2.imshow('Captura', image)
-                    # 'ESC' = 27
-                    if cv2.waitKey(1) & 0xff == 27:
-                        cam.close()
-                        finished = True
-                        break
+                # if showFrame and best_blob:
+                #     image = cv2.drawKeypoints(frame, keypoints, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                #     cv2.imshow('Captura', image)
+                # # 'ESC' = 27
+                # if cv2.waitKey(1) & 0xff == 27:
+                #     cam.close()
+                #     finished = True
+                #     break
 
             print("Fin tracking")
             finished = True

@@ -18,7 +18,7 @@ def main():
         robot = Robot() 
         print("Vamos a seguir la pelota")
 
-        robot.trackObject(colorRangeMin=red_min, colorRangeMax=red_max)
+        robot.trackObject(colorRangeMin=red_min, colorRangeMax=red_max, showFrame=True)
         # 1. launch updateOdometry thread()
         #robot.startOdometry()
 

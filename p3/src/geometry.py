@@ -244,7 +244,7 @@ class Transform:
         if not CUSTOM_ROTATION_ERROR is None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # Area error
-        position_shift = Vector2.error()
+        position_shift = Vector2.error
         self.position_inf = position - position_shift
         self.position_sup = position + position_shift
         # Distance error
