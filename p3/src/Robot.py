@@ -106,28 +106,31 @@ class Robot:
             # Each of the following BP.get_motor_encoder functions returns the encoder value
             # (what we want to store).
             #sys.stdout.write("Reading encoder values .... \n")
-            left_encoder  = self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR)
-            right_encoder = self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)
+            left_encoder   = self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR)
+            right_encoder  = self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)
+            basket_encoder = self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR) 
         except IOError as error:
             #print(error)
             sys.stdout.write(error)
 
         # Calculate the arc of circumfrence traveled by each wheel
-        left_offset         = left_encoder - self.sI.value
+        left_offset   = left_encoder   - self.sI.value
         #left_offset_length  = np.deg2rad(left_offset) * self.R
-        right_offset        = right_encoder - self.sD.value
+        right_offset  = right_encoder  - self.sD.value
         #right_offset_length = np.deg2rad(right_offset) * self.R
-
-        # calculate real speed
-        wi     = np.deg2rad(left_offset) / self.P
-        wd     = np.deg2rad(right_offset) / self.P
+        basket_offset = basket_encoder - self.sB.value
+        # Calculate real speed
+        wi     = np.deg2rad(left_offset)   / self.P # Left wheel angular real speed
+        wd     = np.deg2rad(right_offset)  / self.P # Right wheel angular real speed
+        wb     = np.deg2rad(basket_offset) / self.P # Basket angular real speed
+        # Robot linear and angular real speed
         [v, w] = np.dot(np.array([[self.R/2, self.R/2],[self.R/self.L, -self.R/self.L]]), np.array([[wd],[wi]]))
-        return [wi, wd, v, w] 
+        return [left_encoder, right_encoder, basket_encoder, wi, wd, wb, v, w] 
 
     def readOdometry(self):
         """ Returns current value of odometry estimation """
         #print("Grados Rueda Izquierda: %.2f, Grados rueda Derecha: %.2f" %(np.rad2deg(self.sI.value), np.rad2deg(self.sD.value)))
-        return self.x.value, self.y.value, self.th.value # [self.wi.value, self.wd.value, self.v.value, self.w.value]
+        return self.x.value, self.y.value, self.th.value
 
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
@@ -148,42 +151,22 @@ class Robot:
             while not self.finished.value:
                 # current processor time in a floating point value, in seconds
                 tIni = time.clock()
-
-                # Compute updates
                 # Update odometry uses values that require mutex, they are declared as value, so lock
                 # is implicitly done for atomic operations (BUT =+ is NOT atomic)
-                try:
-                    # Each of the following BP.get_motor_encoder functions returns the encoder value
-                    # (what we want to store).
-                    sys.stdout.write("Reading encoder values .... \n")
-                    left_encoder   = self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR)
-                    right_encoder  = self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)
-                    basket_encoder = self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR)
-                except IOError as error:
-                    #print(error)
-                    sys.stdout.write(error)
-
                 # Calculate the arc of circumfrence traveled by each wheel
-                left_offset   = left_encoder - self.sI.value
-                right_offset  = right_encoder - self.sD.value
-                basket_offset = basket_encoder - self.sB.value
-                # Calculate real speed
-                wi = np.deg2rad(left_offset)   / self.P # Left wheel angular real speed
-                wd = np.deg2rad(right_offset)  / self.P # Right wheel angular real speed
-                # Robot linear and angular real speed
-                vw = np.dot(np.array([[self.R/2, self.R/2],[self.R/self.L, -self.R/self.L]]), np.array([[wd],[wi]]))
+                left_encoder, right_encoder, basket_encoder, wi, wd, _, v, w = self.readSpeed()
                 # Calculate real delta th. (extraer del giroscopio más adelante)
-                delta_th = vw[1] * self.P # (right_offset_length - left_offset_length)/self.L
+                delta_th = w * self.P
                 th = self.th.value + delta_th
                 b  = self.b.value  + basket_offset
                 # Calculo de delta xWR. Calculo de delta s (depends on w) (diapo 14)
                 delta_x, delta_y = 0, 0
-                if vw[1] != 0:
-                    delta_s = (vw[0]/vw[1]) * delta_th
+                if w != 0:
+                    delta_s = (v/w) * delta_th
                     delta_x = delta_s * np.cos(th + (delta_th * 0.5))
                     delta_y = delta_s * np.sin(th + (delta_th * 0.5))
                 else:
-                    delta_s = vw[0] * self.P
+                    delta_s = v * self.P
                     delta_x = delta_s * np.cos(th)
                     delta_y = delta_s * np.sin(th)
 
@@ -217,7 +200,6 @@ class Robot:
 
 
     #--------- Tracking Object ------------
-
     def _init_camera(self):
         '''
             Initialize the camera
@@ -308,14 +290,13 @@ class Robot:
         return keypoints
 
     def _get_best_blob(self, blobs):
+        # Si no hay blobs, no hay mejor
         if not blobs:
             return None
-        
         # Criterio: más grande y más centrado si son iguales, sino el más grande
         ind_centrado = max(enumerate(blobs), key=lambda x: x[1].pt[0])[0]
         ind_grande   = max(enumerate(blobs), key=lambda x: x[1].size)[0]
-
-        # devuelve el blob más grande si es el más centrado, sino el más grande
+        # Devuelve el blob más grande si es el más centrado, sino el más grande
         best = blobs[ind_centrado] if ind_centrado == ind_grande else blobs[ind_grande]
         print("\nBest blob: ", best.pt[0], best.pt[1], best.size)
         return best
@@ -368,12 +349,12 @@ class Robot:
                         # Ultima posicion vista. Si sign < 0, esta a la izquierda, si sign > 0, esta a la derecha
                         blob_side = np.sign(blob_transform.position.x)
                         # Velocidades. Si sign < 0 -> w > 0 (-1*sign*w = -1*-1*w), si sign > 0 -> w < 0 (-1*sign*w = -1*1*w)
-                        w = -np.sign(blob_transform.position.x) * np.log10(abs(blob_transform.position.x) - 1) # np.abs(np.exp(0.02*x) - 1)
+                        w = -np.sign(blob_transform.position.x) * np.log10(abs(blob_transform.position.x)-1) # np.abs(np.exp(0.02*x) - 1)
                     else:
                         blob_transform.position.y = best_blob.pt[1]-self.cam_center.y
                         blob_area = 2 * np.pi * (best_blob.size/2)**2
                         if not blob_transform == cam_center_transform:
-                            v = np.log10(abs(blob_transform.position.x) - 1)
+                            v = np.log10(abs(blob_transform.position.x)-1)
                         else:
                             targetPositionReached = true
                 else:
@@ -394,7 +375,6 @@ class Robot:
                         targetCatched = True
                 elif self.b > 5:
                         self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(-5))
-
                 # Clear the stream in preparation for the next frame
                 rawCapture.truncate(0)
                 # Show the captured frame if needed
