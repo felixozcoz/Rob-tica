@@ -198,7 +198,6 @@ class Robot:
         self.finished.value = True
         self.BP.reset_all()
 
-
     #--------- Tracking Object ------------
     def _init_camera(self):
         '''
@@ -395,5 +394,3 @@ class Robot:
     def catch(self):
         # decide the strategy to catch the ball once you have reached the target position
         self.setNestSpeed(0,np.pi / 2)
-
-    
