@@ -1,0 +1,64 @@
+#print('left_offset_length: %.2f, right_offset_length: %.2f' %(left_offset_length, right_offset_length))
+#print("\n==================================")
+#print("== Left Wheel ====================")
+#print("> Grades offset: %dº -> %dº (+%dº)" %(self.sI.value, left_encoder, left_offset))
+#print("> Length offset: %.5f" %(left_offset_length))
+#print("== Right Wheel ===================")
+#print("> Grades offset: %dº -> %dº (+%dº)" %(self.sD.value, right_encoder, right_offset))
+#print("> Length offset: %.5f" %(right_offset_length))
+#print("==================================")
+#print("wi = %.5f, wd = %.5f" %(wi, wd))
+#print('v: %.2f, w = %.2f' %(vw[0], vw[1]))
+#print("==================================")
+#print("> DeltaS: %.5f" %(delta_s))
+#print('delta_x: %.2f, delta_y: %.2f' %(delta_x, delta_y))
+#print("> Total Length (+/-): %.5f" %(self.totalLength.value))
+#print("== Ángulo ========================")
+#print('x: %.2f, y: %.2f, th: %.2f' %(self.x.value, self.y.value, np.rad2deg(self.th.value)))
+#print('delta_s: %.2f' %(delta_s))
+#print("==================================")
+#print("tIni: %.2f, tEnd: %.2f, tEnd-tIni: %.2f, tSleep: %.2f" %(tIni, tEnd, tIni-tEnd, self.P-(tEnd-tIni)))
+
+#if x >= -epsilon and x < epsilon:
+#    self.setSpeed(0, 0)
+#elif x < -epsilon:
+#    self.setSpeed(0, w)
+#    side = -1
+#elif x >= epsilon:
+#    self.setSpeed(0,-w)
+#    side = 1
+
+#if best_blob.pt[0] > (center[0]-30) and best_blob.pt[0] < (center[0]+30):
+#    self.setSpeed(3, 0)
+#elif best_blob.pt[0] < center[0]:
+#    self.setSpeed(3, np.pi/4)
+#    #if sense == 0:
+#    #    self.setSpeed(2, np.pi/4)
+#    #    sense = -1
+#    #elif sense == 1:
+#    #    self.setSpeed(2,0)
+#    side = 1
+#elif best_blob.pt[0] > center[0]:
+#    self.setSpeed(3, -np.pi/4)
+#    #if sense == 0:
+#    #    self.setSpeed(2, -np.pi/4)
+#    #    sense = 1
+#    #elif sense == -1:
+#    #    self.setSpeed(2,0)
+#    side = -1
+
+#if best_blob.pt[0] < center[0]:
+#    side = 1
+#    if sense == 0:
+#        sense = -1
+#else:
+#    side = -1
+#    if sense == 0:
+#        sense = 1
+#    
+#if sense == -1 and best_blob.pt[0] < center[0]:
+#    self.setSpeed(0,  np.pi / 4)
+#elif sense == 1 and best_blob.pt[0] > center[0]:
+#    self.setSpeed(0, -np.pi / 4)
+#else:
+#    self.setSpeed(0,0)

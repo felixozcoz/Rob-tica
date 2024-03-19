@@ -7,10 +7,8 @@ import time
 from Robot import Robot
 
 def main():
-    redMin1 = (160,100,20)
-    redMax1 = (179,255,255)
-    redMin2 = (0, 100, 150)
-    redMax2 = (10, 255, 255)
+    red_min = [(160, 100,  20),(  0, 100, 250)]
+    red_max = [(179, 255, 255),( 10, 255, 255)]
     try:
         # if args.radioD < 0:
         #     print('d must be a positive value')
@@ -20,7 +18,7 @@ def main():
         robot = Robot() 
         print("Vamos a seguir la pelota")
 
-        robot.trackObject(colorRangeMinLower=redMin1, colorRangeMaxLower=redMax1, colorRangeMinUpper=redMin2, colorRangeMaxUpper=redMax2)
+        robot.trackObject(colorRangeMin=red_min, colorRangeMax=red_max)
         # 1. launch updateOdometry thread()
         #robot.startOdometry()
 

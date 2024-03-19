@@ -12,12 +12,13 @@ import numpy as np
 import cv2
 import picamera
 from picamera.array import PiRGBArray
+from geometry import Vector3, Transform
 
 # tambien se podria utilizar el paquete de threading
 from multiprocessing import Process, Value, Array, Lock
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0]):
+    def __init__(self, init_position=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32):
         """
         Initialize basic robot params. \
 
@@ -44,23 +45,28 @@ class Robot:
         self.x  = Value('d', init_position[0]) # Robot X coordinate.
         self.y  = Value('d', init_position[1]) # Robot Y coordinate.
         self.th = Value('d', init_position[2]) # Robot orientation
-        self.sD = Value('i', 0)       # Latest stored RIGHT encoder value.
-        self.sI = Value('i', 0)       # Latest stored LEFT encoder value.
-        self.sC = Value('i', 0)       # Latest stored BASKET encoder value.
-        self.v  = Value('d', 0.0)     # Robot linear theorical speed (or tangential if rotating).
-        self.w  = Value('d', 0.0)     # Robot angular theorical speed.
-        self.wi = Value('d', 0.0)     # Robot left wheel theorical speed.
-        self.wd = Value('d', 0.0)     # Robot right wheel theorical speed.
-        self.finished = Value('b', 1) # Boolean to show if odometry updates are finished
+        self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
+        self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
+        self.sC = Value('i', 0)                # Latest stored BASKET encoder value.
+        self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
+        self.w  = Value('d', 0.0)              # Robot angular theorical speed.
+        self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
+        self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
+        self.finished = Value('b', 1)          # Boolean to show if odometry updates are finished
         # Se pueden borrar alegremente cuando ya no se necesiten o se mejoren (son de prueba)
-        self.dir    = [1, 0]          # Orientacion original del Robot.
-        self.ndir_x = Value('d', 0.0) # Orientacion actual (coordenada x).
-        self.ndir_y = Value('d', 0.0) # Orientacion actual (coordenada y).
-        self.tLength = Value('d',0.0) # Total recorrido por el robot (linealmente).
+        self.dir     = [1, 0]                  # Orientacion original del Robot.
+        self.ndir_x  = Value('d', 0.0)         # Orientacion actual (coordenada x).
+        self.ndir_y  = Value('d', 0.0)         # Orientacion actual (coordenada y).
+        self.tLength = Value('d',0.0)          # Total recorrido por el robot (linealmente).
         # If we want to block several instructions to be run together, we may want to use an explicit Lock
         self.lock_odometry = Lock()
         # Odometry update period
-        self.P = 0.01                 # in seconds
+        self.P = 0.01                          # in seconds
+        # Camera
+        self.resolution = resolution           # Resolucion de la camara
+        self.center     = Vector2(resolution[0]//2, resolution[1]//2)
+                                               # Centro de la camara (en base a la resolucion en pixeles)
+        self.framerate  = framerate            # Framerate
 
     def setSpeed(self, v: float, w: float):
         """
@@ -198,27 +204,6 @@ class Robot:
 
                 ######## UPDATE UNTIL HERE with your code ########
                 tEnd = time.clock()
-
-                #print('left_offset_length: %.2f, right_offset_length: %.2f' %(left_offset_length, right_offset_length))
-                #print("\n==================================")
-                #print("== Left Wheel ====================")
-                #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sI.value, left_encoder, left_offset))
-                #print("> Length offset: %.5f" %(left_offset_length))
-                #print("== Right Wheel ===================")
-                #print("> Grades offset: %dº -> %dº (+%dº)" %(self.sD.value, right_encoder, right_offset))
-                #print("> Length offset: %.5f" %(right_offset_length))
-                #print("==================================")
-                #print("wi = %.5f, wd = %.5f" %(wi, wd))
-                #print('v: %.2f, w = %.2f' %(vw[0], vw[1]))
-                #print("==================================")
-                #print("> DeltaS: %.5f" %(delta_s))
-                #print('delta_x: %.2f, delta_y: %.2f' %(delta_x, delta_y))
-                #print("> Total Length (+/-): %.5f" %(self.totalLength.value))
-                #print("== Ángulo ========================")
-                #print('x: %.2f, y: %.2f, th: %.2f' %(self.x.value, self.y.value, np.rad2deg(self.th.value)))
-                #print('delta_s: %.2f' %(delta_s))
-                #print("==================================")
-                #print("tIni: %.2f, tEnd: %.2f, tEnd-tIni: %.2f, tSleep: %.2f" %(tIni, tEnd, tIni-tEnd, self.P-(tEnd-tIni)))
                 time.sleep(self.P - (tEnd-tIni))
 
         #print("Stopping odometry ... X= %d" %(self.x.value))
@@ -314,10 +299,7 @@ class Robot:
 
         return keypoints
     
-    
-
-
-    def _init_camera(self, resolution=(320, 240), framerate=32):
+    def _init_camera(self):
         '''
             Initialize the camera
 
@@ -329,23 +311,19 @@ class Robot:
                 cam = camera object
                 rawCapture = object to manage the camera
         '''
-
         cam = picamera.PiCamera()
-
-        cam.resolution = resolution
-        # cam.resolution = (640, 480)
-        cam.framerate = framerate # los profes lo pusieron a 32
-        rawCapture = PiRGBArray(cam, size=resolution)
+        cam.resolution = self.resolution # (640, 480)
+        cam.framerate = self.framerate # 32
+        rawCapture = PiRGBArray(cam, size=self.resolution)
         # rawCapture = PiRGBArray(cam, size=(640, 480))
 
-        # allow the camera to warmup
+        # Allow the camera to warmup
         time.sleep(0.1)
 
-        return cam, rawCapture  
-    
+        return cam, rawCapture
 
-    def trackObject(self, colorRangeMinLower=(0, 100, 150), colorRangeMaxLower=(10, 255, 255), colorRangeMinUpper=(160,100,20), colorRangeMaxUpper=(179,255,255)):
-        #targetSize=??, target=??, catch=??, ...)
+    def trackObject(self, colorRangeMin, colorRangeMax):
+        # targetSize=??, target=??, catch=??, ...)
         '''
             Track the object
 
@@ -361,94 +339,68 @@ class Robot:
         targetFound = False
         targetPositionReached = False
 
-        # initializations
+        # Initializations
         detector = self._init_my_blob_detector()
 
+        # Get blob mask
+        mask = cv2.inRange(frame, colorRangeMin[0], colorRangeMax[0])
+        for i in range(1,len(colorRangeMin)):
+            other = cv2.inRange(frame, colorRangeMin[i], colorRangeMax[i])
+            mask  = cv2.bitwise_or(mask, other)
         
-        resolution = (320, 240)
-        center     = (resolution[0]//2, resolution[1]//2)
         cam, rawCapture = self._init_camera(resolution=resolution, framerate=32)
 
-        sense = 0 # 
-        side  = 1 # Left = -1, Right = 1
+        side = 1 # Left = -1, Right = 1
+        wmax = np.log10(resolution_center[0])
+        a    = 0
 
         # main loop
         while not finished:
 
             for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 
-                frame = cv2.cvtColor(img.array, cv2.COLOR_BGR2HSV)
-
-                mask1  = cv2.inRange(frame, colorRangeMinLower, colorRangeMaxLower)
-                mask2 = cv2.inRange(frame, colorRangeMinUpper, colorRangeMaxUpper)
-                mask = cv2.bitwise_or(mask1, mask2)
+                frame  = cv2.cvtColor(img.array, cv2.COLOR_BGR2HSV)
                 
                 # detect blobs
                 kp = self._blobs_capture(frame, detector, mask)
-                
+    
                 # img_show = cv2.drawKeypoints(frame, kp, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
                 # cv2.imshow('Captura', img_show)
                 epsilon = 10
                 # if no blobs found, rotate until found
                 if kp:
                     print("Blob found")
-                    # search the most promising blob
+                    # 1. Search the most promising blob ..
+
                     best_blob = self._get_best_blob(kp)
-                    x = best_blob.pt[0] - center[0]
-                    y = best_blob.pt[1] - center[1]
-                    #A = 2 * np.pi * ((kp.size/2)**2)
+                    transform = Transform(Vector3(x=best_blob.pt[0]-center.x, y=0)) #best_blob.pt[1]-center[1]
                     # w = np.log(abs(x)) - 1
-                    w = np.abs(np.exp(0.02*x) - 1)
-                    print("W=%.2f" % w)
+                    # w = np.abs(np.exp(0.02*x) - 1)
+                    # print("W=%.2f" % w)
 
-                    if x >= -epsilon and x < epsilon:
-                        self.setSpeed(0, 0)
-                    elif x < -epsilon:
-                        self.setSpeed(0, w)
-                        side = -1
-                    elif x >= epsilon:
-                        self.setSpeed(0,-w)
-                        side = 1
-
-                    # center the ball.
-                    #if best_blob.pt[0] > (center[0]-30) and best_blob.pt[0] < (center[0]+30):
-                    #    self.setSpeed(3, 0)
-                    #elif best_blob.pt[0] < center[0]:
-                    #    self.setSpeed(3, np.pi/4)
-                    #    #if sense == 0:
-                    #    #    self.setSpeed(2, np.pi/4)
-                    #    #    sense = -1
-                    #    #elif sense == 1:
-                    #    #    self.setSpeed(2,0)
-                    #    side = 1
-                    #elif best_blob.pt[0] > center[0]:
-                    #    self.setSpeed(3, -np.pi/4)
-                    #    #if sense == 0:
-                    #    #    self.setSpeed(2, -np.pi/4)
-                    #    #    sense = 1
-                    #    #elif sense == -1:
-                    #    #    self.setSpeed(2,0)
-                    #    side = -1
-                    
-                    #if best_blob.pt[0] < center[0]:
-                    #    side = 1
-                    #    if sense == 0:
-                    #        sense = -1
-                    #else:
-                    #    side = -1
-                    #    if sense == 0:
-                    #        sense = 1
-                    #    
-                    #if sense == -1 and best_blob.pt[0] < center[0]:
-                    #    self.setSpeed(0,  np.pi / 4)
-                    #elif sense == 1 and best_blob.pt[0] > center[0]:
-                    #    self.setSpeed(0, -np.pi / 4)
-                    #else:
-                    #    self.setSpeed(0,0)
-
+                    # Center the ball
+                    if transform == Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2):
+                        transform.position.y = best_blob.pt[1]-center.y
+                        A = 2 * np.pi * ((best_blob.size/2)**2)
+                        if transform == Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2):
+                            self.setSpeed(0, 0)
+                            # catch
+                        else:
+                            self.setSpeed(np.log10(1/sqrt(A - a)), 0)
+                            a = A
+                    else:
+                        # Velocidad correspondiente:
+                        # Si sign < 0, esta a la izquierda, por lo que w ha de ser positivo -1*sign*w = -1*-1*w
+                        # Si sign > 0, esta a la derecha, por lo que w ha de ser negativo -1*sign*w = -1*1*w
+                        self.setSpeed(0, -np.sign(transform.position.x) * np.log10(abs(transform.position.x) - 1))
+                        # Ultima posicion vista:
+                        # Si sign < 0, esta a la izquierda
+                        # Si sign > 0, esta a la derecha
+                        side = np.sign(transform.position.x)
                 else:
                     print("Blob not found, rotating ...")
-                    self.setSpeed(0, side*np.pi/2)
+                    a = 0                    
+                    self.setSpeed(0, side*wmax)
                      
                 rawCapture.truncate(0)   # clear the stream in preparation for the next frame
                 
@@ -458,10 +410,8 @@ class Robot:
                     finished = True
                     break
 
-
             print("Fin tracking")
             finished = True
-            # 1. search the most promising blob ..
              
             # while not targetPositionReached:
                 # 2. decide v and w for the robot to get closer to target position

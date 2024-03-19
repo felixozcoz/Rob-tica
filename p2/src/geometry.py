@@ -212,14 +212,74 @@ class Matrix2:
     
     def __repr__(self) -> str:
         """
-            Representacion de un vector en pantalla
+            Representacion de una matriz en pantalla
         """
         row_str = []
         for i in range(3):
             row_str.append("\n  [ " + str(round(self.A[i][0], 7)) + "," + str(round(self.A[i][1], 7)) + "," + str(round(self.A[i][2], 7)) + " ]")
         return "(" + row_str[0] + row_str[1] + row_str[2] + "\n)" 
 
+# Transform
+class Transform:
+    # Constructor
+    def __init__(self, position, rotation: float =None, forward: Vector2 =None):
+        # Transform properties
+        self.position    = position
+        if rotation is None and forward is None:
+            self.rotation = 0
+            self.forward  = Vector2(1,0)
+            self.right    = Vector2(0,1)
+        elif not rotation is None:
+            self.rotation = rotation
+            self.forward  = Vector2(1,0) * Matrix2.transform(Vector2.zero, rotation)
+            self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
+        else:
+            self.rotation = forward.angle(Vector2(1, 0))
+            self.forward  = self.forward * Matrix2.transform(Vector2.zero, 90)
 
+        # Area error
+        position_shift = Vector2.error()
+        self.position_inf = position - position_shift
+        self.position_sup = position + position_shift
+        # Distance error
+        self.lmin         = {
+            "pass": False,
+            "last": math.inf
+        }
+        # Orientation error
+        #self.rotation_inf = rotation - ROTATION_ERROR
+        #self.rotation_sup = rotation + ROTATION_ERROR
+
+    # Equivalencia
+    def __eq__(self, transform):
+        # POSITION CHECK
+        # 1. Area check
+        POSITION = (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
+            (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y)
+        # 2. Distance check
+        dist = (self.position - transform.position).magnitude()
+        POSITION |= POSITION_ERROR > dist
+        # 3. Local minimum check
+        POSITION |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
+        self.distance = {
+            "pass": (self.lmin["last"] >= dist),
+            "last": dist
+        }
+        # ROTATION CHECK
+        ROTATION = ROTATION_ERROR > abs(self.rotation - transform.rotation)
+        #ROTATION = ROTATION_ERROR > forward.angle(transform.forward)
+
+        # BOTH CHECK
+        return POSITION and ROTATION
+
+    # ToString
+    def __repr__(self) -> str:
+        """
+            Representacion de un transform en pantalla
+        """
+        return "Transform { pos: " + str(self.position) + ", rot: " + str(round(self.rotation, 7)) + ", fwr: " + str(self.forward) + " }"
+
+# Funciones extra
 def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
     """
         Returns the tangent points of the outer tangent lines of two circumferences
