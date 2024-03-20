@@ -18,7 +18,7 @@ from geometry import Vector2, Transform
 from multiprocessing import Process, Value, Array, Lock
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], resolution=(640, 480), framerate=32):
+    def __init__(self, init_position=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32):
         """
         Initialize basic robot params. \
 
@@ -65,20 +65,6 @@ class Robot:
         self.lock_odometry = Lock()
         # Odometry update period
         self.P = 0.01                          # in seconds
-        # Blob detector
-        self.blob_detector_params = {
-            "minThreshold": 10,
-            "maxThreshold": 200,
-            "filterByArea": True,
-            "minArea": 10,
-            "maxArea": 80000,
-            "filterByCircularity": False,
-            "minCircularity": 0.1,
-            "filterByColor": False,
-            "blobColor": 100,
-            "filterByConvexity": False,
-            "filterByInertia": False
-        }
         # Camera
         self.resolution = resolution           # Resolucion de la camara
         self.cam_center = Vector2(resolution[0]//2, resolution[1]//2)
@@ -243,24 +229,27 @@ class Robot:
         # These are just examples, tune your own if needed
         # Change thresholds
         # indica el brillo del píxel
-         # Filter by Area (en píxeles cuadrados)
-        params.filterByArea = self.blob_detector_params["filterByArea"]
-        params.minArea = self.blob_detector_params["minArea"]
-        params.maxArea = self.blob_detector_params["maxArea"]
+        # params.minThreshold = 10
+        # params.maxThreshold = 200
+
+        # Filter by Area (en píxeles cuadrados)
+        params.filterByArea = True
+        params.minArea = 40
+        params.maxArea = 5000
 
         # Filter by Circularity
-        params.filterByCircularity = self.blob_detector_params["filterByCircularity"]
-        params.minCircularity = self.blob_detector_params["minCircularity"]
+        params.filterByCircularity = False
+        params.minCircularity = 0.1
 
         # Filter by Color 
-        params.filterByColor = self.blob_detector_params["filterByColor"]
-        # Not directly color, but intensity on the channel input
+        params.filterByColor = False
+        # not directly color, but intensity on the channel input
         # This filter compares the intensity of a binary image at the center of a blob to blobColor.
-        params.blobColor = self.blob_detector_params["blobColor"]
+        params.blobColor = 100
 
-        # Other
-        params.filterByConvexity = self.blob_detector_params["filterByConvexity"]
-        params.filterByInertia = self.blob_detector_params["filterByInertia"]
+        params.filterByConvexity = False
+        params.filterByInertia = False
+
 
         # Create a detector with the parameters
         ver = (cv2.__version__).split('.')
@@ -272,6 +261,33 @@ class Robot:
         return detector	
     
 
+    def _blobs_capture(self, img, detector, mask):
+        '''
+            Capture the blobs
+
+            Parameters:
+                img = image
+                detector = blob detector
+                colorRangeMin = minimum color range
+                colorRangeMax = maximum color range
+            
+            Returns:
+                keypoints_red = keypoints of the red blobs
+        '''
+        # define red mask
+        #mask = cv2.inRange(img, colorRangeMin, colorRangeMax)
+
+        # detector finds "dark" blobs by default, so invert image for results with same detector
+        keypoints = detector.detect(cv2.bitwise_not(mask))
+
+        # kp.p[0] = x coordenate on the image 
+        # kp.p[1] = y coordenate on the image
+        # kp.size = diameter of the blob
+        # print("\n New frame")
+        # for kp in keypoints:
+
+        return keypoints
+
     def _get_best_blob(self, blobs):
         # Si no hay blobs, no hay mejor
         if not blobs:
@@ -280,7 +296,7 @@ class Robot:
         best_blob = None
         for blob in blobs:
             # Filtro
-            if blob.pt[1] >= (1-3/4)*(self.cam_center.y):
+            if blob.pt[1] >= self.cam_center.y:
                 print("Current filtered blob:", blob.pt, blob.size)
                 if not best_blob:
                     best_blob = blob
@@ -317,76 +333,51 @@ class Robot:
 
         # Initializations
         cam, rawCapture = self._init_camera()
-        cam_center_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=5)
+        cam_center_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
         detector = self._init_my_blob_detector()
 
-        side = 1            # indica el sentido la última vez que se vio la bola (-1 = izq, 1 = dcha)
-        wmax = (-2 * self.cam_center.x)/self.cam_center.x     # w cuando no encuentra ningún
+        side = 1
+        wmax = (-2*self.cam_center.x)/self.cam_center.x
 
         # main loop
         while not finished:
             for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
                 # 0. Get a new frame
-                # frame = cv2.cvtColor(img.array, cv2.COLOR_BGR2HSV)
-                frame = cv2.bitwise_not(img.array)  # invertir imagen a negativo
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
-                mask = cv2.inRange(frame, colorRangeMin, colorRangeMax) 
-
-                # red mask
-                # mask1 = cv2.inRange(frame, (0, 70, 50), (10, 255, 255))
-                # mask2 = cv2.inRange(frame, (170, 70, 50), (180, 255, 255))
-                # mask3 = cv2.inRange(frame, (70, 20, 155), (90, 40, 185))
-                #mask  = cv2.bitwise_or(mask1, mask2, mask3)
-
-                #for i in range(1,len(colorRangeMin)):
-                #    other = cv2.inRange(frame, colorRangeMin[i], colorRangeMax[i])
-                #    mask  = cv2.bitwise_or(mask, other)
-                
+                frame = cv2.cvtColor(img.array, cv2.COLOR_BGR2HSV)
+                mask  = cv2.inRange(frame, colorRangeMin[0], colorRangeMax[0])
+                for i in range(1,len(colorRangeMin)):
+                    other = cv2.inRange(frame, colorRangeMin[i], colorRangeMax[i])
+                    mask  = cv2.bitwise_or(mask, other)
                 # 1. Detect all blobs
-                keypoints = detector.detect(mask)
-
+                keypoints = self._blobs_capture(frame, detector, mask)
                 # 2. Search for the most promising blob...
                 best_blob = self._get_best_blob(keypoints)
-                # if showFrame:
-                #     img = cv2.bitwise_and(frame, frame, mask=mask)
-                #     image = cv2.drawKeypoints(img, keypoints, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                #     cv2.imshow('Captura', image)
-                #     if cv2.waitKey(1) & 0xff == 27:
-                #         cam.close()
-                #         finished = True
-                #         break
-
-                rawCapture.truncate(0)  # remove img.array content
                 # 3. Decide v and w for the robot to get closer to target position
                 v = 0; w = 0
                 if best_blob:
                     # Targer rotation
                     blob_transform = Transform(Vector2(x=best_blob.pt[0]-self.cam_center.x, y=0))
-                    if not cam_center_transform == blob_transform:
+                    if not blob_transform == cam_center_transform:
                         # Ultima posicion vista. Si sign < 0, esta a la izquierda, si sign > 0, esta a la derecha
                         side = np.sign(blob_transform.position.x)
                         # Velocidades. Si sign < 0 -> w > 0 (-1*sign*w = -1*-1*w), si sign > 0 -> w < 0 (-1*sign*w = -1*1*w)
                         w = (-2*blob_transform.position.x)/self.cam_center.x
-                    else:
-                        targetRotationReached = True
-
+                    #else:
+                    #    targetRotationReached = True
                     # Target position
-                    blob_transform = Transform(Vector2(x=0, y=best_blob.pt[1]))
-                    catch_position = Transform(Vector2(x=0, y = 460), CUSTOM_POSITION_ERROR= 10) # Esto es correcto ???
+                    #blob_transform = Transform(Vector2(x=0, y=best_blob.pt[1]-self.cam_center.y))
                     #if targetRotationReached and blob_transform == cam_center_transform:
-                    if targetRotationReached and not blob_transform == catch_position:
-                        # Calculamos el area del blob
-                        # blob_area = np.pi * (best_blob.size/2)**2
-                        # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
-                        #v= 8/(np.sqrt(blob_area/(self.resolution[0] * self.resolution[1]))+2)
-                        v = 3 # Calcular con la distancia al borde de la imagen
-                    else:
-                        #print("Hola")
-                        targetPositionReached = True
-                        finished = True
+                    #if not blob_transform == cam_center_transform:
+                    #    # Calculamos el area del blob
+                    #    blob_area = np.pi * (best_blob.size/2)**2
+                    #    # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
+                    #    v= 8/(np.sqrt(blob_area/(self.resolution[0] * self.resolution[1]))+2)
+                    #else:
+                    #    print("Hola")
+                    #    #targetPositionReached = True
                 else:
                     # b. Rotate until found
-                    print("Blob not found, rotating ...")
+                    #print("Blob not found, rotating ...")
                     w = side * wmax
                     #targetPositionReached = False
                     #targetCatched = False
@@ -402,8 +393,16 @@ class Robot:
                 #elif self.b.value > 5:
                 #        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(-5))
                 # Clear the stream in preparation for the next frame
-                # rawCapture.truncate(0)
+                rawCapture.truncate(0)
                 # Show the captured frame if needed
+                # if showFrame and best_blob:
+                #     image = cv2.drawKeypoints(frame, keypoints, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                #     cv2.imshow('Captura', image)
+                # # 'ESC' = 27
+                # if cv2.waitKey(1) & 0xff == 27:
+                #     cam.close()
+                #     finished = True
+                #     break
 
             print("Fin tracking")
             finished = True

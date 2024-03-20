@@ -20,6 +20,66 @@ def updateOdometry(self): #, additional_params?):
     #print("==================================")
     #print("tIni: %.2f, tEnd: %.2f, tEnd-tIni: %.2f, tSleep: %.2f" %(tIni, tEnd, tIni-tEnd, self.P-(tEnd-tIni)))
 
+def _get_best_blob(self, blobs, centered=False):
+        # Si no hay blobs, no hay mejor
+        if not blobs:
+            return None
+        # Criterio: más grande y más centrado si son iguales, sino el más grande
+        best_blob = None
+        for blob in blobs:
+            # Filtro
+            if blob.pt[1] >= self.cam_center.y:
+                print("Current filtered blob:", blob.pt, blob.size)
+                if not best_blob:
+                    best_blob = blob
+                    continue
+                else:
+                    if best_blob.size < blob.size:
+                        best_blob = blob
+                    elif (best_blob.size == blob.size) and (abs(best_blob.pt[0] - self.cam_center.x) > abs(blob.pt[0] - self.cam_center.x)):
+                        best_blob = blob
+        if best_blob:
+            print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
+        return best_blob
+
+        if not centered:
+            for blob in blobs:
+                # Filtro
+                if blob.pt[1] >= self.cam_center.y:
+                    print("Current filtered blob:", blob.pt, blob.size)
+                    if not best_blob:
+                        best_blob = blob
+                        continue
+                    else:
+                        if best_blob.size < blob.size:
+                            best_blob = blob
+                        elif (best_blob.size == blob.size) and (abs(best_blob.pt[0] - self.cam_center.x) > abs(blob.pt[0] - self.cam_center.x)):
+                            best_blob = blob
+            if best_blob:
+                print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
+        else:
+            pt = [0,0]; size = 0; count = 0
+            for blob in blobs:
+                # Filtro
+                if blob.pt[1] >= self.cam_center.y:
+                    print("Current filtered blob:", blob.pt, blob.size)
+                    if (self.cam_center.x - (self.cam_center.x//2)) <= blob.pt[0] and \
+                        blob.pt[0] < self.cam_center.x + (self.cam_center.x//2):
+                        if not best_blob:
+                            best_blob = blob
+                        pt[0] += blob.pt[0]
+                        pt[1] += blob.pt[1]
+                        size  += blob.size
+                        count += 1
+
+            if best_blob:
+                best_blob.pt = (pt[0]/count, pt[1]/count)
+                best_blob.size  = size/count
+                print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
+
+        return best_blob
+
+
 def getBestBlob(self, keypoints):
         # Si no hay blobs, no hay mejor
         # if not keypoints:
@@ -44,6 +104,18 @@ def getBestBlob(self, keypoints):
         # kp.pt[0] = y coordenate on the image
         # kp.size = diameter of the blob
         return best_kp
+
+
+        # Criterio: más grande y más centrado si son iguales, sino el más grande
+        # 1. kp.pt = coordenadas (x,y) en la imagen.
+        # 2. kp.size = diametro del blob
+        best_blob    = max(enumerate(keypoints), key=lambda kp: (kp[1].size, -kp[1].pt[0]+self.cam_center.x))[1]
+        best_blob.pt = (best_blob.pt[0] - self.cam_center.x, best_blob.pt[1] - self.cam_center.y)
+        if best_blob.pt[1] >= self.cam_center.y:
+            print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
+            return best_blob
+        else:
+            return None
 
 def trackObject(self, colorRangeMin, colorRangeMax, showFrame=False):
     #if x >= -epsilon and x < epsilon:
