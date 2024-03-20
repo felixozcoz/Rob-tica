@@ -47,12 +47,13 @@ class Robot:
         self.x  = Value('d', init_position[0]) # Robot X coordinate.
         self.y  = Value('d', init_position[1]) # Robot Y coordinate.
         self.th = Value('d', init_position[2]) # Robot orientation.
-        self.b  = Value('d', 0)                # Robot basket angle [0 a ~90º].
+        self.bh  = Value('d', 0)               # Robot basket angle [0 a ~90º].
         self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
         self.sC = Value('i', 0)                # Latest stored BASKET encoder value.
         self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
         self.w  = Value('d', 0.0)              # Robot angular theorical speed.
+        self.wb = Value('d', 0.0)              # Robot basket angular theorical speed.
         self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
         self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
         self.finished = Value('b', 1)          # Boolean to show if odometry updates are finished
@@ -65,19 +66,53 @@ class Robot:
         self.lock_odometry = Lock()
         # Odometry update period
         self.P = 0.01                          # in seconds
-        # Camera
+        # Blob detector
+        self.blob_detector_params = {
+            "minThreshold": 10,
+            "maxThreshold": 200,
+            "filterByArea": True,
+            "minArea": 40,
+            "maxArea": 5000,
+            "filterByCircularity": False,
+            "minCircularity": 0.1,
+            "filterByColor": False,
+            "blobColor": 100,
+            "filterByConvexity": False,
+            "filterByInertia": False
+        }
+        # Camera servoing
         self.resolution = resolution           # Resolucion de la camara
         self.cam_center = Vector2(resolution[0]//2, resolution[1]//2)
                                                # Centro de la camara (en base a la resolucion en pixeles)
+        self.cam_xv     = lambda x,v: v * (np.sqrt(x/self.blob_detector_params["maxArea"]) + 1)
+                                               # Formula para obtener la constante 'c' necesaria para que en el 
+                                               # area 'x' haya una velocidad 'v'. Nace de la idea de que 1/sqrt(x)
+                                               # hace que las velocidades sean pequeñas y decrezcan demasiado
+                                               # rapido.
+        self.cam_fv     = lambda x: self.cam_xv(1000, 5)/(np.sqrt(x/self.blob_detector_params["maxArea"])+1)
+                                               # Formula para la velocidad respecto del area
+                                               #  v = c / (√(x/max_area) + 1)
+                                               #  - La c es una constante que ajusta la altura de la función. Con
+                                               #    varias pruebas se ha visto que en distancias medias el area
+                                               #    rondaban los 1000pixeles^2, entonces, forzamos una c tal que
+                                               #    haya 5cm/s para que al decrecer no sea demasiado baja.
+                                               #  - La x es el area.
+                                               #  - Se divide por el area maxima para relajar la restriccion del
+                                               #    denominador y no salga una velocidad muy pequeña.
+                                               #  - El +1 es para evitar indefinido si x=0.
+        self.cam_fw     = lambda x: -2*x/self.cam_center.x
+        self.cam_xrev   = 10                   # Distancia que debe recorrer el robot hacia atras si no la ve.
+        self.cam_wmax   = self.cam_fw(self.cam_center.x)
         self.framerate  = framerate            # Framerate
 
-    def setSpeed(self, v: float, w: float):
+    def setSpeed(self, v: float, w: float, wb: float):
         """
         Set the new robot speed. \
         
         - self: The robot itself.
         - v:    Robot linear speed.
         - w:    Robot angular speed.
+        - wb:   Robot basket angular speed.
         """
         # Calculate motors angular speeds 
         A        = np.array([[1/self.R, self.L/(2*self.R)], [1/self.R, -self.L/(2*self.R)]])
@@ -89,6 +124,7 @@ class Robot:
         # Set each motor speed
         self.BP.set_motor_dps(self.PORT_RIGHT_MOTOR, np.rad2deg(w_motors[0])) 
         self.BP.set_motor_dps(self.PORT_LEFT_MOTOR,  np.rad2deg(w_motors[1]))
+        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(wb))
 
         # Store speed data (really necessary?)
         # Realmente, podria ser necesario a la hora de corregir la velocidad, pero 
@@ -96,9 +132,9 @@ class Robot:
         self.lock_odometry.acquire()
         self.v.value = v
         self.w.value = w
+        self.wb.value = wb
         self.lock_odometry.release()
-
-
+    
     def readSpeed(self):
         """
         Get the robot real speed.
@@ -131,7 +167,7 @@ class Robot:
     def readOdometry(self):
         """ Returns current value of odometry estimation """
         #print("Grados Rueda Izquierda: %.2f, Grados rueda Derecha: %.2f" %(np.rad2deg(self.sI.value), np.rad2deg(self.sD.value)))
-        return self.x.value, self.y.value, self.th.value
+        return self.x.value, self.y.value, self.th.value, self.bh.value
 
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
@@ -159,7 +195,7 @@ class Robot:
                 # Calculate real delta th. (extraer del giroscopio más adelante)
                 delta_th = w * self.P
                 th = self.th.value + delta_th
-                b  = self.b.value  + basket_encoder - self.sB.value
+                bh = self.bh.value + (basket_encoder - self.sB.value)
                 # Calculo de delta xWR. Calculo de delta s (depends on w) (diapo 14)
                 delta_x, delta_y = 0, 0
                 if w != 0:
@@ -177,7 +213,7 @@ class Robot:
                 self.x.value += delta_x
                 self.y.value += delta_y
                 self.th.value = th
-                self.b.value  = b
+                self.bh.value = bh
                 self.sD.value = right_encoder
                 self.sI.value = left_encoder
                 self.sB.value = basket_encoder
@@ -200,118 +236,79 @@ class Robot:
         self.BP.reset_all()
 
     #--------- Tracking Object ------------
-    def _init_camera(self):
+    def initCamera(self):
         '''
             Initialize the camera
-
-            Parameters:
-                resolution = resolution of the camera
-                framerate = framerate of the camera
 
             Returns:
                 cam = camera object
                 rawCapture = object to manage the camera
         '''
+        # Init camera
         cam = picamera.PiCamera()
         cam.resolution = self.resolution # (640, 480)
         cam.framerate = self.framerate   # 32
         rawCapture = PiRGBArray(cam, size=self.resolution)
-
         # Allow the camera to warmup
         time.sleep(0.1)
 
         return cam, rawCapture
 
-    def _init_my_blob_detector(self):
+    def initBlobDetector(self):
+        '''
+            Initialize the camera
+
+            Returns:
+                detector = blob detector object
+        '''
         # Setup default values for SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
-
-        # These are just examples, tune your own if needed
-        # Change thresholds
-        # indica el brillo del píxel
-        # params.minThreshold = 10
-        # params.maxThreshold = 200
-
+        # Change thresholds. Indica el brillo del píxel
+        # params.minThreshold = self.blob_detector_params["minThreshold"]
+        # params.maxThreshold = self.blob_detector_params["maxThreshold"]
         # Filter by Area (en píxeles cuadrados)
-        params.filterByArea = True
-        params.minArea = 40
-        params.maxArea = 5000
-
+        params.filterByArea = self.blob_detector_params["filterByArea"]
+        params.minArea = self.blob_detector_params["minArea"]
+        params.maxArea = self.blob_detector_params["maxArea"]
         # Filter by Circularity
-        params.filterByCircularity = False
-        params.minCircularity = 0.1
-
+        params.filterByCircularity = self.blob_detector_params["filterByCircularity"]
+        params.minCircularity = self.blob_detector_params["minCircularity"]
         # Filter by Color 
-        params.filterByColor = False
-        # not directly color, but intensity on the channel input
+        params.filterByColor = self.blob_detector_params["filterByColor"]
+        # Not directly color, but intensity on the channel input
         # This filter compares the intensity of a binary image at the center of a blob to blobColor.
-        params.blobColor = 100
-
-        params.filterByConvexity = False
-        params.filterByInertia = False
-
-
+        params.blobColor = self.blob_detector_params["blobColor"]
+        # Other
+        params.filterByConvexity = self.blob_detector_params["filterByConvexity"]
+        params.filterByInertia = self.blob_detector_params["filterByInertia"]
         # Create a detector with the parameters
         ver = (cv2.__version__).split('.')
         if int(ver[0]) < 3 :
-            detector = cv2.SimpleBlobDetector(params)
+            return cv2.SimpleBlobDetector(params)
         else :
-            detector = cv2.SimpleBlobDetector_create(params)
+            return cv2.SimpleBlobDetector_create(params)
 
-        return detector	
-    
-
-    def _blobs_capture(self, img, detector, mask):
+    def getBestBlob(self, keypoints):
         '''
-            Capture the blobs
+            Track the object
 
             Parameters:
-                img = image
-                detector = blob detector
-                colorRangeMin = minimum color range
-                colorRangeMax = maximum color range
-            
+                keypoints = keypoints de la imagen
+
             Returns:
-                keypoints_red = keypoints of the red blobs
+                best_blob = best keypoint or None if didn't meets the filter.
         '''
-        # define red mask
-        #mask = cv2.inRange(img, colorRangeMin, colorRangeMax)
-
-        # detector finds "dark" blobs by default, so invert image for results with same detector
-        keypoints = detector.detect(cv2.bitwise_not(mask))
-
-        # kp.p[0] = x coordenate on the image 
-        # kp.p[1] = y coordenate on the image
-        # kp.size = diameter of the blob
-        # print("\n New frame")
-        # for kp in keypoints:
-
-        return keypoints
-
-    def _get_best_blob(self, blobs):
-        # Si no hay blobs, no hay mejor
-        if not blobs:
-            return None
         # Criterio: más grande y más centrado si son iguales, sino el más grande
-        best_blob = None
-        for blob in blobs:
-            # Filtro
-            if blob.pt[1] >= self.cam_center.y:
-                print("Current filtered blob:", blob.pt, blob.size)
-                if not best_blob:
-                    best_blob = blob
-                    continue
-                else:
-                    if best_blob.size < blob.size:
-                        best_blob = blob
-                    elif (best_blob.size == blob.size) and (abs(best_blob.pt[0]) > abs(blob.pt[0])):
-                        best_blob = blob
-        if best_blob:
+        # 1. kp.pt = coordenadas (x,y) en la imagen.
+        # 2. kp.size = diametro del blob
+        best_blob    = max(enumerate(keypoints), key=lambda kp: (kp[1].size, -kp[1].pt[0]+self.cam_center.x))[1]
+        best_blob.pt = (best_blob.pt[0] - self.cam_center.x, best_blob.pt[1] - self.cam_center.y)
+        if best_blob.pt[1] >= self.cam_center.y:
             print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
-            
-        return best_blob
+            return best_blob
+        else:
+            return None
 
-    
     def trackObject(self, colorRangeMin, colorRangeMax, showFrame=False):
         # targetSize=??, target=??, catch=??, ...)
         '''
@@ -320,95 +317,88 @@ class Robot:
             Parameters:
                 colorRangeMin = minimum color range
                 colorRangeMax = maximum color range
+                showFrame     = show captured frame
 
             Returns:
                 finished = True if the tracking is finished
         '''
-        # flags
-        finished = False
-        #targetFound = False
+        # Flags
         targetRotationReached = False
-        targetPositionReached = False
-        targetCatched = False
-
         # Initializations
-        cam, rawCapture = self._init_camera()
-        cam_center_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
-        detector = self._init_my_blob_detector()
-
-        side = 1
-        wmax = (-2*self.cam_center.x)/self.cam_center.x
-
+        cam, rawCapture = self.initCamera()
+        detector = self.initBlobDetector()
+        # Servoing values
+        side      = 1
+        last_blob = None
+        last_odom = None
         # main loop
-        while not finished:
+        while True:
             for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-                # 0. Get a new frame
+                # Get a new frame
                 frame = cv2.cvtColor(img.array, cv2.COLOR_BGR2HSV)
                 mask  = cv2.inRange(frame, colorRangeMin[0], colorRangeMax[0])
                 for i in range(1,len(colorRangeMin)):
                     other = cv2.inRange(frame, colorRangeMin[i], colorRangeMax[i])
                     mask  = cv2.bitwise_or(mask, other)
-                # 1. Detect all blobs
-                keypoints = self._blobs_capture(frame, detector, mask)
-                # 2. Search for the most promising blob...
-                best_blob = self._get_best_blob(keypoints)
-                # 3. Decide v and w for the robot to get closer to target position
-                v = 0; w = 0
+                # Detect all blobs. Detector finds "dark" blobs by default, so invert image for results with same detector
+                keypoints = detector.detect(cv2.bitwise_not(mask))
+                # Search for the most promising blob...
+                best_blob = self.getBestBlob(keypoints)
+                if showFrame and best_blob:
+                    image = cv2.drawKeypoints(frame, keypoints, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                    cv2.imshow('Captura', image)
+                # Decide v, w and wb for the robot to get closer to target position
+                v = 0; w = 0; wb = 0
                 if best_blob:
                     # Targer rotation
-                    blob_transform = Transform(Vector2(x=best_blob.pt[0]-self.cam_center.x, y=0))
-                    if not blob_transform == cam_center_transform:
+                    blob_transform = Transform(Vector2(x=best_blob.pt[0], y=0))
+                    if not blob_transform == Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2):
                         # Ultima posicion vista. Si sign < 0, esta a la izquierda, si sign > 0, esta a la derecha
                         side = np.sign(blob_transform.position.x)
                         # Velocidades. Si sign < 0 -> w > 0 (-1*sign*w = -1*-1*w), si sign > 0 -> w < 0 (-1*sign*w = -1*1*w)
-                        w = (-2*blob_transform.position.x)/self.cam_center.x
+                        w = self.cam_fw(blob_transform.position.x)
                     #else:
                     #    targetRotationReached = True
                     # Target position
-                    blob_transform = Transform(Vector2(x=0, y=best_blob.pt[1]-self.cam_center.y))
-                    #if targetRotationReached and blob_transform == cam_center_transform:
-                    if not blob_transform == cam_center_transform:
+                    blob_transform = Transform(Vector2(x=0, y=best_blob.pt[1]))
+                    # if targetRotationReached and blob_transform == cam_center_transform:
+                    if not blob_transform == Transform(Vector2(0, self.center.y*3/4)):
                         # Calculamos el area del blob
                         blob_area = np.pi * (best_blob.size/2)**2
                         # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
-                        v= 8/(np.sqrt(blob_area/(self.resolution[0] * self.resolution[1]))+2)
+                        v = self.cam_fv(blob_area)
                     else:
-                        print("Hola")
-                        #targetPositionReached = True
+                        return True
+                    last_blob = best_blob
+                    last_odom = None
                 else:
                     # b. Rotate until found
-                    #print("Blob not found, rotating ...")
-                    w = side * wmax
-                    #targetPositionReached = False
-                    #targetCatched = False
+                    # Get robot odometry
+                    x, y, th, bh = self.readOdometry()
+                    # Si la ultima vez que se ha visto la pelota ha sido por debajo de la imagen,
+                    # se retrocede un poco para ver si se ve otra vez
+                    if last_blob and last_blob.pt[1] < 0:
+                        if not last_odom:
+                            last_odom = Vector2(x, y)
+                        elif (Vector2(x,y) - last_odom).magnitude() <= self.cam_xrev:
+                            v = -2
+                    # Girar hasta encontrar la pelota
+                    w = side * self.wmax
+                    # Si la cesta se ha bajado, se vuelve a subir
+                    if bh > 5:
+                        wb = -5
 
                 # Robot speed
-                self.setSpeed(v, w)
-                # Capture the target
-                #if targetPositionReached:
-                #    if not targetCatched:
-                #        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg( 5))
-                #    if self.b.value >= 85:
-                #        targetCatched = True
-                #elif self.b.value > 5:
-                #        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(-5))
+                self.setSpeed(v, w, wb)
                 # Clear the stream in preparation for the next frame
                 rawCapture.truncate(0)
-                # Show the captured frame if needed
-                # if showFrame and best_blob:
-                #     image = cv2.drawKeypoints(frame, keypoints, np.array([]), (255,255,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                #     cv2.imshow('Captura', image)
-                # # 'ESC' = 27
-                # if cv2.waitKey(1) & 0xff == 27:
-                #     cam.close()
-                #     finished = True
-                #     break
-
-            print("Fin tracking")
-            finished = True
-
-        return finished
 
     def catch(self):
-        # decide the strategy to catch the ball once you have reached the target position
-        self.setNestSpeed(0,np.pi / 2)
+        # Decide the strategy to catch the ball once you have reached the target position
+        while True:
+            _, _, _, bh = self.readOdometry()
+            if bh < 85:
+                self.setSpeed(0,0,5)
+            else:
+                self.setSpeed(0,0,0)
+                break

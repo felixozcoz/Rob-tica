@@ -234,9 +234,9 @@ class Transform:
             self.forward  = Vector2(1,0)
             self.right    = Vector2(0,1)
         elif not rotation is None:
-            self.rotation = rotation
-            self.forward  = Vector2(1,0) * Matrix2.transform(Vector2.zero, rotation)
-            self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
+            self.rotation = rotation % 360
+            self.forward  = Matrix2.transform(Vector2.zero, self.rotation) * Vector2(1,0)
+            self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
         else:
             self.rotation = forward.angle(Vector2(1, 0))
             self.forward  = self.forward * Matrix2.transform(Vector2.zero, 90)

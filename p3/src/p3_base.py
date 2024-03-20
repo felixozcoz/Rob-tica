@@ -1,14 +1,14 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-import argparse
-import cv2
-import numpy as np
-import time
 from Robot import Robot
 
 def main():
-    red_min = [(160, 100,  20),(  0, 100, 250)]
-    red_max = [(179, 255, 255),( 10, 255, 255)]
+
+    red_min  = [(160, 100,  20),(  0, 100, 250)]
+    red_max  = [(179, 255, 255),( 10, 255, 255)]
+    blue_min = [(110,  50,  50),(120, 213,  60)]
+    blue_max = [(130, 255, 255),(120, 155, 255)]
+
     try:
         # if args.radioD < 0:
         #     print('d must be a positive value')
@@ -16,11 +16,9 @@ def main():
 
         # Initialize Odometry. Default value will be 0,0,0
         robot = Robot() 
-        print("Vamos a seguir la pelota")
 
-        robot.trackObject(colorRangeMin=red_min, colorRangeMax=red_max, showFrame=True)
         # 1. launch updateOdometry thread()
-        #robot.startOdometry()
+        robot.startOdometry()
 
         # 2. Loop running the tracking until ??, then catch the ball
         # TO-DO: ADD to the Robot class a method to track an object, given certain parameters
@@ -29,15 +27,16 @@ def main():
         # At least COLOR, the rest are up to you, but always put a default value.
     	# res = robot.trackObject(colorRangeMin=[0,0,0], colorRangeMax=[255,255,255], 
         #                   targetSize=??, target??=??, ...)
+        print("Vamos a seguir la pelota")
+        if robot.trackObject(colorRangeMin=red_min, colorRangeMax=red_max, showFrame=False):
+            robot.catch()
+        elif robot.trackObject(colorRangeMin=blue_min, colorRangeMax=blue_max, showFrame=False):
+            robot.catch()
 
-        # if res:
-        #   robot.catch
-
-        # 3. wrap up and close stuff ...
+        # 3. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
         # and restore the LED to the control of the BrickPi3 firmware.
-        #robot.stopOdometry()
-
+        robot.stopOdometry()
 
     except KeyboardInterrupt: 
     # except the program gets interrupted by Ctrl+C on the keyboard.
@@ -53,7 +52,6 @@ if __name__ == "__main__":
     # parser.add_argument("-c", "--color", help="color of the ball to track",
     #                     type=float, default=40.0)
     # args = parser.parse_args()
-
     main()
 
 

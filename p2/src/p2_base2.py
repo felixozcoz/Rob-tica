@@ -1,6 +1,6 @@
 import math
 import time
-from geometry import POSITION_ERROR, ROTATION_ERROR, Matrix2, Vector2, circunferences_secant_points, Trasnform
+from geometry import Vector2, circunferences_secant_points, Transform
 
 # HSV O RGB
 # Distancia con la que detectamos la pelota
