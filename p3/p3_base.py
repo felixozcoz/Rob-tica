@@ -3,14 +3,6 @@
 from Robot import Robot
 
 def main():
-
-    #red_min  = [(160, 100,  20),(  0, 100, 250)]
-    #red_max  = [(179, 255, 255),( 10, 255, 255)]
-    # red_min  = [(71, 30, 100)]
-    # red_max  = [(71, 31, 133)]
-    #blue_min = [(110,  50,  50),(120, 213,  60)]
-    #blue_max = [(130, 255, 255),(120, 155, 255)]
-
     # Negative red mask (blue mask)
     colorRangeMin = (80, 70, 50)
     colorRangeMax = (100, 255, 255)
@@ -26,8 +18,8 @@ def main():
         # 1. launch updateOdometry thread()
         robot.startOdometry()
 
-        # 2. Loop running the tracking until ??, then catch the ball
-        print("Vamos a jugah")
+        # 2. Track and catch the ball
+        print("Start tracking ...")
         robot.trackObject(colorRangeMin=colorRangeMin, colorRangeMax=colorRangeMax)
         
         # 3. Wrap up and close stuff ...
@@ -36,7 +28,7 @@ def main():
         robot.stopOdometry()
 
     except KeyboardInterrupt: 
-    # except the program gets interrupted by Ctrl+C on the keyboard.
+    # Except the program gets interrupted by Ctrl+C on the keyboard.
     # THIS IS IMPORTANT if we want that motors STOP when we Ctrl+C ...
         robot.stopOdometry()
         print('*** Ctrl-C detected - Finishing ...')
