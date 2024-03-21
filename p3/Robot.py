@@ -92,7 +92,7 @@ class Robot:
                                                # Distancia minima en y para detectar un buen blob.
         # - Robot control
         self.backwards_dist = 10               # Distancia que retrocederá el robot (cm) en caso de perder la pelota cerca.
-        self.xmin_to_rotate = self.cam_center.x//2
+        self.xmin_to_rotate = self.cam_center.x//4
                                                # Distancia minima en la imagen para que rote otra vez.
         self.ymin_to_stop   = self.cam_center.y - 10
                                                # Distancia minima en la imagen para que pare de avanzar.

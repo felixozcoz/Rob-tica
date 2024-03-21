@@ -401,6 +401,10 @@ class Robot:
         # Main loop
         while True:
             for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+
+                # Get robot odometry
+                x, y, th, bh = self.readOdometry()
+
                 # Get a new frame
                 # https://stackoverflow.com/questions/32522989/opencv-better-detection-of-red-color
                 # Negative image + Blue mask
@@ -425,11 +429,10 @@ class Robot:
                     cv2.imshow('Captura', image)
                     if cv2.waitKey(1) & 0xff == 27:
                         cam.close()
-                        return False
                 rawCapture.truncate(0)  # remove img.array content
                 
                 # Decide v and w for the robot to get closer to target position
-                v = 0; w = 0
+                v = 0; w = 0; wb = 0
                 if best_blob:
                     blob_rotation = Transform(Vector2(x=best_blob.pt[0], y=0))
                     blob_position = Transform(Vector2(x=0, y=best_blob.pt[1]))
@@ -450,8 +453,10 @@ class Robot:
                         # Calcular con la distancia al borde de la imagen
                         v = 8 # self.fv(blob_area)
                     else:
-                        return True # Esta en p3_base.py
-                    
+                        if bh < 90:
+                            wb = 1
+                        else:
+                            return
                     if not outbound_transform_y == blob_position:
                         if not outbound_transform_xmin == blob_rotation:
                             targetRotationReached = False
@@ -463,8 +468,6 @@ class Robot:
                 else:
                     # b. Rotate until found
                     print("Blob not found, rotating ...")
-                    # Get robot odometry
-                    #x, y, th, bh = self.readOdometry()
                     #if last_blob and (last_blob.pt[0] > -self.blob_detector_xmin and last_blob.pt[0] < self.blob_detector_xmin) and last_blob.pt[1]:
                     #    if not backwards_refpos:
                     #        backwards_refpos = Vector2(x,y)
@@ -476,21 +479,18 @@ class Robot:
                     #if bh <= 5:
                     #    if (th // 360 >= 3):
                     #        return False
-                    #else:
-                    #    wb = -1
+                    if bh > 5:
+                        wb = -1
                     targetRotationReached = False
-
-
+    
                 # Robot speed
                 self.setSpeed(v, w)
-                # self.setNestSpeed(wb)
+                self.setNestSpeed(wb)
 
     def catch(self):
         # decide the strategy to catch the ball once you have reached the target position
-        while True:
-            _, _, _, bh = self.readOdometry()
-            if bh < 90:
-                self.setNestSpeed(1)
-            else:
-                self.setNestSpeed(0)
-                break
+        _, _, _, bh = self.readOdometry()
+        if bh < 90:
+            self.setNestSpeed(1)
+        else:
+            self.setNestSpeed(0)
