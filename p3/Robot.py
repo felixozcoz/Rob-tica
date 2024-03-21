@@ -101,17 +101,10 @@ class Robot:
                                                # area 'x' haya una velocidad 'v'. Nace de la idea de que 1/sqrt(x)
                                                # hace que las velocidades sean pequeñas y decrezcan demasiado
                                                # rapido.
-        self.fv = lambda x: self.cam_xv(1000, 5)/(np.sqrt(x/self.blob_detector_params["maxArea"])+1)
-                                               # Función para la velocidad respecto del area
-                                               #  v = c / (√(x/max_area) + 1)
-                                               #  - La c es una constante que ajusta la altura de la función. Con
-                                               #    varias pruebas se ha visto que en distancias medias el area
-                                               #    rondaban los 1000pixeles^2, entonces, forzamos una c tal que
-                                               #    haya 5cm/s para que al decrecer no sea demasiado baja.
-                                               #  - La x es el area.
-                                               #  - Se divide por el area maxima para relajar la restriccion del
-                                               #    denominador y no salga una velocidad muy pequeña.
-                                               #  - El +1 es para evitar indefinido si x=0.
+        self.fv = lambda y : -0.14*y + 25
+                                               # Función para la velocidad tangencial.
+                                               # - y es la diferencia entre la componente y del mejor blob
+                                               #   y el punto central de la imagen 
         self.fw = lambda x : -2*x/self.cam_center.x
                                                # Funcion para la velocidad angular.
         self.fw_max = self.fw(self.cam_center.x)
@@ -447,11 +440,8 @@ class Robot:
                             targetRotationReached = True
                     # Target position
                     if not position_transform == blob_position:
-                        # Calculamos el area del blob
-                        # blob_area = np.pi * (best_blob.size/2)**2
-                        # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
-                        # Calcular con la distancia al borde de la imagen
-                        v = 8 # self.fv(blob_area)
+                        # Set velocidad tangencial en función de distan
+                        v = self.fv(best_blob.position.y)
                         if bh > 5:
                             wb = -1
                     else:
