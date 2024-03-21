@@ -359,10 +359,12 @@ class Robot:
             Returns:
                 finished = True if the tracking is finished
         '''
+        # Flags
+        targetRotationReached = False
         # Initializations
         cam, rawCapture = self._init_camera()
         detector = self._init_my_blob_detector()
-        rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
+        rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=5)
         position_transform = Transform(Vector2(x=0, y = 460), CUSTOM_POSITION_ERROR= 10) # Esto es correcto ??? Si
         side = 1 # Indica el sentido la última vez que se vio la bola (-1 = izq, 1 = dcha)
         #last_blob = None # Ultimo mejor blob
@@ -417,7 +419,7 @@ class Robot:
                             # Calculamos el area del blob
                             # blob_area = np.pi * (best_blob.size/2)**2
                             # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
-                            # Calcular con la distancia al borde de la imagen
+                            # Calcular con la distancia al borde de la imagen (esto no lo he tenido en cuenta, me he basado en las diapos con lo del area)
                             v = 3 # self.fv(blob_area)
                         else:
                             print("Fin tracking")

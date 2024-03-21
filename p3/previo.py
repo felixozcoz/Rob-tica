@@ -191,3 +191,85 @@ def trackObject(self, colorRangeMin, colorRangeMax, showFrame=False):
     #    self.setSpeed(0, -np.pi / 4)
     #else:
     #    self.setSpeed(0,0)
+
+#######################################################
+# AQUI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#######################################################
+
+Ya ta
+
+Centra la bola, una vez centrada deja de girar
+Y sigue recto, si por algun casual la bola se desplaza, cuando va recto, desiste y vuelve a girar
+Pero eso es una condición de if de igualdad de tranformaciones evaluando primero que esté alineada en el eje X, no??? que eso es lo que estaba ya
+
+Si si lo entiendo, pero no sería lo mismo que
+
+if no centrada:
+    gira
+else: # centrada
+    recto
+
+sin el if último, sólo con Transform,
+Pero POSITION ERROR es cuando sólo utiliza la velocidad Tangencial, qué influye eso en centrarla si se supone que ya estaría centrada. Y en caso de 
+que se mueva volvería a girar poniendo v=0
+
+si y no
+si ponemos el margen en POSITION ERROR si 
+pero ya no lo centrará tan bien
+porque dará por valido que la pelota esta centrada a 3/4 de la imagen
+
+pera estoy pensando
+uhm
+estas diciendo
+poner el v dentro del else del primer ==?
+porque si ya esta centrado pues simplemente sigues recto y si se mueve, ya no entra en el else
+
+
+es el if else que he puesto justo encima. Now we are talking, si podria valer eso
+Porque siempre evalúa primero que esté centrada, y mientras no lo esté no irá recto
+
+Lo unico que me da cosa es a ver si va fluido entre seguir recto y rotar, aunque en el video no va tan tan
+
+ya ya, pero a estas alturas por lo menos tendríamos algo funcional, luego vendría hacerlo más fluído, cómo lo ves dejarlo como he dicho.
+
+es para quitar los blobs de arriba, si si, eso está bien
+
+que por cierto esta mal calculado
+es 3/4 * self.cam_center.y no (1 - 3/4)*self.cam_center.y
+
+está puesto así: 3/4 * self.cam_center.y
+ojo no pongais todos los cambios a pelo por si deja de moverse derrepente que ayer pasó, ir pasito a pasito por si hay algo que la version de ese python no traga y nos esta 
+jodiendo
+
+Lo que hay en Robot.py ayer funcionaba decente.
+Hacemos una copia de Robot.py que se llame Robot3.py y modificamos Robot.py
+la hago ahora
+
+
+if not targetRotationReached:
+    # Targer rotation
+    blob_transform = Transform(Vector2(x=best_blob.pt[0], y=0))
+    if not rotation_transform == blob_transform:
+        # Ultima posicion vista. Si sign < 0, esta a la izquierda, si sign > 0, esta a la derecha
+        side = np.sign(blob_transform.position.x)
+        # Velocidades. Si sign < 0 -> w > 0 (-1*sign*w = -1*-1*w), si sign > 0 -> w < 0 (-1*sign*w = -1*1*w)
+        w = self.fw_max(blob_transform.position.x)
+    else:
+        targetRotationReached = True
+else:
+    # Target position
+    blob_transform = Transform(Vector2(x=0, y=best_blob.pt[1]))
+    #if targetRotationReached and blob_transform == cam_center_transform:
+    if not position_transform == blob_transform:
+        # Calculamos el area del blob
+        # blob_area = np.pi * (best_blob.size/2)**2
+        # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
+        # Calcular con la distancia al borde de la imagen
+        v = 3 # self.fv(blob_area)
+    else:
+        print("Fin tracking")
+        return True
+    if not (best_blob.pt[0] > -self.blob_detector_xmin and best_blob.pt[0] < self.blob_detector_xmin):
+        targetRotationReached = False
+    
+    

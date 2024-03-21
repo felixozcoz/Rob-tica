@@ -24,16 +24,16 @@ def main():
         robot = Robot() 
 
         # 1. launch updateOdometry thread()
-        #robot.startOdometry()
+        robot.startOdometry()
 
         # 2. Loop running the tracking until ??, then catch the ball
         print("Vamos a jugah")
         robot.trackObject(colorRangeMin=colorRangeMin, colorRangeMax=colorRangeMax)
-
+        
         # 3. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
         # and restore the LED to the control of the BrickPi3 firmware.
-        #robot.stopOdometry()
+        robot.stopOdometry()
 
     except KeyboardInterrupt: 
     # except the program gets interrupted by Ctrl+C on the keyboard.
