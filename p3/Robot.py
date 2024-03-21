@@ -452,6 +452,8 @@ class Robot:
                         # Calculamos la velocidad correspondiente (siempre positiva, el area es inversamente proporcional al area
                         # Calcular con la distancia al borde de la imagen
                         v = 8 # self.fv(blob_area)
+                        if bh > 5:
+                            wb = -1
                     else:
                         if bh < 90:
                             wb = 1
