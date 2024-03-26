@@ -13,7 +13,7 @@ def plot_log(log_name):
     """
         Plot a received log
     """
-    with open(f"./logs/{log_name}.csv", "r") as log_file:
+    with open(f"{log_name}.csv", "r") as log_file:
         # Creamos el lector de fichero de CSV
         reader = csv.reader(log_file) 
         # Saltamos la cabecera
@@ -30,7 +30,8 @@ def plot_log(log_name):
 #for log in logs:
 #    plot_log(log)
 
-last_log = os.listdir("./logs")[-1].split('.')[-2]
+#last_log = os.listdir("./")[-1].split('.')[-2]
+last_log = "ODOMETRYLOG_2024-03-22_11-38-55"
 plot_log(last_log)
 
 

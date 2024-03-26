@@ -26,4 +26,7 @@ def dibrobot(loc_eje,c,tamano):
                 [0,0,1]])
     extremos=np.array([trasera_izda, delantera_izda, delantera_dcha, trasera_dcha, trasera_izda, frontal_robot, trasera_dcha])
     robot=np.dot(Hwe,np.dot(Hec,np.transpose(extremos)))
+    #plt.axis('equal')
+    ax = plt.gca()
+    ax.set_aspect('equal', adjustable='box')
     plt.plot(robot[0,:], robot[1,:], c) 
