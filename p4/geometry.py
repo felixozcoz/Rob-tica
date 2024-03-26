@@ -222,12 +222,13 @@ class Matrix2:
 # Transform
 class Transform:
     # Constructor
-    def __init__(self, position, rotation: float =None, forward: Vector2 =None, CUSTOM_POSITION_ERROR =None, CUSTOM_ROTATION_ERROR =None):
+    def __init__(self, localPosition, position, localRotation, rotation: float = None, forward: Vector2 = None, CUSTOM_POSITION_ERROR =None, CUSTOM_ROTATION_ERROR =None):
         """
             Transform class constructor
         """
         # Position
-        self.position = position
+        self.position       = position
+        self.localPosition  = localPosition
         self.POSITION_ERROR = POSITION_ERROR
         if not CUSTOM_POSITION_ERROR is None:
             self.POSITION_ERROR = CUSTOM_POSITION_ERROR
@@ -258,6 +259,8 @@ class Transform:
         # Orientation error
         #self.rotation_inf = rotation - ROTATION_ERROR
         #self.rotation_sup = rotation + ROTATION_ERROR
+
+    
 
     # Equivalencia
     def __eq__(self, transform):
