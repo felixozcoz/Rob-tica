@@ -87,8 +87,6 @@ class Map2D:
         # self.costMatrix[2,1] = 5
         # self.costMatrix[0,0] = 6
 
-
-
     def _loadMap(self, mapFileName):
         """
         Load map from a txt file (mapFileName) to fill the map params and connectionMatrix. \
@@ -397,6 +395,7 @@ class Map2D:
     # TO-DO
     # """
     # self.costMatrix = ....
+    #def fillCostMatrix(self):
 
 
     def findPath(self, x_ini,  y_ini, x_end, y_end):

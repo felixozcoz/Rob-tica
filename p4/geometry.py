@@ -158,6 +158,8 @@ class Vector2:
     
 Vector2.zero  = Vector2(0,0,0)
 Vector2.one   = Vector2(1,1,1)
+Vector2.up    = Vector2(1,0,0)
+Vector2.right = Vector2(0,1,0)
 Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR, POSITION_ERROR).normalize()
 
 # Matrix2
@@ -248,7 +250,7 @@ class Transform:
         if not CUSTOM_ROTATION_ERROR is None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # Area error
-        position_shift = Vector2.error
+        position_shift = Vector2.error # Vector2(self.POSITION_ERROR, self.POSITION_ERROR).normalize
         self.position_inf = position - position_shift
         self.position_sup = position + position_shift
         # Distance error

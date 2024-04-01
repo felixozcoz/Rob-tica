@@ -12,13 +12,13 @@ import numpy as np
 import cv2
 import picamera
 from picamera.array import PiRGBArray
-from geometry import Vector2, Transform
+from geometry import Vector2, Matrix2, Transform
 
 # Threading package could be used too
 from multiprocessing import Process, Value, Array, Lock
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32):
+    def __init__(self, local_position=[0.0, 0.0, 0.0], global_position=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32):
         """
         Initialize basic robot params. \
 
@@ -44,31 +44,34 @@ class Robot:
         ##################################################
         # ODOMETRY
         # - Odometry shared memory values
-        self.x  = Value('d', init_position[0]) # Robot X coordinate.
-        self.y  = Value('d', init_position[1]) # Robot Y coordinate.
-        self.th = Value('d', init_position[2]) # Robot orientation.
-        self.bh  = Value('d', 0)               # Robot basket angle [0 to ~90º].
-        self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
-        self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
-        self.sC = Value('i', 0)                # Latest stored BASKET encoder value.
-        self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
-        self.w  = Value('d', 0.0)              # Robot angular theorical speed.
-        self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
-        self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
-        self.wb = Value('d', 0.0)              # Robot basket theorical angular speed.
-        self.finished = Value('b', 1)          # Boolean to show if odometry updates are finished
+        self.x = Value('d', local_position[0])  # Robot X coordinate.
+        self.y = Value('d', local_position[1])  # Robot Y coordinate.
+        self.th = Value('d', local_position[2]) # Robot orientation.
+        self.bh  = Value('d', 0)                # Robot basket angle [0 to ~90º].
+        self.sD = Value('i', 0)                 # Latest stored RIGHT encoder value.
+        self.sI = Value('i', 0)                 # Latest stored LEFT encoder value.
+        self.sC = Value('i', 0)                 # Latest stored BASKET encoder value.
+        #self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
+        #self.w  = Value('d', 0.0)              # Robot angular theorical speed.
+        #self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
+        #self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
+        #self.wb = Value('d', 0.0)              # Robot basket theorical angular speed.
+        self.finished = Value('b', 1)           # Boolean to show if odometry updates are finished
         # - If we want to block several instructions to be run together, we may want to use an explicit Lock
         self.lock_odometry = Lock()
         # - Odometry update period
-        self.P = 0.01                          # In seconds
+        self.P = 0.01                           # In seconds
+        # LOCAL/GLOBAL POSITIONING
+        self.localToGlobalPos = Matrix2.transform(Vector2(global_position[0], global_position[1]), global_position[2])
+        #self.globalToLocalPos = Matrix2.transform(Vector2(local_position[0], local_position[1]), local_position[2])
         # VISUAL SERVOING
         # - Camera
-        self.resolution = resolution           # Camera resolution.
+        self.resolution = resolution            # Camera resolution.
         self.cam_center = Vector2(resolution[0]//2, resolution[1]//2)
-                                               # Camera centre (pixel resolution based)
-        self.framerate  = framerate            # Framerate
+                                                # Camera centre (pixel resolution based)
+        self.framerate  = framerate             # Framerate
         # - Detector
-        self.blob_detector_params = {
+        self.blob_detector_params = {           # Blob detector parameters
             "minThreshold": 10,
             "maxThreshold": 200,
             "filterByArea": True,
@@ -80,31 +83,28 @@ class Robot:
             "blobColor": 100,
             "filterByConvexity": False,
             "filterByInertia": False
-        }
-                                               
+        }                                   
         self.blob_detector_ymin = 3/4*self.cam_center.y
-                                               # Minimum distance in y to detect a good blob.
+                                                # Minimum distance in y to detect a good blob.
         # - Robot control
-        self.backwards_dist = 10               # Distance that the robot will retreat (cm) in case of losing the ball nearby.
+        self.backwards_dist = 10                # Distance that the robot will retreat (cm) in case of losing the ball nearby.
         self.xmin_to_rotate = self.cam_center.x//4
-                                               # Minimum distance in the image for it to rotate again.
+                                                # Minimum distance in the image for it to rotate again.
         self.ymin_to_stop   = self.cam_center.y - 10
-                                               # Minimum distance in the image to stop advancing.
-        self.fc = lambda x,v: v * (np.sqrt(x/self.blob_detector_params["maxArea"]) + 1)
-                                               # Function to obtain the constant 'c' necessary so that in the
-                                               # area 'x' has a speed 'v'. It is born from the idea that 1/sqrt(x)
-                                               # causes speeds to be small and decrease too much
-                                               # fast.
-        self.fv = lambda y : -0.14*y + 25
-                                               # Function for tangential speed.
-                                               # - y is the difference between the component and the best blob
-                                               # and the center point of the image 
+                                                # Minimum distance in the image to stop advancing.
+        # [DEPRECATED]
+        #self.fc = lambda x,v: v * (np.sqrt(x/self.blob_detector_params["maxArea"]) + 1)
+                                                # Function to obtain the constant 'c' necessary so that in the
+                                                # area 'x' has a speed 'v'. It is born from the idea that 1/sqrt(x)
+                                                # causes speeds to be small and decrease too much
+                                                # fast.
+        self.fv = lambda y : -0.14*y + 25       # Function for tangential speed.
+                                                # - y is the difference between the component and the best blob
+                                                # and the center point of the image 
         self.fw = lambda x : -2*x/self.cam_center.x
-                                               # Function for angular velocity.
-        self.fw_max = self.fw(self.cam_center.x)
-                                               # Maximum angular speed.
-        self.fv_max = self.fv(0)
-                                               # Maximum linear speed.
+                                                # Function for angular velocity.
+        self.fw_max = self.fw(self.cam_center.x)# Maximum angular speed.
+        self.fv_max = self.fv(0)                # Maximum linear speed.
 
     def readEncoders(self):
         try:
@@ -145,12 +145,12 @@ class Robot:
         self.BP.set_motor_dps(self.PORT_LEFT_MOTOR, np.rad2deg(w_motors[1]))
         self.BP.set_motor_dps(self.PORT_basket_MOTOR, np.rad2deg(wb))
 
-        # Set v, w speed
-        self.lock_odometry.acquire()
-        self.v.value = v
-        self.w.value = w
-        self.wb.value = wb
-        self.lock_odometry.release()
+        # Set v, w speed. De momento no se va a usar
+        # self.lock_odometry.acquire()
+        # self.v.value = v
+        # self.w.value = w
+        # self.wb.value = wb
+        # self.lock_odometry.release()
 
     def readSpeed(self, offsets = None):
         '''
@@ -182,7 +182,10 @@ class Robot:
 
     def readOdometry(self):
         """ Returns current value of odometry estimation """
-        return self.x.value, self.y.value, self.th.value, self.bh.value
+        gpos = self.localToGlobal * Vector2(self.x.value, self.y.value, 1)
+        grot = Vector2.up.angle(self.localToGlobal * Matrix2.transform(Vector2.zero, self.th.value) * Vector2.up)
+        
+        return self.x.value, self.y.value, self.th.value, self.bh.value, gpos.x, gpos.y, grot
 
     def updateOdometry(self): 
         """ This function calculates and updates the odometry of the robot """
@@ -450,7 +453,7 @@ class Robot:
                     # El objetivo estará alineado con el robot cuando:
                     # 1. Este en el centro de la imagen en x y la zona inferior en y
                     # 2. Este a lo largo de toda la imagen en x y en la ultima franja en y
-                    targetRotationReached = (not outbound_transform_y == blob_position and outbound_transform_xmin == blob_rotation) or outbound_transform_xmax == blob_rotation)
+                    targetRotationReached = (not outbound_transform_y == blob_position and outbound_transform_xmin == blob_rotation) or outbound_transform_xmax == blob_rotation
                             
                 else: 
                     # Retrocede un par de cm si la pelota estaba al lado de la camara la ultima vez que se vio
@@ -469,3 +472,13 @@ class Robot:
     
                 # Robot speed
                 self.setSpeed(v, w, wb)
+    
+    def playTrayectory():
+        # Leer los sensores
+        STATE = "IDLE"
+        while True:
+            self.readOdometry()
+            if STATE == "FORWARD":
+                print("Hola")
+            elif STATE == "ROTATE":
+                print("Adios")
