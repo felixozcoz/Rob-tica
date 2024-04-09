@@ -18,7 +18,7 @@ from geometry import Vector2, Matrix2, Transform
 from multiprocessing import Process, Value, Array, Lock
 
 class Robot:
-    def __init__(self, local_position=[0.0, 0.0, 0.0], global_position=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32):
+    def __init__(self, local_position=[0.0, 0.0], global_position=[0.0, 0.0], orientation=0.0, resolution=(320, 240), framerate=32):
         """
         Initialize basic robot params. \
 
@@ -46,7 +46,7 @@ class Robot:
         # - Odometry shared memory values
         self.x = Value('d', local_position[0])  # Robot X coordinate.
         self.y = Value('d', local_position[1])  # Robot Y coordinate.
-        self.th = Value('d', local_position[2]) # Robot orientation.
+        self.th = Value('d', orientation) # Robot orientation.
         self.bh  = Value('d', 0)                # Robot basket angle [0 to ~90º].
         self.sD = Value('i', 0)                 # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)                 # Latest stored LEFT encoder value.
@@ -62,7 +62,7 @@ class Robot:
         # - Odometry update period
         self.P = 0.01                           # In seconds
         # LOCAL/GLOBAL POSITIONING
-        self.localToGlobalPos = Matrix2.transform(Vector2(global_position[0], global_position[1]), global_position[2])
+        self.localToGlobalPos = Matrix2.transform(Vector2(global_position[0], global_position[1]), orientation)
         #self.globalToLocalPos = Matrix2.transform(Vector2(local_position[0], local_position[1]), local_position[2])
         # VISUAL SERVOING
         # - Camera
@@ -183,9 +183,8 @@ class Robot:
     def readOdometry(self):
         """ Returns current value of odometry estimation """
         gpos = self.localToGlobal * Vector2(self.x.value, self.y.value, 1)
-        grot = Vector2.up.angle(self.localToGlobal * Matrix2.transform(Vector2.zero, self.th.value) * Vector2.up)
-        
-        return self.x.value, self.y.value, self.th.value, self.bh.value, gpos.x, gpos.y, grot
+
+        return self.x.value, self.y.value, self.th.value, self.bh.value, gpos.x, gpos.y 
 
     def updateOdometry(self): 
         """ This function calculates and updates the odometry of the robot """
