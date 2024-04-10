@@ -1,7 +1,7 @@
 import bisect
 import numpy as np
 import time
-
+import json 
 def inside(cell):
     return cell[0] >= 0 and cell[0] < sizeX and cell[1] >= 0 and cell[1] < sizeY
 
@@ -20,6 +20,27 @@ def print_map(a_map):
             else:
                 if i%2==1 and j%2==1:
                     print(".", end=" ")
+                else:
+                    print("□", end=" ")
+        print()
+
+def print_path(a_map, a_path, start, goal):
+    for i, row in enumerate(a_map):
+        for j, cell in enumerate(row):
+            if not cell:
+                    print("■", end=" ")
+            else:
+                if i%2==1 and j%2==1:
+                    cell = [(i-1)//2,(j-1)//2]
+                    if cell in a_path:
+                        if cell == goal:
+                            print("⚑", end=" ")
+                        elif cell == start:
+                            print("○", end=" ")
+                        else:
+                            print("●", end=" ")
+                    else:
+                        print(".", end=" ")
                 else:
                     print("□", end=" ")
         print()
@@ -89,7 +110,7 @@ def propagate_v8(goal):
     print(costMatrix)
 
 
-mapF = open("mapa0.txt", "r")
+mapF = open("mapa3.txt", "r")
 # 1. Special case for first line. Initialize dimX dimY cellSize
 header = mapF.readline()
 header = header.split()
@@ -126,12 +147,6 @@ goal = [sizeY-1,sizeX-1]
 print("Goal:", goal)
 propagate_v4(goal)
 
-
-h = [
-    [4, 3, 2],
-    [3, 2, 1],
-    [2, 1, 0]
-]
 def insert_2(a_list, a_node):
     if not a_list:
         return [a_node]
@@ -157,12 +172,10 @@ while border:
     node = border.pop(0)
     cell = node["coords"]
     if (cell == goal):
-        print("Hola")
+        while node:
+            path.append(node["coords"])
+            node = node["parent"]
         break
-        #while node:
-        #    path.append(node["coords"])
-        #    node = node["parent"]
-        #    print(path)
     #
     conn = [2*cell[0]+1, 2*cell[1]+1]
     expand.append(node)
@@ -177,6 +190,7 @@ while border:
 
 
 print(path)
+print_path(connectionMatrix, path, start, goal)
 
 # Para testear los algoritmos
 #now = time.time()
