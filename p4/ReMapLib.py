@@ -5,7 +5,7 @@ import json
 def inside(cell):
     return cell[0] >= 0 and cell[0] < sizeX and cell[1] >= 0 and cell[1] < sizeY
 
-def insert(a_list, a_value):
+def another_insert(a_list, a_value):
     for i, e in reversed(list(enumerate(a_list))):
         if (a_value[0] < e[0]) or (a_value[0] == e[0] and a_value[1] < e[1]):
             i += 1
@@ -109,7 +109,69 @@ def propagate_v8(goal):
 
     print(costMatrix)
 
+    
+def dot(v, w):
+    return v[0]*w[0] + v[1]*w[1]
 
+def magnitude(v):
+    return np.sqrt(v[0]*v[0] + v[1]*v[1])
+
+def normalize(v):
+    m = magnitude(v)
+    return [v[0]/m, v[1]/m]
+
+def angle(v, w, format = 'RAD'):
+    res = np.acos((self * v) / (magnitude(v) * magnitude(w)))
+    if (format == "DEG"):
+        res *= 180 / np.pi
+    return res
+
+def insert(a_list, a_node):
+    if not a_list:
+        return [a_node]
+    else:
+        a_value = a_node["coords"]
+        for i, e_node in enumerate(a_list):
+            e_value = e_node["coords"]
+            #print(h[a_value[0]][a_value[1]], h[e_value[0]][e_value[1]])
+            if costMatrix[a_value[0]][a_value[1]] < costMatrix[e_value[0]][e_value[1]]:
+                break
+        return a_list[:i] + [a_node] + a_list[i:]
+
+def find_path(start, goal):
+    # https://medium.com/@nicholas.w.swift/easy-a-star-pathfinding-7e6689c7f7b2
+    path   = []
+    border = [{
+        "parent": None,
+        "coords": start,
+    }]
+    expand = []
+
+    while border:
+        node = border.pop(0)
+        cell = node["coords"]
+        if (cell == goal):
+            while node:
+                path.append(node["coords"])
+                node = node["parent"]
+            break
+        #
+        conn = [2*cell[0]+1, 2*cell[1]+1]
+        expand.append(node)
+        for dx in [-1,1]:
+            for dy in [0,1]:
+                neighbor           = [cell[0], cell[1]]
+                neighbor[dy]      += dx
+                neighbor_conn      = [conn[0], conn[1]]
+                neighbor_conn[dy] += dx
+                if connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
+                    border = insert(border, {"parent": node, "coords":neighbor})
+
+    print(path)
+    print_path(connectionMatrix, path, start, goal)
+    return path
+
+### MAIN
 mapF = open("mapa3.txt", "r")
 # 1. Special case for first line. Initialize dimX dimY cellSize
 header = mapF.readline()
@@ -117,8 +179,7 @@ header = header.split()
 if len(header) != 3:
     exit(1)
 
-sizeX, sizeY, sizeCell = [int(c) for c in header]
-sizeCell //= 10
+sizeX, sizeY, sizeCell = int(header[0]), int(header[1]), int(header[2])//10
 print(sizeX, sizeY, sizeCell)
 print(2*sizeX+1, 2*sizeY+1)
 
@@ -142,55 +203,33 @@ mapF.close()
 # 3. Obtener costes:
 costMatrix = np.zeros((sizeY, sizeX))
 
-goal = [sizeY-1,sizeX-1]
-goal = [sizeY-1,sizeX-1]
+#gpos = self.localToGlobal * Vector2(self.x.value, self.y.value, 1)
+#grot = Vector2.up.angle(self.localToGlobal * Matrix2.transform(Vector2.zero, self.th.value) * Vector2.up)
+        
+
+
+start = [0,0]
+goal  = [sizeY-1,sizeX-1]
+goal  = [sizeY-1,sizeX-1]
 print("Goal:", goal)
 propagate_v4(goal)
+path  = find_path(start, goal)
 
-def insert_2(a_list, a_node):
-    if not a_list:
-        return [a_node]
-    else:
-        a_value = a_node["coords"]
-        for i, e_node in enumerate(a_list):
-            e_value = e_node["coords"]
-            #print(h[a_value[0]][a_value[1]], h[e_value[0]][e_value[1]])
-            if costMatrix[a_value[0]][a_value[1]] < costMatrix[e_value[0]][e_value[1]]:
-                break
-        return a_list[:i] + [a_node] + a_list[i:]
+Robot = {
+    "gref": [20,20, 0],
+    "lref": [ 0, 0, 0],
+    "orientation": [1,0] 
+}
 
-# https://medium.com/@nicholas.w.swift/easy-a-star-pathfinding-7e6689c7f7b2
-start  = [0,0]
-path   = []
-border = [{
-    "parent": None,
-    "coords": start,
-}]
-expand = []
+for i in range(len(path)-1,0,-1):
+    cell = path[i]
+    A = [(1+cell[0])*sizeCell//2, (1+cell[1])*sizeCell//2]
+    cell = path[i-1]
+    B = [(1+cell[0])*sizeCell//2, (1+cell[1])*sizeCell//2]
+    AB = [B[0]-A[0],B[1]-A[1]]
+    print(A, B, normalize(AB))
 
-while border:
-    node = border.pop(0)
-    cell = node["coords"]
-    if (cell == goal):
-        while node:
-            path.append(node["coords"])
-            node = node["parent"]
-        break
-    #
-    conn = [2*cell[0]+1, 2*cell[1]+1]
-    expand.append(node)
-    for dx in [-1,1]:
-        for dy in [0,1]:
-            neighbor           = [cell[0], cell[1]]
-            neighbor[dy]      += dx
-            neighbor_conn      = [conn[0], conn[1]]
-            neighbor_conn[dy] += dx
-            if connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
-                border = insert_2(border, {"parent": node, "coords":neighbor})
-
-
-print(path)
-print_path(connectionMatrix, path, start, goal)
+print()
 
 # Para testear los algoritmos
 #now = time.time()
