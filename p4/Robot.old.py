@@ -12,13 +12,13 @@ import numpy as np
 import cv2
 import picamera
 from picamera.array import PiRGBArray
-from geometry import Vector2, Transform
+from geometry import Vector2, Matrix2, Transform
 
 # Threading package could be used too
 from multiprocessing import Process, Value, Array, Lock
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32):
+    def __init__(self, local_position=[0.0, 0.0], global_position=[0.0, 0.0], orientation=0.0, resolution=(320, 240), framerate=32):
         """
         Initialize basic robot params. \
 
@@ -36,39 +36,42 @@ class Robot:
         #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
-        self.PORT_BASKET_MOTOR = self.BP.PORT_B
+        self.PORT_basket_MOTOR = self.BP.PORT_B
         # Reset encoder B and C (or all the motors you are using)
         self.BP.offset_motor_encoder(self.PORT_RIGHT_MOTOR, self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR))
         self.BP.offset_motor_encoder(self.PORT_LEFT_MOTOR, self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR))
-        self.BP.offset_motor_encoder(self.PORT_BASKET_MOTOR, self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR))
+        self.BP.offset_motor_encoder(self.PORT_basket_MOTOR, self.BP.get_motor_encoder(self.PORT_basket_MOTOR))
         ##################################################
         # ODOMETRY
         # - Odometry shared memory values
-        self.x  = Value('d', init_position[0]) # Robot X coordinate.
-        self.y  = Value('d', init_position[1]) # Robot Y coordinate.
-        self.th = Value('d', init_position[2]) # Robot orientation.
-        self.bh  = Value('d', 0)               # Robot basket angle [0 to ~90º].
-        self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
-        self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
-        self.sC = Value('i', 0)                # Latest stored BASKET encoder value.
-        self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
-        self.w  = Value('d', 0.0)              # Robot angular theorical speed.
-        self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
-        self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
-        self.wb = Value('d', 0.0)              # Robot basket theorical angular speed.
-        self.finished = Value('b', 1)          # Boolean to show if odometry updates are finished
+        self.x = Value('d', local_position[0])  # Robot X coordinate.
+        self.y = Value('d', local_position[1])  # Robot Y coordinate.
+        self.th = Value('d', orientation) # Robot orientation.
+        self.bh  = Value('d', 0)                # Robot basket angle [0 to ~90º].
+        self.sD = Value('i', 0)                 # Latest stored RIGHT encoder value.
+        self.sI = Value('i', 0)                 # Latest stored LEFT encoder value.
+        self.sC = Value('i', 0)                 # Latest stored BASKET encoder value.
+        #self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
+        #self.w  = Value('d', 0.0)              # Robot angular theorical speed.
+        #self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
+        #self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
+        #self.wb = Value('d', 0.0)              # Robot basket theorical angular speed.
+        self.finished = Value('b', 1)           # Boolean to show if odometry updates are finished
         # - If we want to block several instructions to be run together, we may want to use an explicit Lock
         self.lock_odometry = Lock()
         # - Odometry update period
-        self.P = 0.01                          # In seconds
+        self.P = 0.01                           # In seconds
+        # LOCAL/GLOBAL POSITIONING
+        self.localToGlobalPos = Matrix2.transform(Vector2(global_position[0], global_position[1]), orientation)
+        #self.globalToLocalPos = Matrix2.transform(Vector2(local_position[0], local_position[1]), local_position[2])
         # VISUAL SERVOING
         # - Camera
-        self.resolution = resolution           # Camera resolution.
+        self.resolution = resolution            # Camera resolution.
         self.cam_center = Vector2(resolution[0]//2, resolution[1]//2)
-                                               # Camera centre (pixel resolution based)
-        self.framerate  = framerate            # Framerate
+                                                # Camera centre (pixel resolution based)
+        self.framerate  = framerate             # Framerate
         # - Detector
-        self.blob_detector_params = {
+        self.blob_detector_params = {           # Blob detector parameters
             "minThreshold": 10,
             "maxThreshold": 200,
             "filterByArea": True,
@@ -80,40 +83,58 @@ class Robot:
             "blobColor": 100,
             "filterByConvexity": False,
             "filterByInertia": False
-        }
-                                               
+        }                                   
         self.blob_detector_ymin = 3/4*self.cam_center.y
-                                               # Minimum distance in y to detect a good blob.
+                                                # Minimum distance in y to detect a good blob.
         # - Robot control
-        self.backwards_dist = 10               # Distance that the robot will retreat (cm) in case of losing the ball nearby.
+        self.backwards_dist = 10                # Distance that the robot will retreat (cm) in case of losing the ball nearby.
         self.xmin_to_rotate = self.cam_center.x//4
-                                               # Minimum distance in the image for it to rotate again.
+                                                # Minimum distance in the image for it to rotate again.
         self.ymin_to_stop   = self.cam_center.y - 10
-                                               # Minimum distance in the image to stop advancing.
-        self.fc = lambda x,v: v * (np.sqrt(x/self.blob_detector_params["maxArea"]) + 1)
-                                               # Function to obtain the constant 'c' necessary so that in the
-                                               # area 'x' has a speed 'v'. It is born from the idea that 1/sqrt(x)
-                                               # causes speeds to be small and decrease too much
-                                               # fast.
-        self.fv = lambda y : -0.14*y + 25
-                                               # Function for tangential speed.
-                                               # - y is the difference between the component and the best blob
-                                               # and the center point of the image 
+                                                # Minimum distance in the image to stop advancing.
+        # [DEPRECATED]
+        #self.fc = lambda x,v: v * (np.sqrt(x/self.blob_detector_params["maxArea"]) + 1)
+                                                # Function to obtain the constant 'c' necessary so that in the
+                                                # area 'x' has a speed 'v'. It is born from the idea that 1/sqrt(x)
+                                                # causes speeds to be small and decrease too much
+                                                # fast.
+        self.fv = lambda y : -0.14*y + 25       # Function for tangential speed.
+                                                # - y is the difference between the component and the best blob
+                                                # and the center point of the image 
         self.fw = lambda x : -2*x/self.cam_center.x
-                                               # Function for angular velocity.
-        self.fw_max = self.fw(self.cam_center.x)
-                                               # Maximum angular speed.
-        self.fv_max = self.fv(0)
-                                               # Maximum linear speed.
+                                                # Function for angular velocity.
+        self.fw_max = self.fw(self.cam_center.x)# Maximum angular speed.
+        self.fv_max = self.fv(0)                # Maximum linear speed.
 
-    def setSpeed(self, v: float, w: float):
-        """
-        Set the new robot speed. \
-        
-        - self: The robot itself.
-        - v:    Robot linear speed.
-        - w:    Robot angular speed.
-        """
+    def readEncoders(self):
+        try:
+            # Each of the following BP.get_motor_encoder functions returns the encoder value
+            # (what we want to store).
+            #sys.stdout.write("Reading encoder values .... \n")
+            left_encoder   = self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR)
+            right_encoder  = self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)
+            basket_encoder = self.BP.get_motor_encoder(self.PORT_basket_MOTOR) 
+        except IOError as error:
+            #print(error)
+            sys.stdout.write(error)
+        # Calculate the arc of circumfrence traveled by each wheel
+        left_offset   = left_encoder   - self.sI.value
+        #left_offset_length  = np.deg2rad(left_offset) * self.R
+        right_offset  = right_encoder  - self.sD.value
+        #right_offset_length = np.deg2rad(right_offset) * self.R
+        basket_offset = basket_encoder - self.sC.value
+
+        return [left_encoder, right_encoder, basket_encoder, left_offset, right_offset, basket_offset]
+
+    def setSpeed(self, v: float, w: float, wb: float):
+        '''
+            Set the new robot speed.
+
+            Parameters:
+                v   Robot lineal/Tangential speed (in cm/s)
+                w   Robot angular speed (in degrees)
+                wb  Basket angular speed (in degrees)
+        '''
         # Calculate motors angular speeds 
         A        = np.array([[1/self.R, self.L/(2*self.R)], [1/self.R, -self.L/(2*self.R)]])
         vc       = np.array([[v],[w]])
@@ -121,51 +142,29 @@ class Robot:
 
         # Set each motor speed
         self.BP.set_motor_dps(self.PORT_RIGHT_MOTOR, np.rad2deg(w_motors[0])) 
-        self.BP.set_motor_dps(self.PORT_LEFT_MOTOR,  np.rad2deg(w_motors[1]))
+        self.BP.set_motor_dps(self.PORT_LEFT_MOTOR, np.rad2deg(w_motors[1]))
+        self.BP.set_motor_dps(self.PORT_basket_MOTOR, np.rad2deg(wb))
 
-        # Set v, w speed
-        self.lock_odometry.acquire()
-        self.v.value = v
-        self.w.value = w
-        self.lock_odometry.release()
+        # Set v, w speed. De momento no se va a usar
+        # self.lock_odometry.acquire()
+        # self.v.value = v
+        # self.w.value = w
+        # self.wb.value = wb
+        # self.lock_odometry.release()
 
+    def readSpeed(self, offsets = None):
+        '''
+            Get the robot real speed.
 
-    def setNestSpeed(self, wb):
-        """
-        Set the new nest motor speed. \
-
-        - self: The robot itself.
-        - wb:   Robot basket angular speed.
-        """
-        # Set each motor speed
-        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(wb))
-        # Store speed data (really necessary?)
-        self.lock_odometry.acquire()
-        self.wb.value = wb
-        self.lock_odometry.release()
-
-
-    def readSpeed(self):
-        """
-        Get the robot real speed.
-        """
-        try:
-            # Each of the following BP.get_motor_encoder functions returns the encoder value
-            # (what we want to store).
-            #sys.stdout.write("Reading encoder values .... \n")
-            left_encoder   = self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR)
-            right_encoder  = self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)
-            basket_encoder = self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR) 
-        except IOError as error:
-            #print(error)
-            sys.stdout.write(error)
-
-        # Calculate the arc of circumfrence traveled by each wheel
-        left_offset   = left_encoder   - self.sI.value
-        #left_offset_length  = np.deg2rad(left_offset) * self.R
-        right_offset  = right_encoder  - self.sD.value
-        #right_offset_length = np.deg2rad(right_offset) * self.R
-        basket_offset = basket_encoder - self.sC.value
+            Parameters:
+                offsets  Offsets de los motores precalculados.
+        '''
+        # Para no calcular de nuevo los offset si se han precalculado ya.
+        if not offsets:
+            _, _, _, left_offset, right_offset, basket_offset = readEncoders()
+        else:
+            # Calculate the arc of circumfrence traveled by each wheel
+            left_offset, right_offset, basket_offset = offsets        
         # Calculate real speed
         wi     = np.deg2rad(left_offset)   / self.P # Left wheel angular real speed
         wd     = np.deg2rad(right_offset)  / self.P # Right wheel angular real speed
@@ -173,13 +172,7 @@ class Robot:
         # Robot linear and angular real speed
         [v, w] = np.dot(np.array([[self.R/2, self.R/2],[self.R/self.L, -self.R/self.L]]), np.array([[wd],[wi]]))
         
-        return [left_encoder, right_encoder, basket_encoder, wi, wd, wb, v, w] 
-
-
-    def readOdometry(self):
-        """ Returns current value of odometry estimation """
-        return self.x.value, self.y.value, self.th.value, self.bh.value
-
+        return [wi, wd, v, w, wb] 
 
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
@@ -187,6 +180,11 @@ class Robot:
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
 
+    def readOdometry(self):
+        """ Returns current value of odometry estimation """
+        gpos = self.localToGlobal * Vector2(self.x.value, self.y.value, 1)
+
+        return self.x.value, self.y.value, self.th.value, self.bh.value, gpos.x, gpos.y 
 
     def updateOdometry(self): 
         """ This function calculates and updates the odometry of the robot """
@@ -202,11 +200,12 @@ class Robot:
                 # Update odometry uses values that require mutex, they are declared as value, so lock
                 # is implicitly done for atomic operations (BUT =+ is NOT atomic)
                 # Calculate the arc of circumfrence traveled by each wheel
-                left_encoder, right_encoder, basket_encoder, _, _, _, v, w = self.readSpeed()
+                left_encoder, right_encoder, basket_encoder, _, _, basket_offset= self.readEncoders()
+                _, _, _, v, w = self.readSpeed([left_encoder, right_encoder, basket_encoder])
                 # Calculate real delta th. (extract from gyroscope later)
                 delta_th = w * self.P
                 th = self.th.value + delta_th
-                bh = self.bh.value  + basket_encoder - self.sC.value
+                bh = self.bh.value + basket_offset
                 # Calculate delta xWR. Calculate delta s (depends on w) (slide 14)
                 delta_x, delta_y = 0, 0
                 if w != 0:
@@ -247,7 +246,7 @@ class Robot:
         self.BP.reset_all()
 
     #--------- Tracking Object ------------
-    def _init_camera(self):
+    def initCamera(self):
         '''
             Initialize the camera
 
@@ -267,7 +266,7 @@ class Robot:
         return cam, rawCapture
 
 
-    def _init_my_blob_detector(self):
+    def initMyBlobDetector(self):
         '''
             Initialize the blob detector
 
@@ -312,7 +311,7 @@ class Robot:
         return detector	
 
 
-    def _get_best_blob(self, blobs):
+    def getBestBlob(self, blobs):
         '''
             Track the object
 
@@ -370,15 +369,15 @@ class Robot:
         targetRotationReached = False   # True if the robot is aligned with the object on the x-axis.
 
         # Initializations
-        cam, rawCapture = self._init_camera()
-        detector = self._init_my_blob_detector()
+        cam, rawCapture = self.initCamera()
+        detector = self.initMyBlobDetector()
 
         # Transform constraits
-        rotation_transform         = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
-        outbound_transform_xmin    = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
-        outbound_transform_xmax    = Transform(Vector2.zero,  CUSTOM_POSITION_ERROR=self.cam_center.x)  
-        outbound_transform_y       = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
-        position_transform         = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
+        rotation_transform      = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
+        outbound_transform_xmin = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
+        outbound_transform_xmax = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.cam_center.x)  
+        outbound_transform_y    = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
+        position_transform      = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
         
         # Object positional information
         side = 1 # Last side the ball was seen (-1 = left, 1 = right).
@@ -403,7 +402,7 @@ class Robot:
                 keypoints = detector.detect(mask)
 
                 # Search for the most promising blob...
-                best_blob = self._get_best_blob(keypoints)
+                best_blob = self.getBestBlob(keypoints)
                 
                 # Show camera frame if asked
                 if showFrame:
@@ -440,8 +439,7 @@ class Robot:
                         # Raise the basket till intial position (0º)
                         wb = int(bh > 5) * -1
                     else:
-                        if not outbound_transform_xmin == blob_rotation:
-                            nextToMe = True
+                        nextToMe = not outbound_transform_xmin == blob_rotation
                         # Object found. Lower the basket 90º
                         if bh < 90:
                             wb = 1
@@ -451,18 +449,13 @@ class Robot:
                             return
 
                     # Checking y coordinate location of the blob within the catchment region
-                    if not outbound_transform_y == blob_position:
-                        # Checking location in x coordinate location of the blob within the min catchment region
-                        if not outbound_transform_xmin == blob_rotation:
-                            targetRotationReached = False
-                    else:
-                        # If y coordinate is within the catchement region.
-                        # Check if x coordinate is within the max catchment region.
-                        if not outbound_transform_xmax == blob_rotation:
-                            targetRotationReached = False
+                    # El objetivo estará alineado con el robot cuando:
+                    # 1. Este en el centro de la imagen en x y la zona inferior en y
+                    # 2. Este a lo largo de toda la imagen en x y en la ultima franja en y
+                    targetRotationReached = (not outbound_transform_y == blob_position and outbound_transform_xmin == blob_rotation) or outbound_transform_xmax == blob_rotation
                             
                 else: 
-                    # Rotate until ball found. Set max angular speed.
+                    # Retrocede un par de cm si la pelota estaba al lado de la camara la ultima vez que se vio
                     if nextToMe:
                         if not backwards_refpos:
                             backwards_refpos = Vector2(x,y)
@@ -470,22 +463,21 @@ class Robot:
                             v = -self.fv_max
                         else:
                             nextToMe = False
-                    
+                    # Rotate until ball found. Set max angular speed.
                     w = side * self.fw_max
-
                     # If the basket has been lowered, it will be raised again.
                     wb = int(bh > 5) * -1
                     targetRotationReached = False
     
                 # Robot speed
-                self.setSpeed(v, w)
-                self.setNestSpeed(wb)
-
-
-    def catch(self):
-        # Decide the strategy to catch the ball once you have reached the target position
-        _, _, _, bh = self.readOdometry()
-        if bh < 90:
-            self.setNestSpeed(1)
-        else:
-            self.setNestSpeed(0)
+                self.setSpeed(v, w, wb)
+    
+    def playTrayectory():
+        # Leer los sensores
+        STATE = "IDLE"
+        while True:
+            self.readOdometry()
+            if STATE == "FORWARD":
+                print("Hola")
+            elif STATE == "ROTATE":
+                print("Adios")

@@ -1,19 +1,17 @@
 from numbers import Number
-import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-R2D = 180 / math.pi
-D2R = math.pi / 180
 POSITION_ERROR = 0.5
 ROTATION_ERROR = 2
 
-# Vector2
+###########################################################
+# VECTOR2
+###########################################################
 class Vector2:
     # Constructor 
-    def __init__(self, x=0.0, y=0.0, h=1.0, name="", iter=None) -> None:
-        self.name = name
-        if iter and isinstance(iter, list) and len(iter) == 3:
+    def __init__(self, x=0.0, y=0.0, h=1.0, iter=None) -> None:
+        if iter is not None and len(iter) == 3:
             self.x = iter[0]
             self.y = iter[1]
             self.h = iter[2]
@@ -21,26 +19,38 @@ class Vector2:
             self.x = x
             self.y = y
             self.h = h
+        
+    @staticmethod
+    def zero(h = 0.0):
+        return Vector2(0,0,h)
+    
+    @staticmethod
+    def one(h = 0.0):
+        return Vector2(1,1,h)
+    
+    @staticmethod
+    def error(h = 0.0):
+        return Vector2(POSITION_ERROR, POSITION_ERROR, h).normalize()
 
     def abs(self) -> 'Vector2':
         """
             Absolute value of a vector
         """
-        return Vector2(abs(self.x), abs(self.y), self.h, self.name)
+        return Vector2(abs(self.x), abs(self.y), self.h)
     
-    def angle(self, v: 'Vector2', format = 'RAD'):
+    def angle(self, v: 'Vector2', format="RAD"):
         """
             Angle between two vectors
         """
-        res = math.acos((self * v) / (self.magnitude() * v.magnitude()))
-        if (format == "DEG"):
-            res *= R2D
-        return res
+        angle = np.arccos((self * v) / (self.magnitude() * v.magnitude()))
+        if format == "DEG":
+            angle = np.rad2deg(angle)
+        return angle
 
     def cross(self, v: 'Vector2'):
         """
-            Cartesian product of two vectors (in 2d, it is the
-            area of the parallelogram they define).
+            Cartesian product of two vectors (in 2d, represents the
+            projection of the first vector onto the second one).
         """
         return (self.x * v.y) - (self.y * v.x)
 
@@ -48,7 +58,7 @@ class Vector2:
         """
             Vector module
         """
-        return math.sqrt(self.x*self.x + self.y*self.y)
+        return np.sqrt(self.x*self.x + self.y*self.y)
 
     def normalize(self, magnitude = 1.0):
         """
@@ -60,7 +70,7 @@ class Vector2:
         """
             Rounded vector
         """
-        return Vector2(round(self.x, n), round(self.y, n), self.h, self.name)
+        return Vector2(round(self.x, n), round(self.y, n), self.h)
 
     def __add__(self, v: 'Vector2') -> 'Vector2':
         """
@@ -144,7 +154,7 @@ class Vector2:
 
     def __iter__(self):
         """
-            Representtation of a vector in a list
+            Representation of a vector in a list
         """
         yield self.x
         yield self.y
@@ -152,17 +162,183 @@ class Vector2:
  
     def __repr__(self) -> str:
         """
-            Representtation of a vector in screen
+            Representation of a vector in screen
         """
-        return self.name + "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
-    
-Vector2.zero  = Vector2(0,0,0)
-Vector2.one   = Vector2(1,1,1)
-Vector2.up    = Vector2(1,0,0)
-Vector2.right = Vector2(0,1,0)
-Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR, POSITION_ERROR).normalize()
+        return "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
 
-# Matrix2
+
+###########################################################
+# VECTOR3
+###########################################################
+class Vector3:
+    # Constructor
+    def __init__(self, x=0.0, y=0.0, z=0.0, h=0.0, iter=None):
+        if iter is not None and isinstance(iter, list) and len(iter) == 4:
+            self.x = iter[0]
+            self.y = iter[1]
+            self.z = iter[2]
+            self.h = iter[4]
+        else:
+            self.x = x
+            self.y = y
+            self.z = z
+            self.h = h
+
+    @staticmethod
+    def zero(h = 0.0):
+        return Vector3(0,0,0,h)
+    
+    @staticmethod
+    def one(h = 0.0):
+        return Vector3(1,1,1,h)
+    
+    @staticmethod
+    def error(h = 0.0):
+        return Vector3(POSITION_ERROR, POSITION_ERROR, POSITION_ERROR, h).normalize()
+    
+    def abs(self) -> 'Vector3':
+        """
+            Absolute value of a vector
+        """  
+        return Vector3(abs(self.x), abs(self.y), abs(self.z), self.h)
+
+    def angle(self, v: 'Vector3', format="RAD"):
+        """
+            Angle between two vectors
+        """
+        angle = np.arccos((self * v)/(self.magnitude() * v.magnitude()))
+        if format == "DEG":
+            angle = np.rad2deg(angle)
+        return angle
+
+    def cross(self, v: 'Vector3'):
+        """
+            Cross product of two vectors (in 3d, it represents a vector
+            perpendicular to the plane conformed by the first two vectors).
+        """
+        return Vector3(self.y*v.z - self.z*v.y, self.z*v.x - self.x*v.z, self.x*v.y - self.y*v.x, self.h)
+
+    def magnitude(self):
+        """
+            Vector module
+        """
+        return np.sqrt(self.x*self.x + self.y*self.y + self.z*self.z)
+    
+    def normalize(self, magnitude=1.0):
+        """
+            Normalize a vector
+        """
+        return self * (magnitude/self.magnitude())
+    
+    def round(self, n):
+        """
+            Rounded vector
+        """
+        return Vector3(round(self.x, n), round(self.y, n), round(self.z, n), self.h)
+
+    def __add__(self, v: 'Vector3') -> 'Vector3':
+        """
+            Vector addition
+        """
+        return Vector3(self.x + v.x, self.y + v.y, self.z + v.z, self.h)
+    
+    def __iadd__(self, v: 'Vector3') -> None:
+        """
+            Vector addition and assignation
+        """
+        self.x += v.x
+        self.y += v.y
+        self.z += v.z
+
+    def __sub__(self, v) -> 'Vector3':
+        """
+            Vector subtraction
+        """
+        return Vector3(self.x - v.x, self.y - v.y, self.z - v.z, self.h)
+    
+    def __isub__(self, v) -> 'Vector3':
+        """
+            Vector subtraction and assignation
+        """
+        self.x -= v.x
+        self.y -= v.y
+        self.z -= v.z
+
+    def __neg__(self) -> 'Vector3':
+        """
+            Vector sign inversion
+        """
+        return Vector3(-self.x, -self.y, -self.z, self.h)
+
+    def __mul__(self, other):
+        """
+            1. Scalar product
+            2. Scalar product between two vectors
+        """
+        if isinstance(other, Number):
+            return Vector3(self.x * other, self.y * other, self.z * other, self.h)
+        elif isinstance(other, Vector3):
+            return (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
+
+    def __rmul__(self, s) -> 'Vector3':
+        """
+            Scalar product (inverse order)
+        """
+        return self * s
+    
+    def __imul__(self, s) -> None:
+        """
+            Scalar product and assignation
+        """
+        self.x *= s
+        self.y *= s
+        self.z *= s
+
+    def __div__(self, s) -> 'Vector3':
+        """
+            Scalar division
+        """
+        return Vector3(self.x / s, self.y / s, self.z / s, self.h)
+
+    def __idiv__(self, s) -> None:
+        """
+            Scalar division and assignation
+        """
+        self.x /= s
+        self.y /= s
+        self.z /= s
+
+    def __eq__(self, v: 'Vector3') -> bool:
+        """
+            Vector equality
+        """
+        return self.x == v.x and self.y == v.y and self.z == v.z
+    
+    def __ne__(self, v: 'Vector3') -> bool:
+        """
+            Vector inequality
+        """
+        return not self == v
+    
+    def __iter__(self):
+        """
+            Representation of a vector in a list
+        """
+        yield self.x
+        yield self.y
+        yield self.z
+        yield self.h
+
+    def __repr__(self) -> str:
+        """
+            Representation of a vector in screen
+        """
+        return "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", z=" + str(round(self.z, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
+
+
+###########################################################
+# MATRIX2
+###########################################################
 class Matrix2:
     # Constructor
     def __init__(self, A):
@@ -173,44 +349,40 @@ class Matrix2:
                 self.A[i].append(A[i][j])
                 self.T[i].append(A[j][i])
 
-    def identity():
-        return Matrix2([
-            [1,0,0],
-            [0,1,0],
-            [0,0,1]
+    @staticmethod
+    def zero():
+        return Matrix3([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
         ])
 
-    def transform(translate: Vector2, rotate: float, format="DEG"):
-        if format == "DEG":
-            rotate = rotate * D2R
+    @staticmethod
+    def identity():
         return Matrix2([
-            [math.cos(rotate), -math.sin(rotate), translate.x],
-            [math.sin(rotate),  math.cos(rotate), translate.y],
-            [               0,                 0,           1]
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1]
+        ])
+
+    @staticmethod
+    def transform(translation: Vector2, rotation: float, format="DEG"):
+        if format == "DEG":
+            rotation = np.deg2rad(rotation)
+        return Matrix2([
+            [np.cos(rotation), -np.sin(rotation), translation.x],
+            [np.sin(rotation),  np.cos(rotation), translation.y],
+            [               0,                 0,             1]
         ])
     
     def __mul__(self: "Matrix2", other): 
         if isinstance(other, Number):
-            return Matrix2([
-                [x * other for x in self.A[0]],
-                [x * other for x in self.A[1]],
-                [x * other for x in self.A[2]]
-            ])
+            return Matrix2(np.array(self.A)*other)
         elif isinstance(other, Vector2):
-            v = list(other)
-            return Vector2(
-                sum(x * y for x, y in zip(self.A[0], v)),
-                sum(x * y for x, y in zip(self.A[1], v)),
-                sum(x * y for x, y in zip(self.A[2], v)),
-                other.name
-            )
+            return Vector2(iter=np.matmul(self.A, list(other)))
         elif isinstance(other, Matrix2):
-            A = []
-            for i in range(3):
-                A.append([])
-                for j in range(3):
-                    A[i].append(sum(x * y for x, y in zip(self.A[i], other.T[j])))
-            return Matrix2(A)
+            return Matrix2(np.matmul(self.A, other.A))
+
     
     def __repr__(self) -> str:
         """
@@ -221,25 +393,102 @@ class Matrix2:
             row_str.append("\n  [ " + str(round(self.A[i][0], 7)) + "," + str(round(self.A[i][1], 7)) + "," + str(round(self.A[i][2], 7)) + " ]")
         return "(" + row_str[0] + row_str[1] + row_str[2] + "\n)" 
 
-# Transform
+
+###########################################################
+# MATRIX3
+###########################################################
+class Matrix3:
+    # Constructor
+    def __init__(self, A):
+        self.A = [[],[],[],[]]
+        self.T = [[],[],[],[]]
+        for i in range(4):
+            for j in range(4):
+                self.A[i].append(A[i][j])
+                self.T[i].append(A[j][i])
+
+    @staticmethod
+    def zero():
+        return Matrix3([
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ])
+
+    @staticmethod
+    def identity():
+        return Matrix3([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
+    
+    @staticmethod
+    def transform(translation: Vector3, rotation: float, rotation_axis="X-AXIS", format="DEG"):
+        if format == "DEG":
+            rotation = np.deg2rad(rotation)
+        if rotation_axis == "X-AXIS":
+            return Matrix3([
+                [1,                0,                 0, translation.x],
+                [0, np.cos(rotation), -np.sin(rotation), translation.y],
+                [0, np.sin(rotation),  np.cos(rotation), translation.z],
+                [0,                0,                 0,             1]
+            ])
+        elif rotation_axis == "Y-AXIS":
+            return Matrix3([
+                [ np.cos(rotation), 0, np.sin(rotation), translation.x],
+                [                0, 1,                0, translation.y],
+                [-np.sin(rotation), 0, np.cos(rotation), translation.z],
+                [                0, 0,                0,             1]
+            ])
+        elif rotation_axis == "Z-AXIS":
+            return Matrix3([
+                [ np.cos(rotation), -np.sin(rotation), 0, translation.x],
+                [ np.sin(rotation),  np.cos(rotation), 0, translation.y],
+                [                0,                 0, 1, translation.z],
+                [                0,                 0, 0,             1]
+            ]) 
+
+    def __mul__(self: "Matrix3", other): 
+        if isinstance(other, Number):
+            return Matrix2(np.array(self.A)*other)
+        elif isinstance(other, Vector3):
+            return Vector3(iter=np.matmul(self.A, list(other)))
+        elif isinstance(other, Matrix3):
+            return Matrix3(np.matmul(self.A, other.A))   
+
+    def __repr__(self) -> str:
+        """
+            Representacion de una matriz en pantalla
+        """
+        row_str = []
+        for i in range(4):
+            row_str.append("\n  [ " + str(round(self.A[i][0], 7)) + "," + str(round(self.A[i][1], 7)) + "," + str(round(self.A[i][2], 7)) + "," + str(round(self.A[i][3], 7)) + " ]")
+        return "(" + row_str[0] + row_str[1] + row_str[2] + row_str[3] + "\n)" 
+
+
+###########################################################
+# TRANSFORM
+###########################################################
 class Transform:
     # Constructor
-    def __init__(self, localPosition, position, localRotation, rotation: float = None, forward: Vector2 = None, CUSTOM_POSITION_ERROR =None, CUSTOM_ROTATION_ERROR =None):
+    def __init__(self, position, rotation: float =None, forward: Vector2 =None, CUSTOM_POSITION_ERROR =None, CUSTOM_ROTATION_ERROR =None):
         """
             Transform class constructor
         """
         # Position
-        self.position       = position
-        self.localPosition  = localPosition
+        self.position = position
         self.POSITION_ERROR = POSITION_ERROR
-        if not CUSTOM_POSITION_ERROR is None:
+        if CUSTOM_POSITION_ERROR is not None:
             self.POSITION_ERROR = CUSTOM_POSITION_ERROR
         # Rotation and orientation
         if rotation is None and forward is None:
             self.rotation = 0
             self.forward  = Vector2(1,0)
             self.right    = Vector2(0,1)
-        elif not rotation is None:
+        elif rotation is not None:
             self.rotation = rotation % 360
             self.forward  = Matrix2.transform(Vector2.zero, self.rotation) * Vector2(1,0)
             self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
@@ -247,22 +496,20 @@ class Transform:
             self.rotation = forward.angle(Vector2(1, 0))
             self.forward  = self.forward * Matrix2.transform(Vector2.zero, 90)
         self.ROTATION_ERROR = ROTATION_ERROR
-        if not CUSTOM_ROTATION_ERROR is None:
+        if CUSTOM_ROTATION_ERROR is not None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # Area error
-        position_shift = Vector2.error # Vector2(self.POSITION_ERROR, self.POSITION_ERROR).normalize
+        position_shift = Vector2.error
         self.position_inf = position - position_shift
         self.position_sup = position + position_shift
         # Distance error
         self.lmin         = {
             "pass": False,
-            "last": math.inf
+            "last": np.inf
         }
         # Orientation error
         #self.rotation_inf = rotation - ROTATION_ERROR
         #self.rotation_sup = rotation + ROTATION_ERROR
-
-    
 
     # Equivalencia
     def __eq__(self, transform):
@@ -311,8 +558,8 @@ def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
     CV = C2 - C1
 
     # Angle between the centers of the circumferences
-    gamma = -math.atan2(CV.y, CV.x)
-    beta  =  math.asin((snd_radius-fst_radius)/axis_dist)
+    gamma = -np.arctan2(CV.y, CV.x)
+    beta  =  np.arcsin((snd_radius-fst_radius)/axis_dist)
     alpha =  gamma - beta
 
     # Calculate the tangent points 
@@ -324,17 +571,18 @@ def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
     #  =        =        =        =
     #     = x = ----------- = x =
     #     (4)                (3)
-    P1 = C1 + (fst_radius * Vector2(math.cos( (math.pi/2) - alpha), math.sin( (math.pi/2) - alpha)))
-    P2 = C2 + (snd_radius * Vector2(math.cos( (math.pi/2) - alpha), math.sin( (math.pi/2) - alpha)))
-    P3 = C2 + (snd_radius * Vector2(math.cos(-(math.pi/2) + alpha), math.sin(-(math.pi/2) + alpha)))
-    P4 = C1 + (fst_radius * Vector2(math.cos(-(math.pi/2) + alpha), math.sin(-(math.pi/2) + alpha)))
+    angle = np.pi/2
+    P1 = C1 + (fst_radius * Vector2(np.cos( (angle) - alpha), np.sin( (angle) - alpha)))
+    P2 = C2 + (snd_radius * Vector2(np.cos( (angle) - alpha), np.sin( (angle) - alpha)))
+    P3 = C2 + (snd_radius * Vector2(np.cos(-(angle) + alpha), np.sin(-(angle) + alpha)))
+    P4 = C1 + (fst_radius * Vector2(np.cos(-(angle) + alpha), np.sin(-(angle) + alpha)))
 
     # Plot if needed
     if plot:
-        ang = np.linspace(0, 2*np.pi, 100)
+        angle = np.linspace(0, 2*np.pi, 100)
         # Plot the circumferences
-        plt.plot(fst_radius * np.cos(ang) + C1.x, fst_radius * np.sin(ang) + C1.y, "b")
-        plt.plot(snd_radius * np.cos(ang) + C2.x, snd_radius * np.sin(ang) + C2.y, "g")
+        plt.plot(fst_radius * np.cos(angle) + C1.x, fst_radius * np.sin(angle) + C1.y, "b")
+        plt.plot(snd_radius * np.cos(angle) + C2.x, snd_radius * np.sin(angle) + C2.y, "g")
         # Plot the circumferences centers
         plt.plot(C1.x, C1.y, "bo")
         plt.plot(C2.x, C2.y, "go")
