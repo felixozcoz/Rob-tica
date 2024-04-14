@@ -512,7 +512,7 @@ class Matrix3:
 ###########################################################
 class Transform:
     # Constructor
-    def __init__(self, position, rotation: float =None, forward: Vector2 =None, CUSTOM_POSITION_ERROR =None, CUSTOM_ROTATION_ERROR =None):
+    def __init__(self, position: Vector2, rotation: float =None, forward: Vector2 =None, CUSTOM_POSITION_ERROR =None, CUSTOM_ROTATION_ERROR =None):
         """
             Transform class constructor
         """
@@ -539,7 +539,7 @@ class Transform:
         if CUSTOM_ROTATION_ERROR is not None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # Area error
-        position_shift = self.VECTOR_ERROR
+        position_shift    = self.VECTOR_ERROR
         self.position_inf = position - position_shift
         self.position_sup = position + position_shift
         # Distance error

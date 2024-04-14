@@ -2,13 +2,15 @@
 # -*- coding: UTF-8 -*-
 from __future__ import print_function # use python 3 syntax but make it compatible with python 2
 from __future__ import division       #                           ''
+from geometry import Vector2
+from matplotlib import animation
 
 import bisect
 import matplotlib.pyplot as plt
-from matplotlib import animation
 import numpy as np
 import re
 import time
+
 
 class Map:
     # Constructor
@@ -318,7 +320,6 @@ class Map:
 
         return True
 
-
     # aux functions to display the current CostMatrix on the map
     def _drawCostMatrix(self):
         """
@@ -391,7 +392,6 @@ class Map:
         """ Overloaded version of drawMap to include robot positions """
         return self.drawMap(robotPosVectors=robotPosVectors, saveSnapshot=saveSnapshot)
 
-
     def drawMap(self, robotPosVectors = None, saveSnapshot=False):
         """
         Generates a plot with currently loaded map status
@@ -446,6 +446,10 @@ class Map:
     #    return a_list[:i] + [a_node] + a_list[i:]
 
     # Insertar un nodo para el A*
+    def getPath(self, index):
+        cell = self.path[index]
+        return cell, Vector2((1+cell[1])*self.halfCell, (1+cell[0])*self.halfCell, 1)
+
     def insert(self, a_list, a_node: dict):
         if not a_list:
             return [a_node]
