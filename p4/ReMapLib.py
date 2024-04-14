@@ -47,7 +47,10 @@ class Map:
         if len(header) != 3:
             print("Error -- El encabezado '" + ' '.join(header) + "' tiene un formato incorrecto...")
             exit(1)
-        self.sizeX, self.sizeY, self.sizeCell = int(header[0]), int(header[1]), int(header[2])//10
+        self.sizeX = int(header[0])
+        self.sizeY = int(header[1])
+        self.sizeCell = int(header[2])//10
+        self.halfCell = self.sizeCell//2
 
         # Obtener conexiones entre celdas
         self.connectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))

@@ -19,18 +19,6 @@ class Vector2:
             self.x = x
             self.y = y
             self.h = h
-        
-    @staticmethod
-    def zero(h = 0.0):
-        return Vector2(0,0,h)
-    
-    @staticmethod
-    def one(h = 0.0):
-        return Vector2(1,1,h)
-    
-    @staticmethod
-    def error(h = 0.0):
-        return Vector2(POSITION_ERROR, POSITION_ERROR, h).normalize()
 
     def abs(self) -> 'Vector2':
         """
@@ -45,7 +33,8 @@ class Vector2:
         angle = np.arccos((self * v) / (self.magnitude() * v.magnitude()))
         if format == "DEG":
             angle = np.rad2deg(angle)
-        return angle
+
+        return np.sign(self.cross(v)) * angle
 
     def cross(self, v: 'Vector2'):
         """
@@ -65,6 +54,11 @@ class Vector2:
             Normalize a vector
         """
         return self * (magnitude/self.magnitude())
+    
+    def rotate(self, angle, format="DEG"):
+        if format == "DEG":
+            angle = np.deg2rad(angle)
+        return Vector2(self.x*np.cos(angle) - self.y*np.sin(angle), self.x*np.sin(angle) + self.y*np.cos(angle), self.h)
 
     def round(self, n):
         """
@@ -76,7 +70,7 @@ class Vector2:
         """
             Vector addition
         """
-        return Vector2(self.x + v.x, self.y + v.y)
+        return Vector2(self.x + v.x, self.y + v.y, np.floor((self.h + v.h)/2))
 
     def __iadd__(self, v: 'Vector2') -> None:
         """
@@ -84,12 +78,13 @@ class Vector2:
         """
         self.x += v.x
         self.y += v.y
+        self.h  = np.floor((self.h + v.h)/2)
 
     def __sub__(self, v) -> 'Vector2':
         """
             Vector subtraction
         """
-        return Vector2(self.x - v.x, self.y - v.y)
+        return Vector2(self.x - v.x, self.y - v.y, abs(self.h - v.h))
 
     def __isub__(self, v) -> 'Vector2':
         """
@@ -97,12 +92,13 @@ class Vector2:
         """
         self.x -= v.x
         self.y -= v.y
+        self.h  = abs(self.h - v.h)
 
     def __neg__(self) -> 'Vector2':
         """
             Vector sign inversion
         """
-        return Vector2(-self.x, -self.y, self.h, self.name)
+        return Vector2(-self.x, -self.y, self.h)
 
     def __mul__(self, other):
         """
@@ -110,7 +106,7 @@ class Vector2:
             2. Scalar product between two vectors
         """
         if isinstance(other, Number):
-            return Vector2(self.x * other, self.y * other, self.h, self.name)
+            return Vector2(self.x * other, self.y * other, self.h)
         elif isinstance(other, Vector2):
             return (self.x * other.x) + (self.y * other.y)
 
@@ -131,7 +127,7 @@ class Vector2:
         """
             Scalar division
         """
-        return Vector2(self.x / s, self.y / s, self.h, self.name)
+        return Vector2(self.x / s, self.y / s, self.h)
 
     def __idiv__(self, s) -> None:
         """
@@ -167,17 +163,33 @@ class Vector2:
         return "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
 
 
+# Vector del eje -Y
+Vector2.down = Vector2(0,-1)
+# Vector error
+Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR).normalize() 
+# Vector del eje -X
+Vector2.left = Vector2(-1,0)
+# Vector unidad
+Vector2.one = Vector2(1,1)
+# Vector del eje +X
+Vector2.right = Vector2(1,0)
+# Vector del eje +Y
+Vector2.up = Vector2(0,1)
+# Vector nulo
+Vector2.zero = Vector2(0,0)
+
+
 ###########################################################
 # VECTOR3
 ###########################################################
 class Vector3:
     # Constructor
     def __init__(self, x=0.0, y=0.0, z=0.0, h=0.0, iter=None):
-        if iter is not None and isinstance(iter, list) and len(iter) == 4:
+        if iter is not None and len(iter) == 4:
             self.x = iter[0]
             self.y = iter[1]
             self.z = iter[2]
-            self.h = iter[4]
+            self.h = iter[3]
         else:
             self.x = x
             self.y = y
@@ -240,7 +252,7 @@ class Vector3:
         """
             Vector addition
         """
-        return Vector3(self.x + v.x, self.y + v.y, self.z + v.z, self.h)
+        return Vector3(self.x + v.x, self.y + v.y, self.z + v.z, np.floor((self.h + v.h)/2))
     
     def __iadd__(self, v: 'Vector3') -> None:
         """
@@ -249,12 +261,13 @@ class Vector3:
         self.x += v.x
         self.y += v.y
         self.z += v.z
+        self.h  = np.floor((self.h + v.h)/2)
 
     def __sub__(self, v) -> 'Vector3':
         """
             Vector subtraction
         """
-        return Vector3(self.x - v.x, self.y - v.y, self.z - v.z, self.h)
+        return Vector3(self.x - v.x, self.y - v.y, self.z - v.z, abs(self.h - v.h))
     
     def __isub__(self, v) -> 'Vector3':
         """
@@ -263,6 +276,7 @@ class Vector3:
         self.x -= v.x
         self.y -= v.y
         self.z -= v.z
+        self.h  = abs(self.h - v.h)
 
     def __neg__(self) -> 'Vector3':
         """
@@ -329,12 +343,36 @@ class Vector3:
         yield self.z
         yield self.h
 
+    def __vector2__(self) -> Vector2:
+        return Vector2(self.x, self.y, self.h)
+
     def __repr__(self) -> str:
         """
             Representation of a vector in screen
         """
         return "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", z=" + str(round(self.z, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
 
+def vector2(v: Vector3):
+    return Vector2(v.x, v.y, v.h)
+
+# Vector del eje -Z
+Vector3.back = Vector3(0,0,-1) 
+# Vector del eje -Y
+Vector3.down = Vector3(0,-1,0)
+# Vector error
+Vector3.error = Vector3(POSITION_ERROR, POSITION_ERROR, POSITION_ERROR).normalize() 
+# Vector del eje +Z
+Vector3.forward = Vector3(0,0,1)
+# Vector del eje -X
+Vector3.left = Vector3(-1,0,0)
+# Vector unidad
+Vector3.one = Vector3(1,1,1)
+# Vector del eje +X
+Vector3.right = Vector3(1,0,0)
+# Vector del eje +Y
+Vector3.up = Vector3(0,1,0)
+# Vector nulo
+Vector3.zero = Vector3(0,0,0)
 
 ###########################################################
 # MATRIX2
@@ -481,25 +519,27 @@ class Transform:
         # Position
         self.position = position
         self.POSITION_ERROR = POSITION_ERROR
+        self.VECTOR_ERROR   = Vector2.error
         if CUSTOM_POSITION_ERROR is not None:
             self.POSITION_ERROR = CUSTOM_POSITION_ERROR
+            #self.VECTOR_ERROR   = Vector2(CUSTOM_POSITION_ERROR, CUSTOM_POSITION_ERROR, 0).normalize()
         # Rotation and orientation
         if rotation is None and forward is None:
             self.rotation = 0
-            self.forward  = Vector2(1,0)
-            self.right    = Vector2(0,1)
+            self.forward  = Vector2.right
+            self.right    = Vector2.up
         elif rotation is not None:
             self.rotation = rotation % 360
-            self.forward  = Matrix2.transform(Vector2.zero, self.rotation) * Vector2(1,0)
+            self.forward  = Matrix2.transform(Vector2.zero, self.rotation) * Vector2.right
             self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
         else:
-            self.rotation = forward.angle(Vector2(1, 0))
+            self.rotation = forward.angle(Vector2.right)
             self.forward  = self.forward * Matrix2.transform(Vector2.zero, 90)
         self.ROTATION_ERROR = ROTATION_ERROR
         if CUSTOM_ROTATION_ERROR is not None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # Area error
-        position_shift = Vector2.error
+        position_shift = self.VECTOR_ERROR
         self.position_inf = position - position_shift
         self.position_sup = position + position_shift
         # Distance error
