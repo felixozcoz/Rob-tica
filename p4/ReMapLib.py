@@ -337,7 +337,6 @@ class Map:
         # "center" of each cell
         for i in range(0, self.sizeY):
             for j in range(0, self.sizeX):
-                    print([i,j])
                     cx= j*self.sizeCell + self.sizeCell/2.
                     cy= i*self.sizeCell + self.sizeCell/2.
                     X = np.array([cx])
