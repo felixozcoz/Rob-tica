@@ -335,15 +335,15 @@ class Map:
             return False
 
         # "center" of each cell
-        for i in range(0, self.sizeX):
-            for j in range(0, self.sizeY):
+        for i in range(0, self.sizeY):
+            for j in range(0, self.sizeX):
+                    print([i,j])
                     cx= j*self.sizeCell + self.sizeCell/2.
                     cy= i*self.sizeCell + self.sizeCell/2.
                     X = np.array([cx])
                     Y = np.array([cy])
                     cost = self.costMatrix[i,j]
                     self.current_ax.text(X, Y, str(cost))
-
 
         plt.axis('equal')
 
