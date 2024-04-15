@@ -70,6 +70,8 @@ class Map:
             rows += 1
         if not rows == self.connectionMatrix.shape[0]:
             print("Error -- El mapa tiene el formato incorrecto")
+        # Invertimos para que las coordenadas del mapa sean las mismas que las de la matriz
+        self.connectionMatrix = self.connectionMatrix[::-1]
 
         # Obtener la matriz de costes y el mejor camino
         self.costMatrix = np.zeros((self.sizeY, self.sizeX))
@@ -294,11 +296,10 @@ class Map:
         Y = np.array([0, 0,          self.sizeY, self.sizeY, 0]) * self.sizeCell
         self.current_ax.plot(X, Y, self.mapLineStyle)
 
-        auxConnectionMatrix = self.connectionMatrix[::-1]
         # "vertical" walls
         for i in range(2, 2*self.sizeX, 2):
             for j in range(1, 2*self.sizeY, 2):
-                if not auxConnectionMatrix[j,i]:
+                if not self.connectionMatrix[j,i]:
                     # paint "right" wall from cell (i-1)/2, (j-1)/2
                     cx= np.floor((i-1)/2)
                     cy= np.floor((j-1)/2)
@@ -309,7 +310,7 @@ class Map:
         # "horizontal" walls
         for j in range(2, 2*self.sizeY, 2):
             for i in range(1, 2*self.sizeX, 2):
-                if not auxConnectionMatrix[j,i]:
+                if not self.connectionMatrix[j,i]:
                     # paint "top" wall from cell (i-1)/2, (j-1)/2
                     cx=np.floor((i-1)/2)
                     cy=np.floor((j-1)/2)
@@ -330,7 +331,6 @@ class Map:
                 call drawMap first to create a plot where to draw")
             return False
 
-        auxCostMatrix = self.costMatrix[::-1]
         # "center" of each cell
         for i in range(0, self.sizeX):
             for j in range(0, self.sizeY):
@@ -338,7 +338,7 @@ class Map:
                     cy= i*self.sizeCell + self.sizeCell/2.
                     X = np.array([cx])
                     Y = np.array([cy])
-                    cost = auxCostMatrix[i,j]
+                    cost = self.costMatrix[i,j]
                     self.current_ax.text(X, Y, str(cost))
 
 
@@ -471,25 +471,29 @@ class Map:
         """
         map_str  = "MAPA '" + self.name + "'\n"
         map_str += "- Dimensiones: " + str(self.sizeX) + " x " + str(self.sizeY) + " / " + str(self.sizeCell) + "cm\n"  
-        map_str += "- Costes:\n" + str(self.costMatrix) + "\n"
+        map_str += "- Costes:\n" + str(self.costMatrix[::-1]) + "\n"
         map_str += "- Camino encontrado:\n"
+
+        map_repr = []
         for i, row in enumerate(self.connectionMatrix):
+            row_str = ""
             for j, connection in enumerate(row):
                 if not connection:
-                    map_str += "■ "
+                    row_str += "■ "
                 else:
                     if i%2==1 and j%2==1:
                         cell = [(i-1)//2,(j-1)//2]
                         if cell in self.path:
                             if cell == self.goal:
-                                map_str += "⚑ "
+                                row_str += "⚑ "
                             elif cell == self.start:
-                                map_str += "○ "
+                                row_str += "○ "
                             else:
-                                map_str += "● "
+                                row_str += "● "
                         else:
-                            map_str += ". "
+                            row_str += ". "
                     else:
-                        map_str += "□ "
-            map_str += "\n"
+                        row_str += "□ "
+            map_repr.insert(0, row_str)
+        map_str += "\n".join(map_repr)
         return map_str

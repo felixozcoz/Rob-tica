@@ -51,7 +51,7 @@ class Map2D:
             print("Map %s loaded ok" % map_description_file)
         else:
             print("Map %s NOT loaded" % map_description_file)
-
+        print(self.connectionMatrix)
 
     # from python docs: https://docs.python.org/3/tutorial/classes.html#private-variables
     # “Private” instance variables that cannot be accessed except from inside an object don’t exist in Python.
