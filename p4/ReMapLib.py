@@ -58,6 +58,7 @@ class Map:
         self.connectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
         rows = 0
         while rows < self.connectionMatrix.shape[0]:
+            rows += 1
             # Se obtienen los valores de la fila actual
             connections = mapF.readline().split()
             if len(connections) == 0:
@@ -66,12 +67,9 @@ class Map:
                 print("Warning -- La linea " + str(rows) + " tiene dimensiones incorrectas")
                 continue
             # Se guarda el valor obtenido
-            self.connectionMatrix[rows] = [int(e) for e in connections]
-            rows += 1
+            self.connectionMatrix[-rows] = [int(e) for e in connections]
         if not rows == self.connectionMatrix.shape[0]:
             print("Error -- El mapa tiene el formato incorrecto")
-        # Invertimos para que las coordenadas del mapa sean las mismas que las de la matriz
-        self.connectionMatrix = self.connectionMatrix[::-1]
 
         # Obtener la matriz de costes y el mejor camino
         self.costMatrix = np.zeros((self.sizeY, self.sizeX))
@@ -144,7 +142,7 @@ class Map:
         """
         # https://medium.com/@nicholas.w.swift/easy-a-star-pathfinding-7e6689c7f7b2
         # En este metodo los nodos cambian, necesitamos guardar el padre para poder
-        # hacer backtracking y obtener el camino.
+        # hacer backtracking y obtener el camino. 
         border = [{
             "parent": None,
             "coords": self.start
@@ -178,11 +176,11 @@ class Map:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
     def redo_path_4n(self, position):
-        # Si quereis os apañais vosotros y si no ya lo haré yo, pero es bastante facil
-        # Hay que basarse en propagate y find_path, no tiene mucho misterio
         self.start = position
+        self.path  = []
         self.propagate_4n()
         self.find_path_4n()
+
 
     # 8-VECINDAD
     # Propagacion de costes
@@ -267,12 +265,12 @@ class Map:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
     def redo_path_8n(self, position):
-        # Si quereis os apañais vosotros y si no ya lo haré yo, pero es bastante facil
-        # Hay que basarse en propagate y find_path, no tiene mucho misterio
         self.start = position
+        self.path  = []
         self.propagate_8n()
         self.find_path_8n()
     
+
     # DRAW MAP
     def _drawGrid(self):
         """
@@ -287,8 +285,8 @@ class Map:
         plt.grid(True)
         plt.tight_layout()
 
-        x_t = range(0, (self.sizeX+1)*40, 40)
-        y_t = range(0, (self.sizeY+1)*40, 40)
+        x_t = range(0, (self.sizeX+1)*self.sizeCell, self.sizeCell)
+        y_t = range(0, (self.sizeY+1)*self.sizeCell, self.sizeCell)
         x_labels = [str(n) for n in x_t]
         y_labels = [str(n) for n in y_t]
         plt.xticks(x_t, x_labels)
@@ -335,13 +333,13 @@ class Map:
             return False
 
         # "center" of each cell
-        for i in range(0, self.sizeY):
-            for j in range(0, self.sizeX):
-                    cx= j*self.sizeCell + self.sizeCell/2.
-                    cy= i*self.sizeCell + self.sizeCell/2.
+        for i in range(0, self.sizeX):
+            for j in range(0, self.sizeY):
+                    cx= i*self.sizeCell + self.sizeCell/2.
+                    cy= j*self.sizeCell + self.sizeCell/2.
                     X = np.array([cx])
                     Y = np.array([cy])
-                    cost = self.costMatrix[i,j]
+                    cost = self.costMatrix[j,i]
                     self.current_ax.text(X, Y, str(cost))
 
         plt.axis('equal')
@@ -390,7 +388,7 @@ class Map:
         return True
 
     def drawMapWithRobotLocations(self,
-                                  robotPosVectors=[ [0,0,0], [600, 600, 3.14] ],
+                                  robotPosVectors=[ [0,0,0], [60, 60, 0] ],
                                   saveSnapshot=True):
         """ Overloaded version of drawMap to include robot positions """
         return self.drawMap(robotPosVectors=robotPosVectors, saveSnapshot=saveSnapshot)
@@ -423,11 +421,11 @@ class Map:
             # plot last robot position with solid green line
             self._drawRobot(loc_x_y_th=loc, robotPlotStyle='g-')
 
-        if saveSnapshot:
-            ts = str(time.time())
-            snapshot_name = "mapstatus_"+ts+"_F"+str(current_fig.number)+".png"
-            print("saving %s " % snapshot_name)
-            plt.savefig(snapshot_name)
+        #if saveSnapshot:
+        #    ts = str(time.time())
+        #    snapshot_name = "mapstatus_"+ts+"_F"+str(current_fig.number)+".png"
+        #    print("saving %s " % snapshot_name)
+        #    plt.savefig(snapshot_name)
 
         if self.verbose:
             current_fig.set_visible(True)
@@ -448,11 +446,11 @@ class Map:
     #            break
     #    return a_list[:i] + [a_node] + a_list[i:]
 
-    # Insertar un nodo para el A*
     def getPath(self, index):
-        cell = self.path[index]
+        cell = self.path[-index]
         return cell, Vector2((1+cell[1])*self.halfCell, (1+cell[0])*self.halfCell, 1)
 
+    # Insertar un nodo para el A*
     def insert(self, a_list, a_node: dict):
         if not a_list:
             return [a_node]
@@ -473,29 +471,25 @@ class Map:
         """
         map_str  = "MAPA '" + self.name + "'\n"
         map_str += "- Dimensiones: " + str(self.sizeX) + " x " + str(self.sizeY) + " / " + str(self.sizeCell) + "cm\n"  
-        map_str += "- Costes:\n" + str(self.costMatrix[::-1]) + "\n"
+        map_str += "- Costes:\n" + str(self.costMatrix) + "\n"
         map_str += "- Camino encontrado:\n"
-
-        map_repr = []
-        for i, row in enumerate(self.connectionMatrix):
-            row_str = ""
+        for i, row in reversed(list(enumerate(self.connectionMatrix))):
             for j, connection in enumerate(row):
                 if not connection:
-                    row_str += "■ "
+                    map_str += "■ "
                 else:
                     if i%2==1 and j%2==1:
                         cell = [(i-1)//2,(j-1)//2]
                         if cell in self.path:
                             if cell == self.goal:
-                                row_str += "⚑ "
+                                map_str += "⚑ "
                             elif cell == self.start:
-                                row_str += "○ "
+                                map_str += "○ "
                             else:
-                                row_str += "● "
+                                map_str += "● "
                         else:
-                            row_str += ". "
+                            map_str += ". "
                     else:
-                        row_str += "□ "
-            map_repr.insert(0, row_str)
-        map_str += "\n".join(map_repr)
+                        map_str += "□ "
+            map_str += "\n"
         return map_str

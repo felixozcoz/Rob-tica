@@ -10,7 +10,7 @@ ROTATION_ERROR = 2
 ###########################################################
 class Vector2:
     # Constructor 
-    def __init__(self, x=0.0, y=0.0, h=1.0, iter=None) -> None:
+    def __init__(self, x=0.0, y=0.0, h=0.0, iter=None) -> None:
         if iter is not None and len(iter) == 3:
             self.x = iter[0]
             self.y = iter[1]

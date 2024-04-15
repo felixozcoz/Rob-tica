@@ -95,6 +95,6 @@ if __name__ == "__main__":
     # Add as many args as you need ...
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mapfile", help="path to find map file",
-                        default="mapa1.txt")
+                        default="maps/mapa1.txt")
     args = parser.parse_args()
     main(args)

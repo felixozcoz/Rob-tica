@@ -1,5 +1,5 @@
 import numpy as np
-from geometry import vector2, Vector2, Vector3, Matrix3, Transform
+from geometry import vector2, Vector2, Vector3, Matrix2, Matrix3, Transform
 from pynput import keyboard
 from pynput.keyboard import Key
 from ReMapLib import Map
@@ -77,6 +77,92 @@ def simulate_robot(key):
 print("---------------------------------------------------")
 rMap = Map("maps/mapa3.txt", [0,0], [4,7])
 np.set_printoptions(precision=2, suppress=True)
+#rMap.drawMapWithRobotLocations()
+
+gref = [20,20,-90]
+gfor = Vector2.right
+grig = Vector2.up
+
+ltow = Matrix2.transform(Vector2(gref[0], gref[1], 0), gref[2])
+lref = [0,0,0]
+lpos = Vector2(lref[0], lref[1], 1)
+lfor = Vector2.right
+lrig = Vector2.up
+
+print("POSICION LOCAL:", lpos)
+print("BASE LOCAL:", lfor, "|", lrig)
+print("POSICION GLOBAL:", ltow * lpos)
+print("BASE GLOBAL (L):", ltow*lfor, "|", ltow*lrig)
+print("BASE GLOBAL (G):", gfor, "|", grig)
+
+# ESTO ES LO QUE VA A SER
+step  = 1
+state = "RECOGNITION"
+cell  = rMap.start
+prev_pos = Vector2.zero, Vector2.zero
+
+
+x,y,th = 0,0,0 
+
+
+def test(key):
+    global x, y, th
+
+    if key == Key.right:
+        th = (th+90) % 360
+    elif key == Key.left:
+        th = (th-90) % 360
+    elif key == Key.up:
+        if (th ==  0):
+            x += 1
+        if (th == 180):
+            x -= 1
+        if (th == 90):
+            y += 1
+        if  (th == 270):
+            y -= 1
+    elif key == Key.down:
+        if (th ==  0):
+            x -= 1
+        if (th == 180):
+            x += 1
+        if (th == 90):
+            y -= 1
+        if  (th == 270):
+            y += 1
+    elif key == Key.esc:
+        exit()
+    
+
+    lpos = Vector2(x, y, 1)
+    lfor = Vector2.right.rotate(th)
+    print(lpos, lfor)
+    #gpos = ltow * robot.forward
+    #if state == "RECOGNITION":
+    #    if cell == rMap.goal:
+    #        return
+    #    # Aqui usais el sensor y recalcular el nuevo path con el nuevo mapa
+    #    # rMap.redo_path_8n()
+    #    current_cell, next_pos = rMap.getPath(step)
+    #    position_transform = Transform(next_pos, 0)
+    #    rotation_transform = Transform(next_pos, gfor.angle(next_pos - prev_pos))
+    #    prev_pos = next_pos
+    #elif state == "ROTATE":
+    #    if tra
+
+with keyboard.Listener(on_release=test) as listener:
+    listener.join()
+
+
+# [0,1]
+# |
+# .-- [1,0]
+# 
+# .-- [1,0]
+# |
+# [0,-1]
+
+exit(0)
 
 # GLOBAL x,y,th
 gref = [20,20,90]
@@ -99,17 +185,17 @@ ltowD = [
     [0,           0,          0, 1]
 ]
 
-print(np.array(ltowA.A))
-print()
-print(np.array(ltowC))
-print()
-print()
-print(np.array(ltowB.A))
-print()
-print(np.array(ltowD))
-print()
-print()
-ltow = np.matmul(ltowC, ltowD)
+#print(np.array(ltowA.A))
+#print()
+#print(np.array(ltowC))
+#print()
+#print()
+#print(np.array(ltowB.A))
+#print()
+#print(np.array(ltowD))
+#print()
+#print()
+#ltow = np.matmul(ltowC, ltowD)
 ltow = ltowA * ltowB
 
 # Robot
@@ -176,7 +262,3 @@ print(vector2(gfor).rotate(angle))
 #         if transform == position_transform:
 #             step += 1
 #             state = "RECOGNITION"
-
-# No tocar, es un test.
-#with keyboard.Listener(on_release=simulate_robot) as listener:
-#    listener.join()
