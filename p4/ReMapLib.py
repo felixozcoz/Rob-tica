@@ -269,7 +269,6 @@ class Map:
     
 
     # DRAW MAP
-    # No estan adaptadas a la nueva estructura asi que no tiene sentido usarlas ahora.
     def _drawGrid(self):
         """
         aux function to create a grid with map lines
@@ -283,8 +282,8 @@ class Map:
         plt.grid(True)
         plt.tight_layout()
 
-        x_t = range(0, (self.sizeX+1)*400, 400)
-        y_t = range(0, (self.sizeY+1)*400, 400)
+        x_t = range(0, (self.sizeX+1)*40, 40)
+        y_t = range(0, (self.sizeY+1)*40, 40)
         x_labels = [str(n) for n in x_t]
         y_labels = [str(n) for n in y_t]
         plt.xticks(x_t, x_labels)
@@ -295,10 +294,11 @@ class Map:
         Y = np.array([0, 0,          self.sizeY, self.sizeY, 0]) * self.sizeCell
         self.current_ax.plot(X, Y, self.mapLineStyle)
 
+        auxConnectionMatrix = self.connectionMatrix[::-1]
         # "vertical" walls
         for i in range(2, 2*self.sizeX, 2):
             for j in range(1, 2*self.sizeY, 2):
-                if not self.connectionMatrix[i,j]:
+                if not auxConnectionMatrix[j,i]:
                     # paint "right" wall from cell (i-1)/2, (j-1)/2
                     cx= np.floor((i-1)/2)
                     cy= np.floor((j-1)/2)
@@ -309,7 +309,7 @@ class Map:
         # "horizontal" walls
         for j in range(2, 2*self.sizeY, 2):
             for i in range(1, 2*self.sizeX, 2):
-                if not self.connectionMatrix[i,j]:
+                if not auxConnectionMatrix[j,i]:
                     # paint "top" wall from cell (i-1)/2, (j-1)/2
                     cx=np.floor((i-1)/2)
                     cy=np.floor((j-1)/2)
@@ -330,14 +330,15 @@ class Map:
                 call drawMap first to create a plot where to draw")
             return False
 
+        auxCostMatrix = self.costMatrix[::-1]
         # "center" of each cell
         for i in range(0, self.sizeX):
             for j in range(0, self.sizeY):
-                    cx= i*self.sizeCell + self.sizeCell/2.
-                    cy= j*self.sizeCell + self.sizeCell/2.
+                    cx= j*self.sizeCell + self.sizeCell/2.
+                    cy= i*self.sizeCell + self.sizeCell/2.
                     X = np.array([cx])
                     Y = np.array([cy])
-                    cost = self.costMatrix[i,j]
+                    cost = auxCostMatrix[i,j]
                     self.current_ax.text(X, Y, str(cost))
 
 
@@ -360,9 +361,9 @@ class Map:
             return False
 
         if small:
-            largo, corto, descentre = [80, 50, 5]
+            largo, corto, descentre = [8, 5, 1]
         else:
-            largo, corto, descentre = [160, 100, 10]
+            largo, corto, descentre = [16, 10, 1]
 
         trasera_dcha=np.array([-largo,-corto,1])
         trasera_izda=np.array([-largo,corto,1])
