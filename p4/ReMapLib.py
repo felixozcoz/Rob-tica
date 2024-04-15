@@ -144,7 +144,7 @@ class Map:
         """
         # https://medium.com/@nicholas.w.swift/easy-a-star-pathfinding-7e6689c7f7b2
         # En este metodo los nodos cambian, necesitamos guardar el padre para poder
-        # hacer backtracking y obtener el camino. 
+        # hacer backtracking y obtener el camino.
         border = [{
             "parent": None,
             "coords": self.start
@@ -177,10 +177,12 @@ class Map:
                     if self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
-    def redo_path_4n(self):
+    def redo_path_4n(self, position):
         # Si quereis os apañais vosotros y si no ya lo haré yo, pero es bastante facil
         # Hay que basarse en propagate y find_path, no tiene mucho misterio
-        return
+        self.start = position
+        self.propagate_4n()
+        self.find_path_4n()
 
     # 8-VECINDAD
     # Propagacion de costes
@@ -264,12 +266,13 @@ class Map:
                     if not (dx==0 and dy==0) and self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
-    def redo_path_8n(self):
+    def redo_path_8n(self, position):
         # Si quereis os apañais vosotros y si no ya lo haré yo, pero es bastante facil
         # Hay que basarse en propagate y find_path, no tiene mucho misterio
-        return
+        self.start = position
+        self.propagate_8n()
+        self.find_path_8n()
     
-
     # DRAW MAP
     def _drawGrid(self):
         """
