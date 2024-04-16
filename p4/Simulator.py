@@ -1,5 +1,5 @@
 import numpy as np
-from geometry import vector2, Vector2, Vector3, Matrix2, Matrix3, Transform
+from geometry import Vector2, Matrix2, Transform
 from pynput import keyboard
 from pynput.keyboard import Key
 from ReMapLib import Map
@@ -75,11 +75,11 @@ def simulate_robot(key):
 #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
 
 print("---------------------------------------------------")
-rMap = Map("maps/mapa3.txt", [0,0], [4,7])
+rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=4)
 np.set_printoptions(precision=2, suppress=True)
 #rMap.drawMapWithRobotLocations()
 
-gref = [20,20,-90]
+gref = [20,20,90]
 gfor = Vector2.right
 grig = Vector2.up
 
@@ -89,24 +89,24 @@ lpos = Vector2(lref[0], lref[1], 1)
 lfor = Vector2.right
 lrig = Vector2.up
 
-print("POSICION LOCAL:", lpos)
-print("BASE LOCAL:", lfor, "|", lrig)
-print("POSICION GLOBAL:", ltow * lpos)
-print("BASE GLOBAL (L):", ltow*lfor, "|", ltow*lrig)
-print("BASE GLOBAL (G):", gfor, "|", grig)
+#print("POSICION LOCAL:", lpos)
+#print("BASE LOCAL:", lfor, "|", lrig)
+#print("POSICION GLOBAL:", ltow * lpos)
+#print("BASE GLOBAL (L):", ltow*lfor, "|", ltow*lrig)
+#print("BASE GLOBAL (G):", gfor, "|", grig)
 
 # ESTO ES LO QUE VA A SER
-step  = 1
-state = "RECOGNITION"
-cell  = rMap.start
-prev_pos = Vector2.zero, Vector2.zero
-
-
+position_transform, rotation_transform = None, None
+prev_i, prev_cell, prev_pos = rMap.travel()
+state  = "RECOGN"
 x,y,th = 0,0,0 
 
-
 def test(key):
+    global rMap
     global x, y, th
+    global state
+    global prev_i, prev_cell, prev_pos
+    global position_transform, rotation_transform
 
     if key == Key.right:
         th = (th+90) % 360
@@ -133,34 +133,46 @@ def test(key):
     elif key == Key.esc:
         exit()
     
-
     lpos = Vector2(x, y, 1)
     lfor = Vector2.right.rotate(th)
-    print(lpos, lfor)
-    #gpos = ltow * robot.forward
-    #if state == "RECOGNITION":
-    #    if cell == rMap.goal:
-    #        return
-    #    # Aqui usais el sensor y recalcular el nuevo path con el nuevo mapa
-    #    # rMap.redo_path_8n()
-    #    current_cell, next_pos = rMap.getPath(step)
-    #    position_transform = Transform(next_pos, 0)
-    #    rotation_transform = Transform(next_pos, gfor.angle(next_pos - prev_pos))
-    #    prev_pos = next_pos
-    #elif state == "ROTATE":
-    #    if tra
+    gpos = ltow * lpos
+    gfor = ltow * lfor
+    transform = Transform(gpos, forward=gfor)
+    print("---------------------------")
+    #print("LOCAL BASE:", lpos, lfor)
+    #print("GLOBAL BASE:", gpos, gfor)
+    print(state)
+    print(transform)
+    print(position_transform)
+    print(rotation_transform)
+    print("---------------------------")
+    print()
+    if state == "RECOGN":
+        if prev_cell == rMap.goal:
+            print("Goal reached!")
+            print(prev_cell, rMap.goal)
+            exit(0)
+        # Aqui usais el sensor y recalcular el nuevo path con el nuevo mapa
+        # rMap.redo_path_8n()
+        if rMap.path:
+            next_i, next_cell, next_pos = rMap.travel()
+            position_transform = Transform(next_pos, forward=(next_pos - prev_pos).normalize())
+            rotation_transform = Transform(prev_pos, forward=(next_pos - prev_pos).normalize())
+            if not transform == rotation_transform:
+                state = "ROTATE"
+            else:
+                state = "MOVE"
+            prev_i, prev_cell, prev_pos = next_i, next_cell, next_pos
+    elif state == "ROTATE":
+        if transform == rotation_transform:
+            state = "MOVE"
+    elif state == "MOVE":
+        if transform == position_transform:
+            state = "RECOGN"
+
 
 with keyboard.Listener(on_release=test) as listener:
     listener.join()
-
-
-# [0,1]
-# |
-# .-- [1,0]
-# 
-# .-- [1,0]
-# |
-# [0,-1]
 
 exit(0)
 
