@@ -35,6 +35,11 @@ class Robot:
         # Configure sensors, for example a touch sensor.                                              
         self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
         #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
+        self.PORT_ULTRASONIC_EV3 = self.BP.PORT_1
+        self.PORT_ULTRASONIC_NXT = self.BP.PORT_2
+        self.BP.set_sensor_type(self.PORT_ULTRASONIC_EV3, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
+        self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
+        # Configure motors
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
         self.PORT_BASKET_MOTOR = self.BP.PORT_B
@@ -51,6 +56,8 @@ class Robot:
                                                # Robot Y coordinate.
         self.th = Value('d', local_reference[2])
                                                # Robot orientation.
+        self.us_ev3 = Value('d', 0)            # Latest distances ultrasonic EV3 sensor stored
+        self.us_nxt = Value('d', 0)            # Latest distances ultrasonic NXT sensor stored
         self.bh = Value('d', 0)                # Robot basket angle [0 to ~90º].
         self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
@@ -116,7 +123,7 @@ class Robot:
         self.gy   = global_reference[1]
         self.gth  = global_reference[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
-
+        print(self.ltow)
     def setSpeed(self, v: float, w: float, wb: float):
         """
         Set the new robot speed. \
@@ -172,8 +179,20 @@ class Robot:
         
         return [left_encoder, right_encoder, basket_encoder, wi, wd, wb, v, w] 
 
+
+    def readUltrasonicSensors(self):
+        """ Returns current value of ultrasonic sensors estimation values"""
+        return self.us_ev3 #, self.us_nxt
+    
+    def updateUltrasonicSensors(self):
+        """ This function updates the ultrasonic sensors values """
+        # update ultrasonic sensors value (need lock??)
+        self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3) 
+        #self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)  
+
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
+
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
@@ -182,6 +201,7 @@ class Robot:
         """ Returns current value of odometry estimation """
 
         return self.x.value, self.y.value, self.th.value, self.bh.value
+
 
     def updateOdometry(self): 
         """ This function calculates and updates the odometry of the robot """
@@ -216,13 +236,17 @@ class Robot:
                 # To "lock" a whole set of operations, we can use a "mutex"
                 # Update new xWR+
                 self.lock_odometry.acquire()
+                # update odometry
                 self.x.value += delta_x
                 self.y.value += delta_y
                 self.th.value = th
+                # update motors values
                 self.bh.value = bh
                 self.sD.value = right_encoder
                 self.sI.value = left_encoder
                 self.sC.value = basket_encoder
+                # update ultrasonic sensors value
+                # self.updateUltrasonicSensors()
                 self.lock_odometry.release()
 
                 # Save LOG
@@ -468,18 +492,18 @@ class Robot:
                 # Robot speed
                 self.setSpeed(v, w, wb)
 
-    def playTrayectory():
+    def playTrayectory(self):
         # Estado inicial
         state = "RECOGN"
         # Posicion inicial
         _, cell, previous_pos = self.rMap.travel()
         # Si la celda actual es la meta, hemos terminado
         if cell == self.rMap.goal:
-            print("Goal reached!: ", cell, rMap.goal)
+            print("Goal reached!: ", cell, self.rMap.goal)
             return
         # Velocidades
-        v = 5
-        w = 5
+        v = 10
+        w = 0.8
         # Transform constraints
         rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
         position_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
@@ -493,6 +517,9 @@ class Robot:
             #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
             #   - Despues se pasa a global.
             transform   = Transform(self.ltow * Vector2(x, y, 1), forward=self.ltow * Vector2.right.rotate(th))
+            print("------------------")
+            print(state)
+            print([x,y,th])
             # Estado de reconocimiento del entorno
             if state == "RECOGN":
                 # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
@@ -502,6 +529,9 @@ class Robot:
                     _, cell, next_pos = self.rMap.travel()
                     # Obtenemos las transformaciones representativas del destino
                     destination_dir    = (next_pos - previous_pos).normalize()
+                    print("prev: " + str(previous_pos))
+                    print("next: " + str(next_pos))
+                    print("dest: " + str(destination_dir))
                     rotation_transform = Transform(previous_pos, forward=destination_dir)
                     position_transform = Transform(next_pos, forward=destination_dir)
                     previous_pos       = next_pos
@@ -516,14 +546,18 @@ class Robot:
                     self.setSpeed(0, -w, 0)
             # Estado de rotacion en la celda
             elif state == "ROTATE":
+                print(transform.position)
+                print(rotation_transform.position)
                 if transform == rotation_transform:
                     state = "FORWARD"
                     self.setSpeed(v, 0, 0)
             elif state == "FORWARD":
+                print(transform.position)
+                print(position_transform.position)
                 if transform == position_transform:
                     # Si la celda actual es la meta, hemos terminado
                     if cell == self.rMap.goal:
-                        print("Goal reached!: ", cell, rMap.goal)
+                        print("Goal reached!: ", cell, self.rMap.goal)
                         break
                     state = "RECOGN"
                     self.setSpeed(0, 0, 0)
