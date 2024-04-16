@@ -65,7 +65,7 @@ class Robot:
         self.lock_odometry = Lock()
         # - Odometry update period
         self.P = 0.01                          # In seconds
-        
+
         # VISUAL SERVOING
         # - Camera
         self.resolution = resolution           # Camera resolution.
@@ -172,18 +172,16 @@ class Robot:
         
         return [left_encoder, right_encoder, basket_encoder, wi, wd, wb, v, w] 
 
-
-    def readOdometry(self):
-        """ Returns current value of odometry estimation """
-        return self.x.value, self.y.value, self.th.value, self.bh.value
-
-
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
 
+    def readOdometry(self):
+        """ Returns current value of odometry estimation """
+
+        return self.x.value, self.y.value, self.th.value, self.bh.value
 
     def updateOdometry(self): 
         """ This function calculates and updates the odometry of the robot """
@@ -373,7 +371,7 @@ class Robot:
         # Transform constraints
         rotation_transform      = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
         outbound_transform_xmin = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
-        outbound_transform_xmax = Transform(Vector2.zero,  CUSTOM_POSITION_ERROR=self.cam_center.x)  
+        outbound_transform_xmax = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.cam_center.x)  
         outbound_transform_y    = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
         position_transform      = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
         
@@ -447,16 +445,11 @@ class Robot:
                             return
 
                     # Checking y coordinate location of the blob within the catchment region
-                    if not outbound_transform_y == blob_position:
-                        # Checking location in x coordinate location of the blob within the min catchment region
-                        if not outbound_transform_xmin == blob_rotation:
-                            targetRotationReached = False
-                    else:
-                        # If y coordinate is within the catchement region.
-                        # Check if x coordinate is within the max catchment region.
-                        if not outbound_transform_xmax == blob_rotation:
-                            targetRotationReached = False
-                            
+                    # El objetivo estará alineado con el robot cuando:
+                    # 1. Este en el centro de la imagen en x y la zona inferior en y
+                    # 2. Este a lo largo de toda la imagen en x y en la ultima franja en y
+                    targetRotationReached = (not outbound_transform_y == blob_position and outbound_transform_xmin == blob_rotation) or outbound_transform_xmax == blob_rotation
+          
                 else: 
                     # Retrocede un par de cm si la pelota estaba al lado de la camara la ultima vez que se vio
                     if nextToMe:
