@@ -5,12 +5,12 @@ from __future__ import division       #                           ''
 
 import brickpi3 # import the BrickPi3 drivers
 import csv      # write csv
-import datetime # timestamps
-import time     # import the time library for the sleep function
-import sys
-import numpy as np
 import cv2
+import datetime # timestamps
+import numpy as np
 import picamera
+import sys
+import time     # import the time library for the sleep function
 from picamera.array import PiRGBArray
 from geometry import Vector2, Matrix2, Transform
 from ReMapLib import Map
