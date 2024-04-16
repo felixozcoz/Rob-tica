@@ -457,7 +457,7 @@ class Map:
         index       = self.index
         cell        = self.path[-index]
         self.index += 1
-        return index, cell, Vector2(20+cell[1]*self.halfCell, 20+cell[0]*self.halfCell, 1)
+        return index, cell, Vector2(self.halfCell+cell[1]*self.sizeCell, self.halfCell+cell[0]*self.sizeCell, 1)
 
     def getPath(self, index):
         cell = self.path[-index]
