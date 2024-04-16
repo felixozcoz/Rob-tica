@@ -2,30 +2,31 @@
 # -*- coding: UTF-8 -*-
 import numpy as np
 from Robot import Robot
-from ReMapLib import Map
 
-def main():
-    # Negative red mask (blue mask)
-    colorRangeMin = (80, 70, 50)
-    colorRangeMax = (100, 255, 255)
-    
+def main():    
     try:
-        # if args.radioD < 0:
-        #     print('d must be a positive value')
-        #     exit(1)
+        # 1. Inicializar el mapa
+        print("Inicializando mapa ...")
+        #print("---------------------------------------------------")
+        #rMap = Map("maps/mapa0.txt", [0,0], [2,2])
+        #
+        #print("---------------------------------------------------")
+        #rMap = Map("maps/mapa1.txt", [0,0], [2,2])
+        #
+        #print("---------------------------------------------------")
+        #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
+        print("---------------------------------------------------")
+        rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=4)
 
-        rMap = Map("maps/mapa_simple.txt", [0,0], [0,1], neighborhood=4)
-        # Initialize Odometry. Default value will be 0,0,0
-        robot = Robot(local_reference=[0.0, 0.0, 0], global_reference=[20.0, 20.0, np.pi/2] ,rMap=rMap) 
-
-        # 1. launch updateOdometry thread()
+        #rMap.drawMapWithRobotLocations()
+        # 2. Inicializar el robot
+        global_reference = [20,20,90]
+        robot = Robot(global_reference=global_pos, rMap=rMap) 
         robot.startOdometry()
-
+        
+        # 3. Recorrer mapa
+        print("Recorriendo mapa ... ")
         robot.playTrayectory()
-
-        # 3. Track and catch the ball
-        # print("Start tracking ...")
-        # robot.trackObject(colorRangeMin=colorRangeMin, colorRangeMax=colorRangeMax)
         
         # 3. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
@@ -47,5 +48,4 @@ if __name__ == "__main__":
     #                     type=float, default=40.0)
     # args = parser.parse_args()
     main()
-
 

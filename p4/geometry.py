@@ -2,6 +2,7 @@ from numbers import Number
 import numpy as np
 import matplotlib.pyplot as plt
 
+np.set_printoptions(precision=2, suppress=True)
 POSITION_ERROR = 0.5
 ROTATION_ERROR = 2
 
