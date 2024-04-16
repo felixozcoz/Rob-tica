@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 import numpy as np
 from Robot import Robot
+from ReMapLib import Map
 
 def main():    
     try:
@@ -16,12 +17,12 @@ def main():
         #print("---------------------------------------------------")
         #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
         print("---------------------------------------------------")
-        rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=4)
+        rMap = Map("maps/mapa_simple.txt", [0,0], [0,1], neighborhood=4)
 
         #rMap.drawMapWithRobotLocations()
         # 2. Inicializar el robot
         global_reference = [20,20,90]
-        robot = Robot(global_reference=global_pos, rMap=rMap) 
+        robot = Robot(global_reference=global_reference, rMap=rMap) 
         robot.startOdometry()
         
         # 3. Recorrer mapa
