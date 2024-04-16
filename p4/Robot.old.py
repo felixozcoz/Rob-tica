@@ -36,42 +36,42 @@ class Robot:
         #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
-        self.PORT_basket_MOTOR = self.BP.PORT_B
+        self.PORT_BASKET_MOTOR = self.BP.PORT_B
         # Reset encoder B and C (or all the motors you are using)
         self.BP.offset_motor_encoder(self.PORT_RIGHT_MOTOR, self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR))
         self.BP.offset_motor_encoder(self.PORT_LEFT_MOTOR, self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR))
-        self.BP.offset_motor_encoder(self.PORT_basket_MOTOR, self.BP.get_motor_encoder(self.PORT_basket_MOTOR))
+        self.BP.offset_motor_encoder(self.PORT_BASKET_MOTOR, self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR))
         ##################################################
         # ODOMETRY
         # - Odometry shared memory values
         self.x = Value('d', local_position[0])  # Robot X coordinate.
         self.y = Value('d', local_position[1])  # Robot Y coordinate.
         self.th = Value('d', orientation) # Robot orientation.
-        self.bh  = Value('d', 0)                # Robot basket angle [0 to ~90º].
-        self.sD = Value('i', 0)                 # Latest stored RIGHT encoder value.
-        self.sI = Value('i', 0)                 # Latest stored LEFT encoder value.
-        self.sC = Value('i', 0)                 # Latest stored BASKET encoder value.
-        #self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
-        #self.w  = Value('d', 0.0)              # Robot angular theorical speed.
-        #self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
-        #self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
-        #self.wb = Value('d', 0.0)              # Robot basket theorical angular speed.
-        self.finished = Value('b', 1)           # Boolean to show if odometry updates are finished
+        self.bh = Value('d', 0)                # Robot basket angle [0 to ~90º].
+        self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
+        self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
+        self.sC = Value('i', 0)                # Latest stored BASKET encoder value.
+        self.v  = Value('d', 0.0)              # Robot linear theorical speed (or tangential if rotating).
+        self.w  = Value('d', 0.0)              # Robot angular theorical speed.
+        self.wi = Value('d', 0.0)              # Robot left wheel theorical speed.
+        self.wd = Value('d', 0.0)              # Robot right wheel theorical speed.
+        self.wb = Value('d', 0.0)              # Robot basket theorical angular speed.
+        self.finished = Value('b', 1)          # Boolean to show if odometry updates are finished
         # - If we want to block several instructions to be run together, we may want to use an explicit Lock
         self.lock_odometry = Lock()
         # - Odometry update period
-        self.P = 0.01                           # In seconds
+        self.P = 0.01                          # In seconds
         # LOCAL/GLOBAL POSITIONING
         self.localToGlobalPos = Matrix2.transform(Vector2(global_position[0], global_position[1]), orientation)
         #self.globalToLocalPos = Matrix2.transform(Vector2(local_position[0], local_position[1]), local_position[2])
         # VISUAL SERVOING
         # - Camera
-        self.resolution = resolution            # Camera resolution.
+        self.resolution = resolution           # Camera resolution.
         self.cam_center = Vector2(resolution[0]//2, resolution[1]//2)
-                                                # Camera centre (pixel resolution based)
-        self.framerate  = framerate             # Framerate
+                                               # Camera centre (pixel resolution based)
+        self.framerate  = framerate            # Framerate
         # - Detector
-        self.blob_detector_params = {           # Blob detector parameters
+        self.blob_detector_params = {          # Blob detector parameters
             "minThreshold": 10,
             "maxThreshold": 200,
             "filterByArea": True,
@@ -83,7 +83,8 @@ class Robot:
             "blobColor": 100,
             "filterByConvexity": False,
             "filterByInertia": False
-        }                                   
+        }
+
         self.blob_detector_ymin = 3/4*self.cam_center.y
                                                 # Minimum distance in y to detect a good blob.
         # - Robot control
@@ -113,10 +114,11 @@ class Robot:
             #sys.stdout.write("Reading encoder values .... \n")
             left_encoder   = self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR)
             right_encoder  = self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR)
-            basket_encoder = self.BP.get_motor_encoder(self.PORT_basket_MOTOR) 
+            basket_encoder = self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR) 
         except IOError as error:
             #print(error)
             sys.stdout.write(error)
+
         # Calculate the arc of circumfrence traveled by each wheel
         left_offset   = left_encoder   - self.sI.value
         #left_offset_length  = np.deg2rad(left_offset) * self.R
@@ -143,7 +145,7 @@ class Robot:
         # Set each motor speed
         self.BP.set_motor_dps(self.PORT_RIGHT_MOTOR, np.rad2deg(w_motors[0])) 
         self.BP.set_motor_dps(self.PORT_LEFT_MOTOR, np.rad2deg(w_motors[1]))
-        self.BP.set_motor_dps(self.PORT_basket_MOTOR, np.rad2deg(wb))
+        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(wb))
 
         # Set v, w speed. De momento no se va a usar
         # self.lock_odometry.acquire()
@@ -471,7 +473,7 @@ class Robot:
     
                 # Robot speed
                 self.setSpeed(v, w, wb)
-    
+
     def playTrayectory():
         # Leer los sensores
         STATE = "IDLE"

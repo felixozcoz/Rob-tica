@@ -12,13 +12,14 @@ import numpy as np
 import cv2
 import picamera
 from picamera.array import PiRGBArray
-from geometry import Vector2, Transform
+from geometry import Vector2, Matrix2, Transform
+from ReMapLib import Map
 
 # Threading package could be used too
 from multiprocessing import Process, Value, Array, Lock
 
 class Robot:
-    def __init__(self, init_position=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32):
+    def __init__(self, local_reference=[0.0, 0.0, 0.0], global_reference=[0.0, 0.0, 0.0], resolution=(320, 240), framerate=32, rMap:Map=None):
         """
         Initialize basic robot params. \
 
@@ -44,10 +45,13 @@ class Robot:
         ##################################################
         # ODOMETRY
         # - Odometry shared memory values
-        self.x  = Value('d', init_position[0]) # Robot X coordinate.
-        self.y  = Value('d', init_position[1]) # Robot Y coordinate.
-        self.th = Value('d', init_position[2]) # Robot orientation.
-        self.bh  = Value('d', 0)               # Robot basket angle [0 to ~90º].
+        self.x  = Value('d', local_reference[0])
+                                               # Robot X coordinate.
+        self.y  = Value('d', local_reference[1])
+                                               # Robot Y coordinate.
+        self.th = Value('d', local_reference[2])
+                                               # Robot orientation.
+        self.bh = Value('d', 0)                # Robot basket angle [0 to ~90º].
         self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
         self.sC = Value('i', 0)                # Latest stored BASKET encoder value.
@@ -61,6 +65,7 @@ class Robot:
         self.lock_odometry = Lock()
         # - Odometry update period
         self.P = 0.01                          # In seconds
+        
         # VISUAL SERVOING
         # - Camera
         self.resolution = resolution           # Camera resolution.
@@ -68,7 +73,7 @@ class Robot:
                                                # Camera centre (pixel resolution based)
         self.framerate  = framerate            # Framerate
         # - Detector
-        self.blob_detector_params = {
+        self.blob_detector_params = {          # Blob detector parameters
             "minThreshold": 10,
             "maxThreshold": 200,
             "filterByArea": True,
@@ -81,7 +86,7 @@ class Robot:
             "filterByConvexity": False,
             "filterByInertia": False
         }
-                                               
+
         self.blob_detector_ymin = 3/4*self.cam_center.y
                                                # Minimum distance in y to detect a good blob.
         # - Robot control
@@ -90,29 +95,35 @@ class Robot:
                                                # Minimum distance in the image for it to rotate again.
         self.ymin_to_stop   = self.cam_center.y - 10
                                                # Minimum distance in the image to stop advancing.
-        self.fc = lambda x,v: v * (np.sqrt(x/self.blob_detector_params["maxArea"]) + 1)
+        # [DEPRECATED]
+        #self.fc = lambda x,v: v * (np.sqrt(x/self.blob_detector_params["maxArea"]) + 1)
                                                # Function to obtain the constant 'c' necessary so that in the
                                                # area 'x' has a speed 'v'. It is born from the idea that 1/sqrt(x)
                                                # causes speeds to be small and decrease too much
                                                # fast.
-        self.fv = lambda y : -0.14*y + 25
-                                               # Function for tangential speed.
+        self.fv = lambda y : -0.14*y + 25      # Function for tangential speed.
                                                # - y is the difference between the component and the best blob
                                                # and the center point of the image 
         self.fw = lambda x : -2*x/self.cam_center.x
                                                # Function for angular velocity.
         self.fw_max = self.fw(self.cam_center.x)
                                                # Maximum angular speed.
-        self.fv_max = self.fv(0)
-                                               # Maximum linear speed.
+        self.fv_max = self.fv(0)               # Maximum linear speed.
+        
+        # MAPS & PATH TRAYECTORY
+        self.rMap = rMap
+        self.gx   = global_reference[0]
+        self.gy   = global_reference[1]
+        self.gth  = global_reference[2]
+        self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
 
-    def setSpeed(self, v: float, w: float):
+    def setSpeed(self, v: float, w: float, wb: float):
         """
         Set the new robot speed. \
-        
-        - self: The robot itself.
+            
         - v:    Robot linear speed.
         - w:    Robot angular speed.
+        - wb:   Robot basket angular speed.
         """
         # Calculate motors angular speeds 
         A        = np.array([[1/self.R, self.L/(2*self.R)], [1/self.R, -self.L/(2*self.R)]])
@@ -122,28 +133,14 @@ class Robot:
         # Set each motor speed
         self.BP.set_motor_dps(self.PORT_RIGHT_MOTOR, np.rad2deg(w_motors[0])) 
         self.BP.set_motor_dps(self.PORT_LEFT_MOTOR,  np.rad2deg(w_motors[1]))
+        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(wb))
 
         # Set v, w speed
         self.lock_odometry.acquire()
         self.v.value = v
         self.w.value = w
-        self.lock_odometry.release()
-
-
-    def setNestSpeed(self, wb):
-        """
-        Set the new nest motor speed. \
-
-        - self: The robot itself.
-        - wb:   Robot basket angular speed.
-        """
-        # Set each motor speed
-        self.BP.set_motor_dps(self.PORT_BASKET_MOTOR, np.rad2deg(wb))
-        # Store speed data (really necessary?)
-        self.lock_odometry.acquire()
         self.wb.value = wb
         self.lock_odometry.release()
-
 
     def readSpeed(self):
         """
@@ -247,7 +244,7 @@ class Robot:
         self.BP.reset_all()
 
     #--------- Tracking Object ------------
-    def _init_camera(self):
+    def initCamera(self):
         '''
             Initialize the camera
 
@@ -267,7 +264,7 @@ class Robot:
         return cam, rawCapture
 
 
-    def _init_my_blob_detector(self):
+    def initMyBlobDetector(self):
         '''
             Initialize the blob detector
 
@@ -312,7 +309,7 @@ class Robot:
         return detector	
 
 
-    def _get_best_blob(self, blobs):
+    def getBestBlob(self, blobs):
         '''
             Track the object
 
@@ -370,15 +367,15 @@ class Robot:
         targetRotationReached = False   # True if the robot is aligned with the object on the x-axis.
 
         # Initializations
-        cam, rawCapture = self._init_camera()
-        detector = self._init_my_blob_detector()
+        cam, rawCapture = self.initCamera()
+        detector = self.initMyBlobDetector()
 
-        # Transform constraits
-        rotation_transform         = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
-        outbound_transform_xmin    = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
-        outbound_transform_xmax    = Transform(Vector2.zero,  CUSTOM_POSITION_ERROR=self.cam_center.x)  
-        outbound_transform_y       = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
-        position_transform         = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
+        # Transform constraints
+        rotation_transform      = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
+        outbound_transform_xmin = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
+        outbound_transform_xmax = Transform(Vector2.zero,  CUSTOM_POSITION_ERROR=self.cam_center.x)  
+        outbound_transform_y    = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
+        position_transform      = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
         
         # Object positional information
         side = 1 # Last side the ball was seen (-1 = left, 1 = right).
@@ -403,7 +400,7 @@ class Robot:
                 keypoints = detector.detect(mask)
 
                 # Search for the most promising blob...
-                best_blob = self._get_best_blob(keypoints)
+                best_blob = self.getBestBlob(keypoints)
                 
                 # Show camera frame if asked
                 if showFrame:
@@ -440,8 +437,7 @@ class Robot:
                         # Raise the basket till intial position (0º)
                         wb = int(bh > 5) * -1
                     else:
-                        if not outbound_transform_xmin == blob_rotation:
-                            nextToMe = True
+                        nextToMe = not outbound_transform_xmin == blob_rotation
                         # Object found. Lower the basket 90º
                         if bh < 90:
                             wb = 1
@@ -462,7 +458,7 @@ class Robot:
                             targetRotationReached = False
                             
                 else: 
-                    # Rotate until ball found. Set max angular speed.
+                    # Retrocede un par de cm si la pelota estaba al lado de la camara la ultima vez que se vio
                     if nextToMe:
                         if not backwards_refpos:
                             backwards_refpos = Vector2(x,y)
@@ -470,22 +466,72 @@ class Robot:
                             v = -self.fv_max
                         else:
                             nextToMe = False
-                    
+                    # Rotate until ball found. Set max angular speed.
                     w = side * self.fw_max
-
                     # If the basket has been lowered, it will be raised again.
                     wb = int(bh > 5) * -1
                     targetRotationReached = False
     
                 # Robot speed
-                self.setSpeed(v, w)
-                self.setNestSpeed(wb)
+                self.setSpeed(v, w, wb)
+
+    def playTrayectory():
+        # Estado inicial
+        state = "RECOGN"
+        # Posicion inicial
+        _, cell, previous_pos = self.rMap.travel()
+        # Velocidades
+        v = 5
+        w = 5
+        # Transform constraints
+        rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
+        position_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
+
+        while True:
+            # Se obtiene la odometria del robot
+            x, y, th, _ = self.readOdometry()
+            # Se obtiene la transformacion correspondiente:
+            # 1. La posicion es local por defecto, hay que transformarla en global.
+            # 2. La orientacion del robot es local por defecto:
+            #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
+            #   - Despues se pasa a global.
+            transform   = Transform(self.ltow * Vector2(x, y, 1), forward=self.ltow * Vector2.right.rotate(th))
+            # Estado de reconocimiento del entorno
+            if state == "RECOGN":
+                # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
+                # ...
+                # Obtenemos el siguiente destino
+                _, cell, next_pos = self.rMap.travel()
+                # Obtenemos las transformaciones representativas del destino
+                destination_dir    = (next_pos - previous_pos).normalize()
+                rotation_transform = Transform(previous_pos, forward=destination_dir)
+                position_transform = Transform(next_pos, forward=destination_dir)
+                previous_pos       = next_pos
+                # Si la rotacion ya coincide, nos ahorramos una iteracion
+                if not transform == rotation_transform:
+                    state = "ROTATE"
+                    self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
+                else:
+                    state = "FORWARD"
+                    self.setSpeed(v, 0, 0)
+            # Estado de rotacion en la celda
+            elif state == "ROTATE":
+                if transform == rotation_transform:
+                    state = "FORWARD"
+                    self.setSpeed(v, 0, 0)
+            elif state == "FORWARD":
+                if transform == position_transform:
+                    # Si la celda actual es la meta, hemos terminado
+                    if cell == self.rMap.goal:
+                        print("Goal reached!: ", cell, rMap.goal)
+                        break
+                    state = "RECOGN"
+                    self.setSpeed(0, 0, 0)
+                
+            
+                
+                
+            
+            
 
 
-    def catch(self):
-        # Decide the strategy to catch the ball once you have reached the target position
-        _, _, _, bh = self.readOdometry()
-        if bh < 90:
-            self.setNestSpeed(1)
-        else:
-            self.setNestSpeed(0)
