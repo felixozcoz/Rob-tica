@@ -533,8 +533,9 @@ class Transform:
             self.forward  = Matrix2.transform(Vector2.zero, self.rotation) * Vector2.right
             self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
         else:
-            self.rotation = forward.angle(Vector2.right)
-            self.forward  = self.forward * Matrix2.transform(Vector2.zero, 90)
+            self.rotation = forward.angle(Vector2.right, "DEG")
+            self.forward  = forward
+            self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
         self.ROTATION_ERROR = ROTATION_ERROR
         if CUSTOM_ROTATION_ERROR is not None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
@@ -570,8 +571,8 @@ class Transform:
             "last": dist
         }
         # ROTATION CHECK
-        ROTATION = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
-        #ROTATION = ROTATION_ERROR > forward.angle(transform.forward)
+        ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
+        #ROTATION |= self.ROTATION_ERROR > abs(forward.angle(transform.forward))
 
         # BOTH CHECK
         return POSITION and ROTATION

@@ -480,6 +480,10 @@ class Robot:
         state = "RECOGN"
         # Posicion inicial
         _, cell, previous_pos = self.rMap.travel()
+        # Si la celda actual es la meta, hemos terminado
+        if cell == self.rMap.goal:
+            print("Goal reached!: ", cell, rMap.goal)
+            return
         # Velocidades
         v = 5
         w = 5
@@ -498,10 +502,6 @@ class Robot:
             transform   = Transform(self.ltow * Vector2(x, y, 1), forward=self.ltow * Vector2.right.rotate(th))
             # Estado de reconocimiento del entorno
             if state == "RECOGN":
-                # Si la celda actual es la meta, hemos terminado
-                if cell == self.rMap.goal:
-                    print("Goal reached!: ", cell, rMap.goal)
-                    break
                 # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
                 # ...
                 if self.rMap.path:
@@ -528,6 +528,10 @@ class Robot:
                     self.setSpeed(v, 0, 0)
             elif state == "FORWARD":
                 if transform == position_transform:
+                    # Si la celda actual es la meta, hemos terminado
+                    if cell == self.rMap.goal:
+                        print("Goal reached!: ", cell, rMap.goal)
+                        break
                     state = "RECOGN"
                     self.setSpeed(0, 0, 0)
                 

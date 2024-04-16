@@ -452,7 +452,7 @@ class Map:
     def travel(self):
         # Si el path esta vacio, no puede devolver celda
         if not self.path:
-            return self.index, None, None
+            return self.index, [-1,-1], Vector2.zero
         # Obtenemos la celda correspondiente
         index       = self.index
         cell        = self.path[-index]
