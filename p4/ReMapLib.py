@@ -74,6 +74,7 @@ class Map:
         # Obtener la matriz de costes y el mejor camino
         self.costMatrix = np.zeros((self.sizeY, self.sizeX))
         self.path       = []
+        self.index      = 1
         self.start      = start
         self.goal       = goal
 
@@ -178,6 +179,7 @@ class Map:
     def redo_path_4n(self, position):
         self.start = position
         self.path  = []
+        self.index = 1
         self.propagate_4n()
         self.find_path_4n()
 
@@ -267,6 +269,7 @@ class Map:
     def redo_path_8n(self, position):
         self.start = position
         self.path  = []
+        self.index = 1
         self.propagate_8n()
         self.find_path_8n()
     
@@ -446,6 +449,16 @@ class Map:
     #            break
     #    return a_list[:i] + [a_node] + a_list[i:]
 
+    def travel(self):
+        # Si el path esta vacio, no puede devolver celda
+        if not self.path:
+            return self.index, None, None
+        # Obtenemos la celda correspondiente
+        index       = self.index
+        cell        = self.path[-index]
+        self.index += 1
+        return index, cell, Vector2((1+cell[1])*self.halfCell, (1+cell[0])*self.halfCell, 1)
+
     def getPath(self, index):
         cell = self.path[-index]
         return cell, Vector2((1+cell[1])*self.halfCell, (1+cell[0])*self.halfCell, 1)
@@ -473,6 +486,7 @@ class Map:
         map_str += "- Dimensiones: " + str(self.sizeX) + " x " + str(self.sizeY) + " / " + str(self.sizeCell) + "cm\n"  
         map_str += "- Costes:\n" + str(self.costMatrix) + "\n"
         map_str += "- Camino encontrado:\n"
+        map_str += "  " + str(self.path) + "\n"
         for i, row in reversed(list(enumerate(self.connectionMatrix))):
             for j, connection in enumerate(row):
                 if not connection:
@@ -492,4 +506,5 @@ class Map:
                     else:
                         map_str += "□ "
             map_str += "\n"
+
         return map_str

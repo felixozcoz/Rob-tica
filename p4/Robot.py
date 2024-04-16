@@ -498,22 +498,29 @@ class Robot:
             transform   = Transform(self.ltow * Vector2(x, y, 1), forward=self.ltow * Vector2.right.rotate(th))
             # Estado de reconocimiento del entorno
             if state == "RECOGN":
+                # Si la celda actual es la meta, hemos terminado
+                if cell == self.rMap.goal:
+                    print("Goal reached!: ", cell, rMap.goal)
+                    break
                 # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
                 # ...
-                # Obtenemos el siguiente destino
-                _, cell, next_pos = self.rMap.travel()
-                # Obtenemos las transformaciones representativas del destino
-                destination_dir    = (next_pos - previous_pos).normalize()
-                rotation_transform = Transform(previous_pos, forward=destination_dir)
-                position_transform = Transform(next_pos, forward=destination_dir)
-                previous_pos       = next_pos
-                # Si la rotacion ya coincide, nos ahorramos una iteracion
-                if not transform == rotation_transform:
-                    state = "ROTATE"
-                    self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
+                if self.rMap.path:
+                    # Obtenemos el siguiente destino
+                    _, cell, next_pos = self.rMap.travel()
+                    # Obtenemos las transformaciones representativas del destino
+                    destination_dir    = (next_pos - previous_pos).normalize()
+                    rotation_transform = Transform(previous_pos, forward=destination_dir)
+                    position_transform = Transform(next_pos, forward=destination_dir)
+                    previous_pos       = next_pos
+                    # Si la rotacion ya coincide, nos ahorramos una iteracion
+                    if not transform == rotation_transform:
+                        state = "ROTATE"
+                        self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
+                    else:
+                        state = "FORWARD"
+                        self.setSpeed(v, 0, 0)
                 else:
-                    state = "FORWARD"
-                    self.setSpeed(v, 0, 0)
+                    self.setSpeed(0, -w, 0)
             # Estado de rotacion en la celda
             elif state == "ROTATE":
                 if transform == rotation_transform:
@@ -521,10 +528,6 @@ class Robot:
                     self.setSpeed(v, 0, 0)
             elif state == "FORWARD":
                 if transform == position_transform:
-                    # Si la celda actual es la meta, hemos terminado
-                    if cell == self.rMap.goal:
-                        print("Goal reached!: ", cell, rMap.goal)
-                        break
                     state = "RECOGN"
                     self.setSpeed(0, 0, 0)
                 
