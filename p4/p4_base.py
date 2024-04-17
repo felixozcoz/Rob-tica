@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 import numpy as np
+import time
 from Robot import Robot
 from ReMapLib import Map
 
@@ -23,10 +24,14 @@ def main():
         # 2. Inicializar el robot
         global_reference = [20,20,90]
         robot = Robot(global_reference=global_reference, rMap=rMap) 
+        time.sleep(7)
         robot.startOdometry()
+
+        #while(True):
+        #    i = 1
         
         # 3. Recorrer mapa
-        print("Recorriendo mapa ... ")
+        # print("Recorriendo mapa ... ")
         robot.playTrayectory()
         
         # 3. Wrap up and close stuff ...

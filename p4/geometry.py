@@ -27,7 +27,7 @@ class Vector2:
         """
         return Vector2(abs(self.x), abs(self.y), self.h)
     
-    def angle(self, v: 'Vector2', format="RAD"):
+    def angle(self, v: 'Vector2', format="DEG"):
         """
             Angle between two vectors
         """
@@ -573,8 +573,15 @@ class Transform:
         }
         # ROTATION CHECK
         ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
-        ROTATION |= self.ROTATION_ERROR > forward.angle(transform.forward)
-
+        ROTATION |= self.ROTATION_ERROR > abs(self.forward.angle(transform.forward))
+        print("--- Compare transform ---")
+        print("self.RotationError: ", self.ROTATION_ERROR)
+        print("self.rotation: ", self.rotation)
+        print("transform.rotation: ", transform.rotation)
+        print("self.forward: ", self.forward)
+        print("transform.forward: ", transform.forward)
+        print("self.forward.angle: ", self.forward.angle(transform.forward))
+        print("--- End compare ---")
         # BOTH CHECK
         return POSITION and ROTATION
 

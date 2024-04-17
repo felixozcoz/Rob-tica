@@ -9,7 +9,6 @@ import bisect
 import matplotlib.pyplot as plt
 import numpy as np
 import re
-import time
 
 
 class Map:
@@ -484,7 +483,7 @@ class Map:
         """
         map_str  = "MAPA '" + self.name + "'\n"
         map_str += "- Dimensiones: " + str(self.sizeX) + " x " + str(self.sizeY) + " / " + str(self.sizeCell) + "cm\n"  
-        map_str += "- Costes:\n" + str(self.costMatrix) + "\n"
+        map_str += "- Costes:\n" + str(self.costMatrix[::-1]) + "\n"
         map_str += "- Camino encontrado:\n"
         map_str += "  " + str(self.path) + "\n"
         for i, row in reversed(list(enumerate(self.connectionMatrix))):

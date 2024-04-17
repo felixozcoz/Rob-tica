@@ -32,13 +32,16 @@ class Robot:
         # Motors and sensors setup
         # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
         self.BP = brickpi3.BrickPi3()
-        # Configure sensors, for example a touch sensor.                                              
-        self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
+        # Configure sensors, for example a touch sensor.
         #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
+        # Configure utltrasonic sensors
         self.PORT_ULTRASONIC_EV3 = self.BP.PORT_1
         self.PORT_ULTRASONIC_NXT = self.BP.PORT_2
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_EV3, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
+        # Configure gyroscope
+        self.PORT_GYROSCOPE = self.BP.PORT_4
+        self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
         # Configure motors
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
@@ -179,6 +182,11 @@ class Robot:
         
         return [left_encoder, right_encoder, basket_encoder, wi, wd, wb, v, w] 
 
+    def readGyroscope(self):
+        """ Returns current value of gyroscope estimation values: 
+                [ absolute angle turned from startup,  rotational speed ]
+        """
+        return self.BP.get_sensor(self.PORT_GYROSCOPE)
 
     def readUltrasonicSensors(self):
         """ Returns current value of ultrasonic sensors estimation values"""
@@ -186,7 +194,7 @@ class Robot:
     
     def updateUltrasonicSensors(self):
         """ This function updates the ultrasonic sensors values """
-        # update ultrasonic sensors value (need lock??)
+        # update ultrasonic sensors value
         self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3) 
         #self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)  
 
@@ -218,9 +226,18 @@ class Robot:
                 # is implicitly done for atomic operations (BUT =+ is NOT atomic)
                 # Calculate the arc of circumfrence traveled by each wheel
                 left_encoder, right_encoder, basket_encoder, _, _, _, v, w = self.readSpeed()
-                # Calculate real delta th. (extract from gyroscope later)
-                delta_th = w * self.P
-                th = self.th.value + delta_th
+                th, _ = self.readGyroscope()
+
+                th_normalized = np.deg2rad(-th) % (2 * np.pi)
+                # Luego, ajustas el ángulo al intervalo [-π, π):
+                if th_normalized > np.pi:
+                    th_normalized -= 2 * np.pi
+
+                #print(np.rad2deg(th_normalized), w)
+                # Calculate real delta th from gyroscope
+                #delta_th = w * self.P
+                delta_th = th_normalized - self.th.value
+                th = th_normalized
                 bh = self.bh.value  + basket_encoder - self.sC.value
                 # Calculate delta xWR. Calculate delta s (depends on w) (slide 14)
                 delta_x, delta_y = 0, 0
@@ -492,6 +509,14 @@ class Robot:
                 # Robot speed
                 self.setSpeed(v, w, wb)
 
+
+    def detectObject(self):
+
+        self.us_ev3 = self.readUltrasonicSensors()
+        
+    
+
+
     def playTrayectory(self):
         # Estado inicial
         state = "RECOGN"
@@ -517,9 +542,12 @@ class Robot:
             #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
             #   - Despues se pasa a global.
             gpos        = self.ltow * Vector2(x, y, 1)
-            gfor        = self.ltow * Vector2.right.rotate(th)
+            gfor        = self.ltow * Vector2.right.rotate(th, format="RAD")
             print("------------------")
             print(state)
+            print("xy1: " + str(Vector2(x, y, 1)))
+            print("gpos: " + str(gpos))
+            print("gfor: " + str(gfor))
             print([x,y,th])
             # Estado de reconocimiento del entorno
             if state == "RECOGN":
@@ -533,10 +561,13 @@ class Robot:
                     print("prev: " + str(previous_pos))
                     print("next: " + str(next_pos))
                     print("dest: " + str(destination_dir))
-                    rotation_transform = Transform(Vector2.zero, forward=destination_dir)
-                    position_transform = Transform(next_pos)
+                    rotation_transform = Transform(Vector2.zero, forward=destination_dir, CUSTOM_ROTATION_ERROR=0.5)
+                    position_transform = Transform(next_pos, CUSTOM_POSITION_ERROR=0.05)
                     previous_pos       = next_pos
                     # Si la rotacion ya coincide, nos ahorramos una iteracion
+                    transform = Transform(Vector2.zero, forward=gfor)
+                    print("transf_for: " + str(transform.forward))
+                    print("rot_transf_for: " + str(rotation_transform.forward))
                     if not transform == rotation_transform:
                         state = "ROTATE"
                         self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
@@ -548,8 +579,8 @@ class Robot:
             # Estado de rotacion en la celda
             elif state == "ROTATE":
                 transform = Transform(Vector2.zero, forward=gfor)
-                print(transform.position)
-                print(rotation_transform.position)
+                print(transform.rotation)
+                print(rotation_transform.rotation)
                 if rotation_transform == transform:
                     state = "FORWARD"
                     self.setSpeed(v, 0, 0)
@@ -564,11 +595,3 @@ class Robot:
                         break
                     state = "RECOGN"
                     self.setSpeed(0, 0, 0)
-                
-            
-                
-                
-            
-            
-
-
