@@ -516,7 +516,8 @@ class Robot:
             # 2. La orientacion del robot es local por defecto:
             #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
             #   - Despues se pasa a global.
-            transform   = Transform(self.ltow * Vector2(x, y, 1), forward=self.ltow * Vector2.right.rotate(th))
+            gpos        = self.ltow * Vector2(x, y, 1)
+            gfor        = self.ltow * Vector2.right.rotate(th)
             print("------------------")
             print(state)
             print([x,y,th])
@@ -532,8 +533,8 @@ class Robot:
                     print("prev: " + str(previous_pos))
                     print("next: " + str(next_pos))
                     print("dest: " + str(destination_dir))
-                    rotation_transform = Transform(previous_pos, forward=destination_dir)
-                    position_transform = Transform(next_pos, forward=destination_dir)
+                    rotation_transform = Transform(Vector2.zero, forward=destination_dir)
+                    position_transform = Transform(next_pos)
                     previous_pos       = next_pos
                     # Si la rotacion ya coincide, nos ahorramos una iteracion
                     if not transform == rotation_transform:
@@ -546,15 +547,17 @@ class Robot:
                     self.setSpeed(0, -w, 0)
             # Estado de rotacion en la celda
             elif state == "ROTATE":
+                transform = Transform(Vector2.zero, forward=gfor)
                 print(transform.position)
                 print(rotation_transform.position)
-                if transform == rotation_transform:
+                if rotation_transform == transform:
                     state = "FORWARD"
                     self.setSpeed(v, 0, 0)
             elif state == "FORWARD":
+                transform = Transform(gpos)
                 print(transform.position)
                 print(position_transform.position)
-                if transform == position_transform:
+                if position_transform == transform:
                     # Si la celda actual es la meta, hemos terminado
                     if cell == self.rMap.goal:
                         print("Goal reached!: ", cell, self.rMap.goal)
