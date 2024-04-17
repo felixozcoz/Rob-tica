@@ -523,7 +523,7 @@ class Transform:
         self.VECTOR_ERROR   = Vector2.error
         if CUSTOM_POSITION_ERROR is not None:
             self.POSITION_ERROR = CUSTOM_POSITION_ERROR
-            #self.VECTOR_ERROR   = Vector2(CUSTOM_POSITION_ERROR, CUSTOM_POSITION_ERROR, 0).normalize()
+            self.VECTOR_ERROR   = Vector2(CUSTOM_POSITION_ERROR, CUSTOM_POSITION_ERROR, 0).normalize()
         # Rotation and orientation
         if rotation is None and forward is None:
             self.rotation = 0
@@ -573,7 +573,7 @@ class Transform:
         }
         # ROTATION CHECK
         ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
-        #ROTATION |= self.ROTATION_ERROR > abs(forward.angle(transform.forward))
+        ROTATION |= self.ROTATION_ERROR > forward.angle(transform.forward)
 
         # BOTH CHECK
         return POSITION and ROTATION
