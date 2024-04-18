@@ -195,6 +195,7 @@ class Robot:
     def updateUltrasonicSensors(self):
         """ This function updates the ultrasonic sensors values """
         # update ultrasonic sensors value
+
         self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3) 
         #self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)  
 
@@ -209,7 +210,6 @@ class Robot:
         """ Returns current value of odometry estimation """
 
         return self.x.value, self.y.value, self.th.value, self.bh.value
-
 
     def updateOdometry(self): 
         """ This function calculates and updates the odometry of the robot """
@@ -575,6 +575,28 @@ class Robot:
                         state = "ROTATE"
                         self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
                     else:
+                        # Voy a echar una mano
+                        # Tenemos gfor => 
+                        # La orientacion global nos dice hacia que celda mira
+                        # shift = gfor.normalize()
+                        # Obtenemos la direccion de la conexion segun donde mira el robot
+                        # Invertimos ya que la matriz va al reves
+                        # 
+                        # Por ejemplo:           En el array es
+                        #    ^ y_global = [0,1]  [cell_x-1][cell_y-1] [cell_x-1][cell_y] [cell_x-1][cell_y+1]
+                        #    R                   [cell_x  ][cell_y-1] [cell_x  ][cell_y] [cell_x  ][cell_y+1]
+                        #                        [cell_x+1][cell_y-1] [cell_x  ][cell_y] [cell_x+1][cell_y+1]
+                        #
+                        # Ademas, dx corresponde a 'y' y dy a 'x' ya que el mapa es
+                        #   ^ oy
+                        #   . > ox  y en la matrix la dimensiones son [x][y] no [y][x]
+                        # dx, dy = -int(gfor.y), int(gfor.x)
+                        # 
+                        # Uso el sensor y guardo su valor
+                        # Si detecto obstaculo
+                        #  self.rMap.conectionMatrix(cell + dx, cell + dy) = 0
+
+
                         # # Antes de avanzar, comprobamos si hay obstáculo
                         # obs, obs_coords = self.detectObstacle(previous_pos, next_pos)
                         # if obs:
@@ -592,7 +614,7 @@ class Robot:
                         #         self.rMap.deleteConnection([obs_coords[0] - 1, obs_coords[1]])
                         #     else:
                         #         # TODO: Si el obstáculo está en diagonal
-                        #         # Depende de si el obstácuo está en la adyacente o en la siguiente
+                        #         # Depende de si el obstáculo está en la adyacente o en la siguiente
                         #         a = 0
                         #     # Y  recalculamos los costes y el camino
                         #     self.rMap.replanPath(cell, previous_pos)
