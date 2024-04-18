@@ -510,12 +510,16 @@ class Robot:
                 self.setSpeed(v, w, wb)
 
 
-    def detectObject(self):
-
+    def detectObstacle(self, orig, dest):
+        """ Detecta si hay un obstáculo en la trayectoria entre dos celdas del mapa y devuelve sus coordenadas """
+        # TODO: Para obstaculo en diagonal (en 8-vecindad) habrá que rotar hacia la esquina y luego
+        # girar el robot hacia los lados y comprobar si hay obstáculo a una distancia con margen un
+        # poco más amplio
+        error = 0.5
+        sensor_pared = 18
         self.us_ev3 = self.readUltrasonicSensors()
-        
-    
-
+        conn, coords = self.rMap.areConnected(orig, dest)
+        return self.us_ev3 > sensor_pared - error and self.us_ev3 < sensor_pared + error and conn, coords            
 
     def playTrayectory(self):
         # Estado inicial
@@ -533,6 +537,7 @@ class Robot:
         rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
         position_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
 
+        dinamic_walls = []
         while True:
             # Se obtiene la odometria del robot
             x, y, th, _ = self.readOdometry()
@@ -552,7 +557,6 @@ class Robot:
             # Estado de reconocimiento del entorno
             if state == "RECOGN":
                 # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
-                # ...
                 if self.rMap.path:
                     # Obtenemos el siguiente destino
                     _, cell, next_pos = self.rMap.travel()
@@ -563,7 +567,6 @@ class Robot:
                     print("dest: " + str(destination_dir))
                     rotation_transform = Transform(Vector2.zero, forward=destination_dir, CUSTOM_ROTATION_ERROR=0.5)
                     position_transform = Transform(next_pos, CUSTOM_POSITION_ERROR=0.05)
-                    previous_pos       = next_pos
                     # Si la rotacion ya coincide, nos ahorramos una iteracion
                     transform = Transform(Vector2.zero, forward=gfor)
                     print("transf_for: " + str(transform.forward))
@@ -572,8 +575,37 @@ class Robot:
                         state = "ROTATE"
                         self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
                     else:
+                        # # Antes de avanzar, comprobamos si hay obstáculo
+                        # obs, obs_coords = self.detectObstacle(previous_pos, next_pos)
+                        # if obs:
+                        #     # Si hay obstáculo, se marca la conexión como no válida
+                        #     self.rMap.deleteConnection(obs_coords)
+                        #     # Guardamos la pared en la lista de paredes dinámicas
+                        #     dinamic_walls.append(obs_coords)
+                        #     if abs(rotation_transform.forward.x) == 1:
+                        #         # Si el obstáculo está en x, se marca la conexión en y
+                        #         self.rMap.deleteConnection([obs_coords[0], obs_coords[1] + 1])
+                        #         self.rMap.deleteConnection([obs_coords[0], obs_coords[1] - 1])
+                        #     elif abs(rotation_transform.forward.y) == 1:
+                        #         # Si el obstáculo está en y, se marca la conexión en x
+                        #         self.rMap.deleteConnection([obs_coords[0] + 1, obs_coords[1]])
+                        #         self.rMap.deleteConnection([obs_coords[0] - 1, obs_coords[1]])
+                        #     else:
+                        #         # TODO: Si el obstáculo está en diagonal
+                        #         # Depende de si el obstácuo está en la adyacente o en la siguiente
+                        #         a = 0
+                        #     # Y  recalculamos los costes y el camino
+                        #     self.rMap.replanPath(cell, previous_pos)
+                        #     continue
+                        # else:
+                        #     state = "FORWARD"
+                        #     self.setSpeed(v, 0, 0)
+
+                        # Avanzar sin mirar obstáculos
                         state = "FORWARD"
                         self.setSpeed(v, 0, 0)
+
+                    previous_pos = next_pos
                 else:
                     self.setSpeed(0, -w, 0)
             # Estado de rotacion en la celda

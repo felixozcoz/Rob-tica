@@ -1,11 +1,12 @@
 import numpy as np
 from ReMapLib import Map
-from MapLib import Map2D
-import os
+from geometry import Vector2
 
 
 print("---------------------------------------------------")
 rMap = Map("maps/mapa3.txt", [0,0], [0,7], neighborhood=8)
-np.set_printoptions(precision=2, suppress=True)
-rMap.drawMap(robotPosVectors=[[20,20,np.pi/2], [300, 20, -np.pi/4]], saveSnapshot=False)
-print(rMap.path)
+print(rMap.areConnected(Vector2(20,20,0), Vector2(20,60,0)))
+print(rMap.areConnected(Vector2(20,20,0), Vector2(60,20,0)))
+print(rMap.areConnected(Vector2(60,20,0), Vector2(60,60,0)))
+rMap.deleteConnection([1,2])
+rMap.drawMap()
