@@ -536,6 +536,7 @@ class Robot:
         # Transform constraints
         rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
         position_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
+        changes            = False
         sense              = 1
         stops              = []
 
@@ -559,15 +560,17 @@ class Robot:
             # Estado de reconocimiento del entorno
             # Voy a echar una mano
             if state == "RECOGN":
-                # sense = 1
-                # stops = [Transform(gpos, th+90), Transform(gpos, th-90), Transform(gpos, th)]
+                # changes = False
+                # sense   = 1
+                # stops   = [Transform(gpos, th+90), Transform(gpos, th-90), Transform(gpos, th)]
                 # self.setSpeed(0, w, 0)
-                # state = "RECOGN_ROTATE"
+                # state   = "BEGIN_RECOGN"
             # elif state == "FULL_RECOGN":
-                # sense = 1
-                # stops = [Transform(gpos, th-5)]
+                # changes = False
+                # sense   = 1
+                # stops   = [Transform(gpos, th-5)]
                 # self.setSpeed(0, w, 0)
-                # state = "BEGIN_RECOGN"
+                # state   = "BEGIN_RECOGN"
             # elif state == "BEGIN_RECOGN":
                 # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
                 # Tenemos gfor => 
@@ -583,15 +586,20 @@ class Robot:
                 #
                 # Ademas, dx corresponde a 'y' y dy a 'x' ya que el mapa es
                 #   ^ oy
-                #   . > ox  y en la matrix la dimensiones son [x][y] no [y][x]
+                #   . > ox  y en la matriz la dimensiones son [x][y] no [y][x]
                 # dx, dy = -int(gfor.y), int(gfor.x)
                 # 
                 # Uso el sensor y guardo su valor
-                # Si detecto obstaculo
-                #  self.rMap.conectionMatrix(cell + dx, cell + dy) = 0
+                # # ...
+                # if # el valor que deberia salir si hay algo
+                #   self.rMap.conectionMatrix(cell + dx, cell + dy) = 0
+                #   changes = True
                 # 
                 # if not stops:
-                #   state == "RECALCULATE_MAP"
+                #   if changes:
+                #       state == "RECALCULATE_MAP"
+                #   else:
+                #       state == "TRAVEL_PATH"
                 # elif stops[0] == transform:
                 #   stops.pop(0)
                 #   sense *= -1
@@ -604,6 +612,7 @@ class Robot:
                 # else:
                     # state = "TRAVEL_PATH"
             # elif state == "TRAVEL_PATH":
+                # Este if se quita porque con los estados anteriores nunca entrará en TRAVEL_PATH hasta que haya path.
                 if self.rMap.path:
                     # Obtenemos el siguiente destino
                     _, cell, next_pos = self.rMap.travel()
