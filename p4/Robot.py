@@ -568,7 +568,7 @@ class Robot:
             # elif state == "FULL_RECOGN":
                 # changes = False
                 # sense   = 1
-                # stops   = [Transform(gpos, th-5)]
+                # stops   = [Transform(gpos, th-1)]
                 # self.setSpeed(0, w, 0)
                 # state   = "BEGIN_RECOGN"
             # elif state == "BEGIN_RECOGN":
@@ -595,15 +595,17 @@ class Robot:
                 #   self.rMap.conectionMatrix(cell + dx, cell + dy) = 0
                 #   changes = True
                 # 
-                # if not stops:
-                #   if changes:
-                #       state == "RECALCULATE_MAP"
-                #   else:
-                #       state == "TRAVEL_PATH"
-                # elif stops[0] == transform:
+                # if stops[0] == transform:
                 #   stops.pop(0)
-                #   sense *= -1
-                #   self.setSpeed(0, sense*w, 0)
+                #   if not stops:
+                #       self.setSpeed(0, 0, 0)
+                #       if changes:
+                #           state == "RECALCULATE_MAP"
+                #       else:
+                #           state == "TRAVEL_PATH"
+                #   else:
+                #       sense *= -1
+                #       self.setSpeed(0, sense*w, 0)
             # elif state == "RECALCULATE_MAP":
                 # Se recalcula el mapa como sea 
                 # ...
