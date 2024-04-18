@@ -24,7 +24,7 @@ def main():
         # 2. Inicializar el robot
         global_reference = [20,20,90]
         robot = Robot(global_reference=global_reference, rMap=rMap) 
-        time.sleep(7)
+        time.sleep(4)
         robot.startOdometry()
 
         #while(True):

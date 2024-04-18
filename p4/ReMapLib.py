@@ -57,6 +57,7 @@ class Map:
         self.halfCell = self.sizeCell//2
 
         # Obtener conexiones entre celdas
+        self.fstConnectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
         self.connectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
         rows = 0
         while rows < self.connectionMatrix.shape[0]:
@@ -70,6 +71,7 @@ class Map:
                 continue
             # Se guarda el valor obtenido
             self.connectionMatrix[-rows] = [int(e) for e in connections]
+            self.fstConnectionMatrix[-rows] = [int(e) for e in connections]
         if not rows == self.connectionMatrix.shape[0]:
             print("Error -- El mapa tiene el formato incorrecto")
 
@@ -178,10 +180,10 @@ class Map:
                     if self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
-    def redo_path_4n(self, position):
-        self.start = position
+    def redo_path_4n(self, cell):
+        self.start = cell
         self.path  = []
-        self.index = 1
+        self.index = 2
         self.propagate_4n()
         self.find_path_4n()
 
@@ -268,20 +270,22 @@ class Map:
                     if not (dx==0 and dy==0) and self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
-    def redo_path_8n(self, position):
+    def redo_path_8n(self, cell):
         """ Replanifica el camino con una nueva posicion de inicio"""
-        self.start = position
+        self.start = cell
         self.path  = []
-        self.index = 1
+        self.index = 2
         self.propagate_8n()
         self.find_path_8n()
     
-    def replanPath(self, position):
+    def replanPath(self, cell):
         """ Replanifica el camino según la vecindad del mapa """
         if self.neihgborhood == 4:
-            self.redo_path_4n(position)
+            self.redo_path_4n(cell)
         elif self.neihgborhood == 8:
-            self.redo_path_8n(position)
+            self.redo_path_8n(cell)
+        if self.verbose:
+            print(self)
 
     # DRAW MAP
     def _drawGrid(self):
@@ -466,9 +470,9 @@ class Map:
         # Devolver si la celda intermedia etre las dos esta conectada
         return int(self.connectionMatrix[int(conn1.x+conn2.x)//2][int(conn1.y+conn2.y)//2]), [int(conn1.x+conn2.x)//2,int(conn1.y+conn2.y)//2]
     
-    def setConnection(self, cellX, cellY):
+    def setConnection(self, cell):
         """ open a connection, i.e., we can go straight from cellX,cellY to its neighbour number numNeigh """
-        # TODO: Ver desde donde se llama y qué parametros le podremos pasar
+        self.connectionMatrix[cell[0], cell[1]] = 1 # False
 
     def deleteConnection(self, cell):
         """ close the connection, set cell value to 0 """

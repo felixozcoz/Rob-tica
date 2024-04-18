@@ -1,7 +1,7 @@
 import numpy as np
 from geometry import Vector2, Matrix2, Transform
-from pynput import keyboard
-from pynput.keyboard import Key
+#from pynput import keyboard
+#from pynput.keyboard import Key
 from ReMapLib import Map
 
 def round_list(a_list):
@@ -68,16 +68,18 @@ def simulate_robot(key):
 #print("---------------------------------------------------")
 #rMap = Map("maps/mapa0.txt", [0,0], [2,2])
 #
-#print("---------------------------------------------------")
-#rMap = Map("maps/mapa1.txt", [0,0], [2,2])
+print("---------------------------------------------------")
+rMap = Map("maps/mapa1.txt", [0,0], [2,2])
 #
 #print("---------------------------------------------------")
 #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
 
-print("---------------------------------------------------")
-rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=4)
+#print("---------------------------------------------------")
+#rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=4)
 np.set_printoptions(precision=2, suppress=True)
 #rMap.drawMapWithRobotLocations()
+
+exit(0)
 
 gref = [20,20,90]
 gfor = Vector2.right
