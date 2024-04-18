@@ -573,21 +573,23 @@ class Robot:
                 # state   = "BEGIN_RECOGN"
             # elif state == "BEGIN_RECOGN":
                 # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
-                # Tenemos gfor => 
-                # La orientacion global nos dice hacia que celda mira
+                # La orientacion global nos dice hacia que celda mira. Lo normalizamos para que 
+                # sea unitario.
                 # shift = gfor.normalize()
                 # Obtenemos la direccion de la conexion segun donde mira el robot
-                # Invertimos ya que la matriz va al reves
+                # Redondeamos para cuantificar la direccion donde se encuentra la conexion y
+                # ponemos en negativo ya que la matriz va al reves.
                 # 
                 # Por ejemplo:           En el array es
                 #    ^ y_global = [0,1]  [cell_x-1][cell_y-1] [cell_x-1][cell_y] [cell_x-1][cell_y+1]
                 #    R                   [cell_x  ][cell_y-1] [cell_x  ][cell_y] [cell_x  ][cell_y+1]
                 #                        [cell_x+1][cell_y-1] [cell_x  ][cell_y] [cell_x+1][cell_y+1]
                 #
-                # Ademas, dx corresponde a 'y' y dy a 'x' ya que el mapa es
+                # Ademas, dx corresponde a 'y' y dy a 'x' ya que el mapa es, por lo que solo ponemos en negativo
+                # a dx, que marca las filas.
                 #   ^ oy
                 #   . > ox  y en la matriz la dimensiones son [x][y] no [y][x]
-                # dx, dy = -int(gfor.y), int(gfor.x)
+                # dx, dy = -round(gfor.y), round(gfor.x)
                 # 
                 # Uso el sensor y guardo su valor
                 # # ...
