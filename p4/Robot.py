@@ -536,6 +536,8 @@ class Robot:
         # Transform constraints
         rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
         position_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
+        sense              = 1
+        stops              = []
 
         dinamic_walls = []
         while True:
@@ -555,8 +557,53 @@ class Robot:
             print("gfor: " + str(gfor))
             print([x,y,th])
             # Estado de reconocimiento del entorno
+            # Voy a echar una mano
             if state == "RECOGN":
+                # sense = 1
+                # stops = [Transform(gpos, th+90), Transform(gpos, th-90), Transform(gpos, th)]
+                # self.setSpeed(0, w, 0)
+                # state = "RECOGN_ROTATE"
+            # elif state == "FULL_RECOGN":
+                # sense = 1
+                # stops = [Transform(gpos, th-5)]
+                # self.setSpeed(0, w, 0)
+                # state = "BEGIN_RECOGN"
+            # elif state == "BEGIN_RECOGN":
                 # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
+                # Tenemos gfor => 
+                # La orientacion global nos dice hacia que celda mira
+                # shift = gfor.normalize()
+                # Obtenemos la direccion de la conexion segun donde mira el robot
+                # Invertimos ya que la matriz va al reves
+                # 
+                # Por ejemplo:           En el array es
+                #    ^ y_global = [0,1]  [cell_x-1][cell_y-1] [cell_x-1][cell_y] [cell_x-1][cell_y+1]
+                #    R                   [cell_x  ][cell_y-1] [cell_x  ][cell_y] [cell_x  ][cell_y+1]
+                #                        [cell_x+1][cell_y-1] [cell_x  ][cell_y] [cell_x+1][cell_y+1]
+                #
+                # Ademas, dx corresponde a 'y' y dy a 'x' ya que el mapa es
+                #   ^ oy
+                #   . > ox  y en la matrix la dimensiones son [x][y] no [y][x]
+                # dx, dy = -int(gfor.y), int(gfor.x)
+                # 
+                # Uso el sensor y guardo su valor
+                # Si detecto obstaculo
+                #  self.rMap.conectionMatrix(cell + dx, cell + dy) = 0
+                # 
+                # if not stops:
+                #   state == "RECALCULATE_MAP"
+                # elif stops[0] == transform:
+                #   stops.pop(0)
+                #   sense *= -1
+                #   self.setSpeed(0, sense*w, 0)
+            # elif state == "RECALCULATE_MAP":
+                # Se recalcula el mapa como sea 
+                # ...
+                # if not self.rMap.path:
+                    # state = "FULL_RECOGN"
+                # else:
+                    # state = "TRAVEL_PATH"
+            # elif state == "TRAVEL_PATH":
                 if self.rMap.path:
                     # Obtenemos el siguiente destino
                     _, cell, next_pos = self.rMap.travel()
@@ -575,28 +622,6 @@ class Robot:
                         state = "ROTATE"
                         self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
                     else:
-                        # Voy a echar una mano
-                        # Tenemos gfor => 
-                        # La orientacion global nos dice hacia que celda mira
-                        # shift = gfor.normalize()
-                        # Obtenemos la direccion de la conexion segun donde mira el robot
-                        # Invertimos ya que la matriz va al reves
-                        # 
-                        # Por ejemplo:           En el array es
-                        #    ^ y_global = [0,1]  [cell_x-1][cell_y-1] [cell_x-1][cell_y] [cell_x-1][cell_y+1]
-                        #    R                   [cell_x  ][cell_y-1] [cell_x  ][cell_y] [cell_x  ][cell_y+1]
-                        #                        [cell_x+1][cell_y-1] [cell_x  ][cell_y] [cell_x+1][cell_y+1]
-                        #
-                        # Ademas, dx corresponde a 'y' y dy a 'x' ya que el mapa es
-                        #   ^ oy
-                        #   . > ox  y en la matrix la dimensiones son [x][y] no [y][x]
-                        # dx, dy = -int(gfor.y), int(gfor.x)
-                        # 
-                        # Uso el sensor y guardo su valor
-                        # Si detecto obstaculo
-                        #  self.rMap.conectionMatrix(cell + dx, cell + dy) = 0
-
-
                         # # Antes de avanzar, comprobamos si hay obstáculo
                         # obs, obs_coords = self.detectObstacle(previous_pos, next_pos)
                         # if obs:
@@ -626,7 +651,6 @@ class Robot:
                         # Avanzar sin mirar obstáculos
                         state = "FORWARD"
                         self.setSpeed(v, 0, 0)
-
                     previous_pos = next_pos
                 else:
                     self.setSpeed(0, -w, 0)
