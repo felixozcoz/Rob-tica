@@ -558,64 +558,14 @@ class Robot:
             print("gfor: " + str(gfor))
             print([x,y,th])
             # Estado de reconocimiento del entorno
-            # Voy a echar una mano
-            if state == "RECOGN":
-                # changes = False
-                # sense   = 1
-                # stops   = [Transform(gpos, th+90), Transform(gpos, th-90), Transform(gpos, th)]
-                # self.setSpeed(0, w, 0)
-                # state   = "BEGIN_RECOGN"
-            # elif state == "FULL_RECOGN":
-                # changes = False
-                # sense   = 1
-                # stops   = [Transform(gpos, th-1)]
-                # self.setSpeed(0, w, 0)
-                # state   = "BEGIN_RECOGN"
-            # elif state == "BEGIN_RECOGN":
-                # Se usa el sensor y se actualiza el mapa SI ES NECESARIO
-                # La orientacion global nos dice hacia que celda mira. Lo normalizamos para que 
-                # sea unitario.
-                # shift = gfor.normalize()
-                # Obtenemos la direccion de la conexion segun donde mira el robot
-                # Redondeamos para cuantificar la direccion donde se encuentra la conexion y
-                # ponemos en negativo ya que la matriz va al reves.
-                # 
-                # Por ejemplo:           En el array es
-                #    ^ y_global = [0,1]  [cell_x-1][cell_y-1] [cell_x-1][cell_y] [cell_x-1][cell_y+1]
-                #    R                   [cell_x  ][cell_y-1] [cell_x  ][cell_y] [cell_x  ][cell_y+1]
-                #                        [cell_x+1][cell_y-1] [cell_x  ][cell_y] [cell_x+1][cell_y+1]
-                #
-                # Ademas, dx corresponde a 'y' y dy a 'x' ya que el mapa es, por lo que solo ponemos en negativo
-                # a dx, que marca las filas.
-                #   ^ oy
-                #   . > ox  y en la matriz la dimensiones son [x][y] no [y][x]
-                # dx, dy = -round(gfor.y), round(gfor.x)
-                # 
-                # Uso el sensor y guardo su valor
-                # # ...
-                # if # el valor que deberia salir si hay algo
-                #   self.rMap.conectionMatrix(cell + dx, cell + dy) = 0
-                #   changes = True
-                # 
-                # if stops[0] == transform:
-                #   stops.pop(0)
-                #   if not stops:
-                #       self.setSpeed(0, 0, 0)
-                #       if changes:
-                #           state == "RECALCULATE_MAP"
-                #       else:
-                #           state == "TRAVEL_PATH"
-                #   else:
-                #       sense *= -1
-                #       self.setSpeed(0, sense*w, 0)
-            # elif state == "RECALCULATE_MAP":
-                # Se recalcula el mapa como sea 
-                # ...
-                # if not self.rMap.path:
-                    # state = "FULL_RECOGN"
-                # else:
-                    # state = "TRAVEL_PATH"
-            # elif state == "TRAVEL_PATH":
+            # Estado de rotacion en la celda
+            if state == "ROTATE":
+                transform = Transform(Vector2.zero, forward=gfor)
+                print(transform.rotation)
+                print(rotation_transform.rotation)
+                if rotation_transform == transform:
+                    state = "RECOGN"
+            elif state == "RECOGN":
                 # Este if se quita porque con los estados anteriores nunca entrará en TRAVEL_PATH hasta que haya path.
                 if self.rMap.path:
                     # Obtenemos el siguiente destino
@@ -667,14 +617,6 @@ class Robot:
                     previous_pos = next_pos
                 else:
                     self.setSpeed(0, -w, 0)
-            # Estado de rotacion en la celda
-            elif state == "ROTATE":
-                transform = Transform(Vector2.zero, forward=gfor)
-                print(transform.rotation)
-                print(rotation_transform.rotation)
-                if rotation_transform == transform:
-                    state = "FORWARD"
-                    self.setSpeed(v, 0, 0)
             elif state == "FORWARD":
                 transform = Transform(gpos)
                 print(transform.position)
