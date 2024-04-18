@@ -572,11 +572,12 @@ class Transform:
             "last": dist
         }
         # ROTATION CHECK
-        #ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
-        #print((self.rotation % 360), (transform.rotation % 360))
-        #ROTATION = (self.rotation % 360) <= (transform.rotation % 360)
         print(self.forward.angle(transform.forward))
-        ROTATION = self.ROTATION_ERROR > abs(self.forward.angle(transform.forward))
+        angle_diff = self.rotation - transform.rotation
+        angle_diff = (angle_diff + 180) % 360 - 180
+        #ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
+        ROTATION   = angle_diff < 0 and self.ROTATION_ERROR > abs(angle_diff)
+        #ROTATION  = self.ROTATION_ERROR > abs(self.forward.angle(transform.forward))
         #print("--- Compare transform ---")
         #print("self.RotationError: ", self.ROTATION_ERROR)
         #print("self.rotation: ", self.rotation)
