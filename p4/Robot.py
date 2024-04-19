@@ -594,6 +594,7 @@ class Robot:
                         state = "BACKTRACKING"
                     else: 
                         state = "ROTATE"
+
                 # Si no detecto obstaculo pero lo habia antes y ademas no existia en el original
                 elif not self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and self.rMap.fstConnectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
                     self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 1
@@ -602,6 +603,7 @@ class Robot:
                         state = "BACKTRACKING"
                     else:
                         state = "START_CELL_TRAVEL"
+
                 # Si ninguna ni otra, sigo adelante
                 else:
                     if self.rMap.path:
