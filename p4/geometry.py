@@ -3,12 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True)
-POSITION_ERROR = 0.5
-ROTATION_ERROR = 2
+POSITION_ERROR = 0.25
+ROTATION_ERROR = 0.01
 
-###########################################################
-# VECTOR2
-###########################################################
 class Vector2:
     # Constructor 
     def __init__(self, x=0.0, y=0.0, h=0.0, iter=None) -> None:
@@ -73,13 +70,14 @@ class Vector2:
         """
         return Vector2(self.x + v.x, self.y + v.y, np.floor((self.h + v.h)/2))
 
-    def __iadd__(self, v: 'Vector2') -> None:
+    def __iadd__(self: 'Vector2', v: 'Vector2') -> 'Vector2':
         """
             Vector addition and assignation
         """
         self.x += v.x
         self.y += v.y
         self.h  = np.floor((self.h + v.h)/2)
+        return self
 
     def __sub__(self, v) -> 'Vector2':
         """
@@ -94,6 +92,7 @@ class Vector2:
         self.x -= v.x
         self.y -= v.y
         self.h  = abs(self.h - v.h)
+        return self
 
     def __neg__(self) -> 'Vector2':
         """
@@ -123,6 +122,7 @@ class Vector2:
         """
         self.x *= s
         self.y *= s
+        return self
 
     def __div__(self, s) -> 'Vector2':
         """
@@ -136,6 +136,7 @@ class Vector2:
         """
         self.x /= s
         self.y /= s
+        return self
 
     def __eq__(self, v: 'Vector2') -> bool:
         """
@@ -163,11 +164,11 @@ class Vector2:
         """
         return "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
 
-
 # Vector del eje -Y
 Vector2.down = Vector2(0,-1)
 # Vector error
-Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR).normalize() 
+Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR)
+print(Vector2.error)
 # Vector del eje -X
 Vector2.left = Vector2(-1,0)
 # Vector unidad
@@ -263,6 +264,7 @@ class Vector3:
         self.y += v.y
         self.z += v.z
         self.h  = np.floor((self.h + v.h)/2)
+        return self
 
     def __sub__(self, v) -> 'Vector3':
         """
@@ -278,6 +280,7 @@ class Vector3:
         self.y -= v.y
         self.z -= v.z
         self.h  = abs(self.h - v.h)
+        return self
 
     def __neg__(self) -> 'Vector3':
         """
@@ -308,6 +311,7 @@ class Vector3:
         self.x *= s
         self.y *= s
         self.z *= s
+        return self
 
     def __div__(self, s) -> 'Vector3':
         """
@@ -322,6 +326,7 @@ class Vector3:
         self.x /= s
         self.y /= s
         self.z /= s
+        return self
 
     def __eq__(self, v: 'Vector3') -> bool:
         """
@@ -344,9 +349,6 @@ class Vector3:
         yield self.z
         yield self.h
 
-    def __vector2__(self) -> Vector2:
-        return Vector2(self.x, self.y, self.h)
-
     def __repr__(self) -> str:
         """
             Representation of a vector in screen
@@ -355,6 +357,9 @@ class Vector3:
 
 def vector2(v: Vector3):
     return Vector2(v.x, v.y, v.h)
+
+def vector3(v: Vector2):
+    return Vector3(v.x, v.y, 0, v.h)
 
 # Vector del eje -Z
 Vector3.back = Vector3(0,0,-1) 
@@ -542,14 +547,22 @@ class Transform:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # Area error
         position_shift    = self.VECTOR_ERROR
-        self.position_inf = position - position_shift
-        self.position_sup = position + position_shift
+        self.position_inf = self.position - position_shift
+        self.position_sup = self.position + position_shift
         # Distance error
-        self.lmin         = {
-            "pass": False,
+        self.dmin         = {
+            "prev": False,
             "last": np.inf
         }
         # Orientation error
+        self.rmin         = {
+            "prev": False,
+            "last": np.inf
+        }
+        self.vmin         = {
+            "prev": False,
+            "last": np.inf
+        }
         #self.rotation_inf = rotation - ROTATION_ERROR
         #self.rotation_sup = rotation + ROTATION_ERROR
 
@@ -562,30 +575,56 @@ class Transform:
         # 1. Area check
         POSITION = (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
             (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y)
+        #if (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
+        #    (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y):
+        #    print("Check por area", self.position_inf, self.position_sup)
         # 2. Distance check
         dist = (self.position - transform.position).magnitude()
         POSITION |= self.POSITION_ERROR > dist
+        #if self.POSITION_ERROR > dist:
+        #    print("Check por distancia de posiciones")
         # 3. Local minimum check
-        POSITION |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
-        self.distance = {
-            "pass": (self.lmin["last"] >= dist),
+        # \ -> El valor guardado es mayor que el siguiente valor.
+        # / -> El valor guardado es menor que el siguiente valor.
+        # Mientras el valor guardado sea mayor, no hay minimo, 
+        # en el momento en el que cambie la pendiente, es que se 
+        # ha pasado el minimo
+        POSITION |= (self.dmin["last"] <  dist) and not self.dmin["prev"]
+        #if (self.dmin["last"] <  dist) and not self.dmin["prev"]:
+        #    print("Check por minimo local de distancia")
+        self.dmin = {
+            "prev": (self.dmin["last"] >= dist),
             "last": dist
         }
         # ROTATION CHECK
-        print(self.forward.angle(transform.forward))
+        # 1. Distance check
         angle_diff = self.rotation - transform.rotation
         angle_diff = (angle_diff + 180) % 360 - 180
         #ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
-        ROTATION   = angle_diff < 0 and self.ROTATION_ERROR > abs(angle_diff)
-        #ROTATION  = self.ROTATION_ERROR > abs(self.forward.angle(transform.forward))
-        #print("--- Compare transform ---")
-        #print("self.RotationError: ", self.ROTATION_ERROR)
-        #print("self.rotation: ", self.rotation)
-        #print("transform.rotation: ", transform.rotation)
-        #print("self.forward: ", self.forward)
-        #print("transform.forward: ", transform.forward)
-        #print("self.forward.angle: ", self.forward.angle(transform.forward))
-        #print("--- End compare ---")
+        ROTATION   = angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff)
+        #if angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff):
+        #    print("Check por distancia de angulos")
+        # 2. Distance local minimum check
+        ROTATION  |= (self.rmin["last"] < abs(angle_diff)) and not self.rmin["prev"]
+        #if (self.rmin["last"] < abs(angle_diff)) and not self.rmin["prev"]:
+        #    print("Check por minimo local de distancia")
+        self.rmin  = {
+            "prev": (self.rmin["last"] >= abs(angle_diff)),
+            "last": abs(angle_diff)
+        }
+        # 3. Vectors angle check
+        angle_diff = abs(self.forward.angle(transform.forward))
+        ROTATION  |= self.ROTATION_ERROR > angle_diff
+        #if self.ROTATION_ERROR > angle_diff:
+        #    print("Check por angulo entre dos vectores")
+        # 4. Vectors angle local minimum check
+        ROTATION  |= (self.vmin["last"] < angle_diff) and not self.vmin["prev"]
+        #if (self.vmin["last"] < angle_diff) and not self.vmin["prev"]:
+        #    print("Check por minimo local de angulos entre dos vectores")
+        self.vmin  = {
+            "prev": self.vmin["last"] >= angle_diff,
+            "last": angle_diff
+        }
         # BOTH CHECK
         return POSITION and ROTATION
 
@@ -595,6 +634,7 @@ class Transform:
             Representacion de un transform en pantalla
         """
         return "Transform { pos: " + str(self.position) + ", rot: " + str(round(self.rotation, 7)) + ", fwr: " + str(self.forward) + " }"
+
 
 # Funciones extra
 def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
