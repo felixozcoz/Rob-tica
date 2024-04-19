@@ -549,7 +549,13 @@ class Transform:
         position_shift    = self.VECTOR_ERROR
         self.position_inf = self.position - position_shift
         self.position_sup = self.position + position_shift
-        # Distance error
+        # Local minimum
+        self.localMin()
+
+        #self.rotation_inf = rotation - ROTATION_ERROR
+        #self.rotation_sup = rotation + ROTATION_ERROR
+
+    def localMin(self):
         self.dmin         = {
             "prev": False,
             "last": np.inf
@@ -563,8 +569,6 @@ class Transform:
             "prev": False,
             "last": np.inf
         }
-        #self.rotation_inf = rotation - ROTATION_ERROR
-        #self.rotation_sup = rotation + ROTATION_ERROR
 
     # Equivalencia
     def __eq__(self, transform):
@@ -626,7 +630,10 @@ class Transform:
             "last": angle_diff
         }
         # BOTH CHECK
-        return POSITION and ROTATION
+        if POSITION and ROTATION:
+            self.localMin()
+            return True
+        return False
 
     # ToString
     def __repr__(self) -> str:

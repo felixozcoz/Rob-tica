@@ -19,7 +19,7 @@ def main():
         #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
 
         #print("---------------------------------------------------")
-        #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
+        #rMap = Map("maps/mapa3.txt", [0,0], [4,6])
 
         # 1. Inicializar el mapa
         print("---------------------------------------------------")
