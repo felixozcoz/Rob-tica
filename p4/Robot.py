@@ -522,32 +522,61 @@ class Robot:
                 rotation_transform = Transform(Vector2.zero, forward=dir)
                 #print(dir, gfor, dir.angle(gfor))
                 if rotation_transform == Transform(Vector2.zero, forward=gfor):
-                    state = "FORWARD"
-                    print("START_CELL_ADVENTURE -> FORWARD")
-                    self.setSpeed(10,0)
+                    state = "RECOGN"
+                    print("START_CELL_ADVENTURE -> RECOGN")
                 else:
                     state = "ROTATION"
                     print("START_CELL_ADVENTURE -> ROTATION")
                     self.setSpeed(0, gfor.cross(dir))
+                conn  = [2*cell[0]+1, 2*cell[1]+1]
                 cell  = next_cell
                 pos   = next_pos
             # B. Estado de rotacion
             elif state == "ROTATION":
                 transform = Transform(Vector2.zero, forward=gfor)
                 if rotation_transform == transform:
-                    state = "FORWARD"
-                    print("ROTATION -> FORWARD")
+                    state = "RECOGN"
+                    print("ROTATION -> RECOGN")
                     self.setSpeed(10,0)
             # C. Estado del reconocimiento del entorno
             elif state == "RECOGN":
-                print("No entro aqui nunca")
+                shift  = gfor.normalize()
+                dx, dy = int(round(shift.y)), int(round(shift.x))
+                neighbor_conn = [conn[0]+dx, conn[1]+dy]
+                neighbor_left = [neighbor_conn[0]-dy, neighbor_conn[1]-dx]
+                neighbor_rght = [neighbor_conn[0]+dy, neighbor_conn[1]+dx]
+                # Si detecto obstucalo
+                if 0.5 < self.us_ev3.value and self.us_ev3.value < gfor.magnitude()*20 and self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
+                    self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 0
+                    self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 0
+                    self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 0
+                    self.rMap.replanPath_4N(cell)
+                    if self.rMap.path:
+                        state = "START_CELL_ADVENTURE"
+                        print("RECOGN -> START_CELL_ADVENTURE")
+                # Si no detecto obstaculo pero lo habia antes y ademas no existia en el original
+                elif not self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and not self.rMap.connectionSource[neighbor_conn[0]][neighbor_conn[1]]:
+                    self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]     = 1
+                    if self.rMap.connectionSource[neighbor_left[0]][neighbor_left[1]]:
+                        self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 1
+                    if self.rMap.connectionSource[neighbor_rght[0]][neighbor_rght[1]]:
+                        self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 1
+                    self.rMap.replanPath_4N(cell)
+                    if self.rMap.path:
+                        state = "START_CELL_ADVENTURE"    
+                        print("RECOGN -> START_CELL_ADVENTURE")
+                # Si ninguna ni otra, sigo adelante
+                else:
+                    state = "FORWARD"
+                    print("RECOGN -> FORWARD")
+                    self.setSpeed(10,0)
             # E. Estado de avance hacia la siguiente celda
             elif state == "FORWARD":
                 if not rotation_transform == Transform(Vector2.zero, forward=gfor):
-                    print("MAL")
+                    #print("MAL")
                     self.setSpeed(10,gfor.cross(rotation_transform.forward) * 1)
                 else:
-                    print("BIEN")
+                    #print("BIEN")
                     self.setSpeed(10,0)
                 # 10-11 y 12-13
                 fst_flag = position_transform == Transform(gpos)
