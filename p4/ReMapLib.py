@@ -449,28 +449,7 @@ class Map:
     #        if a_node[0] < e_node[0] or (a_node[0] == e_node[0] and a_node[1] < e_node[1]):
     #            break
     #    return a_list[:i] + [a_node] + a_list[i:]
-    
-    def areConnected(self, cell1, cell2):
-        """ Comprueba si dos celdas estan conectadas y las coordenadas de la celda de conexión """
-        # Formato de los parámetros: cellX = [20,60]
-        # Calcular coordenadas de las celdas en la matriz de conexiones
-        conn1 = Vector2(cell1.x / self.halfCell, cell1.y / self.halfCell, 0) # celda 1
-        conn2 = Vector2(cell2.x / self.halfCell, cell2.y / self.halfCell, 0) # celda 2
-        # Si estamos en 4-vecindad y se quiere ir en diagonal devuelve no conectado (False)
-        if self.neighborhood == 4 and abs(conn1.x - conn2.x) == 1 and abs(conn1.y - conn2.y) == 1:
-            return False
-        # Devolver si la celda intermedia etre las dos esta conectada
-        return int(self.connectionMatrix[int(conn1.x+conn2.x)//2][int(conn1.y+conn2.y)//2]), [int(conn1.x+conn2.x)//2,int(conn1.y+conn2.y)//2]
-    
-    def setConnection(self, cell):
-        """ open a connection, i.e., we can go straight from cellX,cellY to its neighbour number numNeigh """
-        self.connectionMatrix[cell[0], cell[1]] = 1 # False
-
-    def deleteConnection(self, cell):
-        """ close the connection, set cell value to 0 """
-        # from coordinates in the grid of cells to coordinates in the connection matrix
-        self.connectionMatrix[cell[0], cell[1]] = 0 # False
-
+  
     def travel(self):
         # Si el path esta vacio, no puede devolver celda
         if not self.path:

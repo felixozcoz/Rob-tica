@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True)
-POSITION_ERROR = 0.25
-ROTATION_ERROR = 0.01
+POSITION_ERROR = 1
+ROTATION_ERROR = 1
 
 class Vector2:
     # Constructor 
@@ -28,11 +28,14 @@ class Vector2:
         """
             Angle between two vectors
         """
-        angle = np.arccos((self * v) / (self.magnitude() * v.magnitude()))
+        dot   = self.normalize()*v.normalize()
+        if dot > 1.0 or dot < -1.0:
+            dot = round(dot)
+        angle = np.arccos(dot)
         if format == "DEG":
             angle = np.rad2deg(angle)
 
-        return np.sign(self.cross(v)) * angle
+        return angle
 
     def cross(self, v: 'Vector2'):
         """
@@ -40,6 +43,14 @@ class Vector2:
             projection of the first vector onto the second one).
         """
         return (self.x * v.y) - (self.y * v.x)
+    
+    def angle_sense(self, v: 'Vector2'):
+
+        res = self.cross(v)
+        if res == 0:
+            return 1
+        else:
+            return np.sign(res)
 
     def magnitude(self):
         """
@@ -533,15 +544,15 @@ class Transform:
         if rotation is None and forward is None:
             self.rotation = 0
             self.forward  = Vector2.right
-            self.right    = Vector2.up
+            #self.right    = Vector2.up
         elif rotation is not None:
-            self.rotation = rotation % 360
-            self.forward  = Matrix2.transform(Vector2.zero, self.rotation) * Vector2.right
-            self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
+            self.rotation = (rotation + 180) % 360 - 180
+            self.forward  = Vector2.right.rotate(self.rotation)
+            #self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
         else:
             self.rotation = forward.angle(Vector2.right, "DEG")
             self.forward  = forward
-            self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
+            #self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
         self.ROTATION_ERROR = ROTATION_ERROR
         if CUSTOM_ROTATION_ERROR is not None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
@@ -550,25 +561,11 @@ class Transform:
         self.position_inf = self.position - position_shift
         self.position_sup = self.position + position_shift
         # Local minimum
-        self.localMin()
-
+        self.dmin = { "prev": False, "last": -np.inf }
+        #self.rmin = { "prev": False, "last": -np.inf }
+        #self.vmin = { "prev": False, "last": -np.inf }
         #self.rotation_inf = rotation - ROTATION_ERROR
         #self.rotation_sup = rotation + ROTATION_ERROR
-
-    def localMin(self):
-        self.dmin         = {
-            "prev": False,
-            "last": np.inf
-        }
-        # Orientation error
-        self.rmin         = {
-            "prev": False,
-            "last": np.inf
-        }
-        self.vmin         = {
-            "prev": False,
-            "last": np.inf
-        }
 
     # Equivalencia
     def __eq__(self, transform):
@@ -593,11 +590,12 @@ class Transform:
         # Mientras el valor guardado sea mayor, no hay minimo, 
         # en el momento en el que cambie la pendiente, es que se 
         # ha pasado el minimo
-        POSITION |= (self.dmin["last"] <  dist) and not self.dmin["prev"]
-        #if (self.dmin["last"] <  dist) and not self.dmin["prev"]:
+        POSITION |= self.dmin["last"] < dist and dist - self.dmin["last"] >= 0.1 and self.dmin["prev"]
+        #if self.dmin["last"] < dist and self.dmin["last"] - dist > 0.1 and self.dmin["prev"]:
         #    print("Check por minimo local de distancia")
+        #print(dist, self.dmin, self.dmin["last"] < dist and self.dmin["last"] - dist > 0.1)
         self.dmin = {
-            "prev": (self.dmin["last"] >= dist),
+            "prev": self.dmin["last"] >= dist,
             "last": dist
         }
         # ROTATION CHECK
@@ -607,31 +605,38 @@ class Transform:
         #ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
         ROTATION   = angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff)
         #if angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff):
-        #    print("Check por distancia de angulos")
-        # 2. Distance local minimum check
-        ROTATION  |= (self.rmin["last"] < abs(angle_diff)) and not self.rmin["prev"]
-        #if (self.rmin["last"] < abs(angle_diff)) and not self.rmin["prev"]:
+        #    print("Check por distancia de angulos:", self.rotation, transform.rotation)
+        # 2. Distance local minimum check (peor por culpa de la odometria)
+        #ROTATION  |= (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]
+        #if (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]:
         #    print("Check por minimo local de distancia")
-        self.rmin  = {
-            "prev": (self.rmin["last"] >= abs(angle_diff)),
-            "last": abs(angle_diff)
-        }
+        ##print(self.rmin, (self.rmin["last"] < angle_diff))
+        #self.rmin  = {
+        #    "prev": (self.rmin["last"] >= abs(angle_diff)),
+        #    "last": abs(angle_diff)
+        #}
         # 3. Vectors angle check
-        angle_diff = abs(self.forward.angle(transform.forward))
+        angle_diff = self.forward.angle(transform.forward)
         ROTATION  |= self.ROTATION_ERROR > angle_diff
         #if self.ROTATION_ERROR > angle_diff:
-        #    print("Check por angulo entre dos vectores")
+        #    print("Check por angulo entre dos vectores", angle_diff)
         # 4. Vectors angle local minimum check
-        ROTATION  |= (self.vmin["last"] < angle_diff) and not self.vmin["prev"]
-        #if (self.vmin["last"] < angle_diff) and not self.vmin["prev"]:
+        #ROTATION  |= abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]
+        #if abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]:
         #    print("Check por minimo local de angulos entre dos vectores")
-        self.vmin  = {
-            "prev": self.vmin["last"] >= angle_diff,
-            "last": angle_diff
-        }
+        #    print(angle_diff)
+        #print(self.vmin, abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"])
+        #self.vmin  = {
+        #    "prev": self.vmin["last"] >= angle_diff,
+        #    "last": angle_diff
+        #}
+    
         # BOTH CHECK
         if POSITION and ROTATION:
-            self.localMin()
+            # Reset local minimum registries
+            self.dmin = { "prev": False, "last": -np.inf }
+            #self.rmin = { "prev": False, "last": -np.inf }
+            #self.vmin = { "prev": False, "last": -np.inf }
             return True
         return False
 
