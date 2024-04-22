@@ -160,6 +160,30 @@ class Vector2:
             Vector inequality
         """
         return not (self == v)
+    
+    def __gt__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than (>)
+        """
+        return self.x > v.x or self.x == v.x and self.y > v.y
+    
+    def __ge__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than or equal (>=)
+        """
+        return self.x > v.x or self.x == v.x and self.y >= v.y
+    
+    def __lt__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than (<)
+        """
+        return self.x < v.x or self.x == v.x and self.y < v.y
+    
+    def __le__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than or equal (<=)
+        """
+        return self.x < v.x or self.x == v.x and self.y <= v.y
 
     def __iter__(self):
         """
@@ -179,7 +203,7 @@ class Vector2:
 Vector2.down = Vector2(0,-1)
 # Vector error
 Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR)
-print(Vector2.error)
+#print(Vector2.error)
 # Vector del eje -X
 Vector2.left = Vector2(-1,0)
 # Vector unidad
@@ -350,6 +374,30 @@ class Vector3:
             Vector inequality
         """
         return not self == v
+    
+    def __gt__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than (>)
+        """
+        return self.x > v.x or (self.x == v.x and self.y > v.y) or (self.x == v.x and self.y == v.y and self.z > v.z)
+    
+    def __ge__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than or equal (>=)
+        """
+        return self.x > v.x or (self.x == v.x and self.y > v.y) or (self.x == v.x and self.y == v.y and self.z >= v.z) 
+    
+    def __lt__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than (<)
+        """
+        return self.x < v.x or (self.x == v.x and self.y < v.y) or (self.x == v.x and self.y == v.y and self.z < v.z)
+    
+    def __le__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than or equal (<=)
+        """
+        return self.x < v.x or (self.x == v.x and self.y <= v.y ) or (self.x == v.x and self.y == v.y and self.z <= v.z)
     
     def __iter__(self):
         """
@@ -574,8 +622,7 @@ class Transform:
         """
         # POSITION CHECK
         # 1. Area check
-        POSITION = (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
-            (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y)
+        POSITION = (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
         #if (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
         #    (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y):
         #    print("Check por area", self.position_inf, self.position_sup)
