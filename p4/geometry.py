@@ -3,12 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True)
-POSITION_ERROR = 0.5
-ROTATION_ERROR = 2
+POSITION_ERROR = 1
+ROTATION_ERROR = 1
 
-###########################################################
-# VECTOR2
-###########################################################
 class Vector2:
     # Constructor 
     def __init__(self, x=0.0, y=0.0, h=0.0, iter=None) -> None:
@@ -31,11 +28,14 @@ class Vector2:
         """
             Angle between two vectors
         """
-        angle = np.arccos((self * v) / (self.magnitude() * v.magnitude()))
+        dot   = self.normalize()*v.normalize()
+        if dot > 1.0 or dot < -1.0:
+            dot = round(dot)
+        angle = np.arccos(dot)
         if format == "DEG":
             angle = np.rad2deg(angle)
 
-        return np.sign(self.cross(v)) * angle
+        return angle
 
     def cross(self, v: 'Vector2'):
         """
@@ -43,6 +43,14 @@ class Vector2:
             projection of the first vector onto the second one).
         """
         return (self.x * v.y) - (self.y * v.x)
+    
+    def angle_sense(self, v: 'Vector2'):
+
+        res = self.cross(v)
+        if res == 0:
+            return 1
+        else:
+            return np.sign(res)
 
     def magnitude(self):
         """
@@ -73,13 +81,14 @@ class Vector2:
         """
         return Vector2(self.x + v.x, self.y + v.y, np.floor((self.h + v.h)/2))
 
-    def __iadd__(self, v: 'Vector2') -> None:
+    def __iadd__(self: 'Vector2', v: 'Vector2') -> 'Vector2':
         """
             Vector addition and assignation
         """
         self.x += v.x
         self.y += v.y
         self.h  = np.floor((self.h + v.h)/2)
+        return self
 
     def __sub__(self, v) -> 'Vector2':
         """
@@ -94,6 +103,7 @@ class Vector2:
         self.x -= v.x
         self.y -= v.y
         self.h  = abs(self.h - v.h)
+        return self
 
     def __neg__(self) -> 'Vector2':
         """
@@ -123,6 +133,7 @@ class Vector2:
         """
         self.x *= s
         self.y *= s
+        return self
 
     def __div__(self, s) -> 'Vector2':
         """
@@ -136,6 +147,7 @@ class Vector2:
         """
         self.x /= s
         self.y /= s
+        return self
 
     def __eq__(self, v: 'Vector2') -> bool:
         """
@@ -148,6 +160,30 @@ class Vector2:
             Vector inequality
         """
         return not (self == v)
+    
+    def __gt__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than (>)
+        """
+        return self.x > v.x or self.x == v.x and self.y > v.y
+    
+    def __ge__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than or equal (>=)
+        """
+        return self.x > v.x or self.x == v.x and self.y >= v.y
+    
+    def __lt__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than (<)
+        """
+        return self.x < v.x or self.x == v.x and self.y < v.y
+    
+    def __le__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than or equal (<=)
+        """
+        return self.x < v.x or self.x == v.x and self.y <= v.y
 
     def __iter__(self):
         """
@@ -163,11 +199,11 @@ class Vector2:
         """
         return "(x=" + str(round(self.x, 7)) + ", y=" + str(round(self.y, 7)) + ", h=" + str(round(self.h, 7)) + ")" 
 
-
 # Vector del eje -Y
 Vector2.down = Vector2(0,-1)
 # Vector error
-Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR).normalize() 
+Vector2.error = Vector2(POSITION_ERROR, POSITION_ERROR)
+#print(Vector2.error)
 # Vector del eje -X
 Vector2.left = Vector2(-1,0)
 # Vector unidad
@@ -263,6 +299,7 @@ class Vector3:
         self.y += v.y
         self.z += v.z
         self.h  = np.floor((self.h + v.h)/2)
+        return self
 
     def __sub__(self, v) -> 'Vector3':
         """
@@ -278,6 +315,7 @@ class Vector3:
         self.y -= v.y
         self.z -= v.z
         self.h  = abs(self.h - v.h)
+        return self
 
     def __neg__(self) -> 'Vector3':
         """
@@ -308,6 +346,7 @@ class Vector3:
         self.x *= s
         self.y *= s
         self.z *= s
+        return self
 
     def __div__(self, s) -> 'Vector3':
         """
@@ -322,6 +361,7 @@ class Vector3:
         self.x /= s
         self.y /= s
         self.z /= s
+        return self
 
     def __eq__(self, v: 'Vector3') -> bool:
         """
@@ -335,6 +375,30 @@ class Vector3:
         """
         return not self == v
     
+    def __gt__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than (>)
+        """
+        return self.x > v.x or (self.x == v.x and self.y > v.y) or (self.x == v.x and self.y == v.y and self.z > v.z)
+    
+    def __ge__(self, v: 'Vector2') -> bool:
+        """
+            Vector greater than or equal (>=)
+        """
+        return self.x > v.x or (self.x == v.x and self.y > v.y) or (self.x == v.x and self.y == v.y and self.z >= v.z) 
+    
+    def __lt__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than (<)
+        """
+        return self.x < v.x or (self.x == v.x and self.y < v.y) or (self.x == v.x and self.y == v.y and self.z < v.z)
+    
+    def __le__(self, v: 'Vector2') -> bool:
+        """
+            Vector less than or equal (<=)
+        """
+        return self.x < v.x or (self.x == v.x and self.y <= v.y ) or (self.x == v.x and self.y == v.y and self.z <= v.z)
+    
     def __iter__(self):
         """
             Representation of a vector in a list
@@ -344,9 +408,6 @@ class Vector3:
         yield self.z
         yield self.h
 
-    def __vector2__(self) -> Vector2:
-        return Vector2(self.x, self.y, self.h)
-
     def __repr__(self) -> str:
         """
             Representation of a vector in screen
@@ -355,6 +416,9 @@ class Vector3:
 
 def vector2(v: Vector3):
     return Vector2(v.x, v.y, v.h)
+
+def vector3(v: Vector2):
+    return Vector3(v.x, v.y, 0, v.h)
 
 # Vector del eje -Z
 Vector3.back = Vector3(0,0,-1) 
@@ -528,28 +592,26 @@ class Transform:
         if rotation is None and forward is None:
             self.rotation = 0
             self.forward  = Vector2.right
-            self.right    = Vector2.up
+            #self.right    = Vector2.up
         elif rotation is not None:
-            self.rotation = rotation % 360
-            self.forward  = Matrix2.transform(Vector2.zero, self.rotation) * Vector2.right
-            self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
+            self.rotation = (rotation + 180) % 360 - 180
+            self.forward  = Vector2.right.rotate(self.rotation)
+            #self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
         else:
             self.rotation = forward.angle(Vector2.right, "DEG")
             self.forward  = forward
-            self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
+            #self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
         self.ROTATION_ERROR = ROTATION_ERROR
         if CUSTOM_ROTATION_ERROR is not None:
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # Area error
         position_shift    = self.VECTOR_ERROR
-        self.position_inf = position - position_shift
-        self.position_sup = position + position_shift
-        # Distance error
-        self.lmin         = {
-            "pass": False,
-            "last": np.inf
-        }
-        # Orientation error
+        self.position_inf = self.position - position_shift
+        self.position_sup = self.position + position_shift
+        # Local minimum
+        self.dmin = { "prev": False, "last": -np.inf }
+        #self.rmin = { "prev": False, "last": -np.inf }
+        #self.vmin = { "prev": False, "last": -np.inf }
         #self.rotation_inf = rotation - ROTATION_ERROR
         #self.rotation_sup = rotation + ROTATION_ERROR
 
@@ -560,30 +622,70 @@ class Transform:
         """
         # POSITION CHECK
         # 1. Area check
-        POSITION = (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
-            (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y)
+        POSITION = (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
+        #if (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
+        #    (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y):
+        #    print("Check por area", self.position_inf, self.position_sup)
         # 2. Distance check
         dist = (self.position - transform.position).magnitude()
         POSITION |= self.POSITION_ERROR > dist
+        #if self.POSITION_ERROR > dist:
+        #    print("Check por distancia de posiciones")
         # 3. Local minimum check
-        POSITION |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
-        self.distance = {
-            "pass": (self.lmin["last"] >= dist),
+        # \ -> El valor guardado es mayor que el siguiente valor.
+        # / -> El valor guardado es menor que el siguiente valor.
+        # Mientras el valor guardado sea mayor, no hay minimo, 
+        # en el momento en el que cambie la pendiente, es que se 
+        # ha pasado el minimo
+        POSITION |= self.dmin["last"] < dist and dist - self.dmin["last"] >= 0.1 and self.dmin["prev"]
+        #if self.dmin["last"] < dist and self.dmin["last"] - dist > 0.1 and self.dmin["prev"]:
+        #    print("Check por minimo local de distancia")
+        #print(dist, self.dmin, self.dmin["last"] < dist and self.dmin["last"] - dist > 0.1)
+        self.dmin = {
+            "prev": self.dmin["last"] >= dist,
             "last": dist
         }
         # ROTATION CHECK
-        ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
-        ROTATION |= self.ROTATION_ERROR > abs(self.forward.angle(transform.forward))
-        print("--- Compare transform ---")
-        print("self.RotationError: ", self.ROTATION_ERROR)
-        print("self.rotation: ", self.rotation)
-        print("transform.rotation: ", transform.rotation)
-        print("self.forward: ", self.forward)
-        print("transform.forward: ", transform.forward)
-        print("self.forward.angle: ", self.forward.angle(transform.forward))
-        print("--- End compare ---")
+        # 1. Distance check
+        angle_diff = self.rotation - transform.rotation
+        angle_diff = (angle_diff + 180) % 360 - 180
+        #ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
+        ROTATION   = angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff)
+        #if angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff):
+        #    print("Check por distancia de angulos:", self.rotation, transform.rotation)
+        # 2. Distance local minimum check (peor por culpa de la odometria)
+        #ROTATION  |= (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]
+        #if (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]:
+        #    print("Check por minimo local de distancia")
+        ##print(self.rmin, (self.rmin["last"] < angle_diff))
+        #self.rmin  = {
+        #    "prev": (self.rmin["last"] >= abs(angle_diff)),
+        #    "last": abs(angle_diff)
+        #}
+        # 3. Vectors angle check
+        angle_diff = self.forward.angle(transform.forward)
+        ROTATION  |= self.ROTATION_ERROR > angle_diff
+        #if self.ROTATION_ERROR > angle_diff:
+        #    print("Check por angulo entre dos vectores", angle_diff)
+        # 4. Vectors angle local minimum check
+        #ROTATION  |= abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]
+        #if abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]:
+        #    print("Check por minimo local de angulos entre dos vectores")
+        #    print(angle_diff)
+        #print(self.vmin, abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"])
+        #self.vmin  = {
+        #    "prev": self.vmin["last"] >= angle_diff,
+        #    "last": angle_diff
+        #}
+    
         # BOTH CHECK
-        return POSITION and ROTATION
+        if POSITION and ROTATION:
+            # Reset local minimum registries
+            self.dmin = { "prev": False, "last": -np.inf }
+            #self.rmin = { "prev": False, "last": -np.inf }
+            #self.vmin = { "prev": False, "last": -np.inf }
+            return True
+        return False
 
     # ToString
     def __repr__(self) -> str:
@@ -591,6 +693,7 @@ class Transform:
             Representacion de un transform en pantalla
         """
         return "Transform { pos: " + str(self.position) + ", rot: " + str(round(self.rotation, 7)) + ", fwr: " + str(self.forward) + " }"
+
 
 # Funciones extra
 def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):

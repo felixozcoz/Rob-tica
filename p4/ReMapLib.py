@@ -44,7 +44,7 @@ class Map:
         mapF = open(path, "r")
 
         # Guardar vecindad
-        self.neihgborhood = neighborhood
+        self.neighborhood = neighborhood
 
         # Obtener dimensiones del mapa y de las celdas
         header = mapF.readline().split()
@@ -57,7 +57,8 @@ class Map:
         self.halfCell = self.sizeCell//2
 
         # Obtener conexiones entre celdas
-        self.connectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+        self.connectionSource  = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+        self.connectionMatrix  = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
         rows = 0
         while rows < self.connectionMatrix.shape[0]:
             rows += 1
@@ -69,7 +70,10 @@ class Map:
                 print("Warning -- La linea " + str(rows) + " tiene dimensiones incorrectas")
                 continue
             # Se guarda el valor obtenido
+            self.connectionSource[-rows] = [int(e) for e in connections]
             self.connectionMatrix[-rows] = [int(e) for e in connections]
+
+
         if not rows == self.connectionMatrix.shape[0]:
             print("Error -- El mapa tiene el formato incorrecto")
 
@@ -81,18 +85,18 @@ class Map:
         self.goal       = goal
 
         if neighborhood == 4:
-            self.propagate_4n()
-            self.find_path_4n()
+            self.propagate_4N()
+            self.findPath_4N()
         elif neighborhood == 8:
-            self.propagate_8n()
-            self.find_path_8n()
+            self.propagate_8N()
+            self.findPath_8N()
 
         if self.verbose:
             print(self)
 
     # 4-VECINDAD
     # Propagacion de costes
-    def propagate_4n(self):
+    def propagate_4N(self):
         """
             Propaga los costes a 4 vecindad y obtiene la matriz de costes
         """
@@ -138,7 +142,7 @@ class Map:
 
         # print(str(round((time.time() - now)*1000000.0, 4)) + "ns")
 
-    def find_path_4n(self):
+    def findPath_4N(self):
         """
             Encuentra el camino menos costoso mediante A*. La heuristica es el coste, y en este
             caso la funcion de g(x) es 0.
@@ -178,17 +182,16 @@ class Map:
                     if self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
-    def redo_path_4n(self, position):
-        self.start = position
+    def replanPath_4N(self, cell):
+        self.start = cell
         self.path  = []
-        self.index = 1
-        self.propagate_4n()
-        self.find_path_4n()
-
+        self.index = 2
+        self.propagate_4N()
+        self.findPath_4N()
 
     # 8-VECINDAD
     # Propagacion de costes
-    def propagate_8n(self):
+    def propagate_8N(self):
         """
             Propaga los costes a 8 vecindad y obtiene la matriz de costes
         """
@@ -230,7 +233,7 @@ class Map:
             border = new_border
             cost += 1
 
-    def find_path_8n(self):
+    def findPath_8N(self):
         """
             Encuentra el camino menos costoso mediante A*. La heuristica es el coste, y en este
             caso la funcion de g(x) es 0.
@@ -268,22 +271,15 @@ class Map:
                     if not (dx==0 and dy==0) and self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
-    def redo_path_8n(self, position):
+    def replanPath_8N(self, cell):
         """ Replanifica el camino con una nueva posicion de inicio"""
-        self.start = position
+        self.start = cell
         self.path  = []
-        self.index = 1
-        self.propagate_8n()
-        self.find_path_8n()
-    
-    def replanPath(self, position):
-        """ Replanifica el camino según la vecindad del mapa """
-        if self.neihgborhood == 4:
-            self.redo_path_4n(position)
-        elif self.neihgborhood == 8:
-            self.redo_path_8n(position)
+        self.index = 2
+        self.propagate_8N()
+        self.findPath_8N()
 
-    # DRAW MAP
+    # -- DRAW MAP --------------------------
     def _drawGrid(self):
         """ aux function to create a grid with map lines """
         if not self.current_ax:
@@ -453,28 +449,7 @@ class Map:
     #        if a_node[0] < e_node[0] or (a_node[0] == e_node[0] and a_node[1] < e_node[1]):
     #            break
     #    return a_list[:i] + [a_node] + a_list[i:]
-    
-    def areConnected(self, cell1, cell2):
-        """ Comprueba si dos celdas estan conectadas y las coordenadas de la celda de conexión """
-        # Formato de los parámetros: cellX = [20,60]
-        # Calcular coordenadas de las celdas en la matriz de conexiones
-        conn1 = Vector2(cell1.x / self.halfCell, cell1.y / self.halfCell, 0) # celda 1
-        conn2 = Vector2(cell2.x / self.halfCell, cell2.y / self.halfCell, 0) # celda 2
-        # Si estamos en 4-vecindad y se quiere ir en diagonal devuelve no conectado (False)
-        if self.neihgborhood == 4 and abs(conn1.x - conn2.x) == 1 and abs(conn1.y - conn2.y) == 1:
-            return False
-        # Devolver si la celda intermedia etre las dos esta conectada
-        return int(self.connectionMatrix[int(conn1.x+conn2.x)//2][int(conn1.y+conn2.y)//2]), [int(conn1.x+conn2.x)//2,int(conn1.y+conn2.y)//2]
-    
-    def setConnection(self, cellX, cellY):
-        """ open a connection, i.e., we can go straight from cellX,cellY to its neighbour number numNeigh """
-        # TODO: Ver desde donde se llama y qué parametros le podremos pasar
-
-    def deleteConnection(self, cell):
-        """ close the connection, set cell value to 0 """
-        # from coordinates in the grid of cells to coordinates in the connection matrix
-        self.connectionMatrix[cell[0], cell[1]] = 0 # False
-
+  
     def travel(self):
         # Si el path esta vacio, no puede devolver celda
         if not self.path:

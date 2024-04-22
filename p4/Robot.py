@@ -75,7 +75,7 @@ class Robot:
         self.lock_odometry = Lock()
         # - Odometry update period
         self.P = 0.01                          # In seconds
-
+        ##################################################
         # VISUAL SERVOING
         # - Camera
         self.resolution = resolution           # Camera resolution.
@@ -96,7 +96,6 @@ class Robot:
             "filterByConvexity": False,
             "filterByInertia": False
         }
-
         self.blob_detector_ymin = 3/4*self.cam_center.y
                                                # Minimum distance in y to detect a good blob.
         # - Robot control
@@ -119,15 +118,20 @@ class Robot:
         self.fw_max = self.fw(self.cam_center.x)
                                                # Maximum angular speed.
         self.fv_max = self.fv(0)               # Maximum linear speed.
-        
+        ##################################################
         # MAPS & PATH TRAYECTORY
         self.rMap = rMap
         self.gx   = global_reference[0]
         self.gy   = global_reference[1]
         self.gth  = global_reference[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
-        print(self.ltow)
-    def setSpeed(self, v: float, w: float, wb: float):
+
+        self.us_ev3_obstacle = lambda dir : 0.5 < self.us_ev3.value <= 20*dir.magnitude()
+        self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
+
+
+    # -- Velocidad -------------------------
+    def setSpeed(self, v: float, w: float, wb: float = 0):
         """
         Set the new robot speed. \
             
@@ -182,23 +186,7 @@ class Robot:
         
         return [left_encoder, right_encoder, basket_encoder, wi, wd, wb, v, w] 
 
-    def readGyroscope(self):
-        """ Returns current value of gyroscope estimation values: 
-                [ absolute angle turned from startup,  rotational speed ]
-        """
-        return self.BP.get_sensor(self.PORT_GYROSCOPE)
-
-    def readUltrasonicSensors(self):
-        """ Returns current value of ultrasonic sensors estimation values"""
-        return self.us_ev3 #, self.us_nxt
-    
-    def updateUltrasonicSensors(self):
-        """ This function updates the ultrasonic sensors values """
-        # update ultrasonic sensors value
-
-        self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3) 
-        #self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)  
-
+    #-- Odometria --------------------------
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
 
@@ -226,29 +214,27 @@ class Robot:
                 # is implicitly done for atomic operations (BUT =+ is NOT atomic)
                 # Calculate the arc of circumfrence traveled by each wheel
                 left_encoder, right_encoder, basket_encoder, _, _, _, v, w = self.readSpeed()
-                th, _ = self.readGyroscope()
+                
+                #Theta with Gyros
+                th, _ = self.BP.get_sensor(self.PORT_GYROSCOPE)
 
-                th_normalized = np.deg2rad(-th) % (2 * np.pi)
-                # Luego, ajustas el ángulo al intervalo [-π, π):
-                if th_normalized > np.pi:
-                    th_normalized -= 2 * np.pi
+                #th_rad = np.deg2rad(th)
+                #delta_th = np.deg2rad(th - self.th.value)
 
-                #print(np.rad2deg(th_normalized), w)
-                # Calculate real delta th from gyroscope
-                #delta_th = w * self.P
-                delta_th = th_normalized - self.th.value
-                th = th_normalized
-                bh = self.bh.value  + basket_encoder - self.sC.value
+                # Theta with odometry
+                delta_th = w * self.P
+                th_rad   = np.deg2rad(self.th.value + delta_th)
+                bh       = self.bh.value  + basket_encoder - self.sC.value
                 # Calculate delta xWR. Calculate delta s (depends on w) (slide 14)
                 delta_x, delta_y = 0, 0
                 if w != 0:
                     delta_s = (v/w) * delta_th
-                    delta_x = delta_s * np.cos(th + (delta_th * 0.5))
-                    delta_y = delta_s * np.sin(th + (delta_th * 0.5))
+                    delta_x = delta_s * np.cos(th_rad + (delta_th * 0.5))
+                    delta_y = delta_s * np.sin(th_rad + (delta_th * 0.5))
                 else:
                     delta_s = v * self.P
-                    delta_x = delta_s * np.cos(th)
-                    delta_y = delta_s * np.sin(th)
+                    delta_x = delta_s * np.cos(th_rad)
+                    delta_y = delta_s * np.sin(th_rad)
 
                 # To "lock" a whole set of operations, we can use a "mutex"
                 # Update new xWR+
@@ -256,14 +242,14 @@ class Robot:
                 # update odometry
                 self.x.value += delta_x
                 self.y.value += delta_y
-                self.th.value = th
+                self.th.value = -th
                 # update motors values
                 self.bh.value = bh
                 self.sD.value = right_encoder
                 self.sI.value = left_encoder
                 self.sC.value = basket_encoder
                 # update ultrasonic sensors value
-                # self.updateUltrasonicSensors()
+                self.us_ev3.value = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3) 
                 self.lock_odometry.release()
 
                 # Save LOG
@@ -282,7 +268,12 @@ class Robot:
         self.finished.value = True
         self.BP.reset_all()
 
-    #--------- Tracking Object ------------
+
+    #-- Generacion de trayectorias ---------
+    # Para el trabajo final...
+
+
+    #-- Seguimiento de objetos -------------
     def initCamera(self):
         '''
             Initialize the camera
@@ -301,7 +292,6 @@ class Robot:
         time.sleep(0.1)
 
         return cam, rawCapture
-
 
     def initMyBlobDetector(self):
         '''
@@ -347,7 +337,6 @@ class Robot:
 
         return detector	
 
-
     def getBestBlob(self, blobs):
         '''
             Track the object
@@ -387,7 +376,6 @@ class Robot:
             #print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
             
         return best_blob
-            
 
     def trackObject(self, colorRangeMin, colorRangeMax, showFrame=False):
         # targetSize=??, target=??, catch=??, ...)
@@ -510,37 +498,24 @@ class Robot:
                 self.setSpeed(v, w, wb)
 
 
-    def detectObstacle(self, orig, dest):
-        """ Detecta si hay un obstáculo en la trayectoria entre dos celdas del mapa y devuelve sus coordenadas """
-        # TODO: Para obstaculo en diagonal (en 8-vecindad) habrá que rotar hacia la esquina y luego
-        # girar el robot hacia los lados y comprobar si hay obstáculo a una distancia con margen un
-        # poco más amplio
-        error = 0.5
-        sensor_pared = 18
-        self.us_ev3 = self.readUltrasonicSensors()
-        conn, coords = self.rMap.areConnected(orig, dest)
-        return self.us_ev3 > sensor_pared - error and self.us_ev3 < sensor_pared + error and conn, coords            
-
-    def playTrayectory(self):
+    def playNavigation(self):
+        '''
+            Navegacion en 4-vecindad
+        '''
         # Estado inicial
-        state = "RECOGN"
+        state = "START_CELL_ADVENTURE"
         # Posicion inicial
-        _, cell, previous_pos = self.rMap.travel()
+        _, cell, pos = self.rMap.travel();
         # Si la celda actual es la meta, hemos terminado
         if cell == self.rMap.goal:
-            print("Goal reached!: ", cell, self.rMap.goal)
+            print("Goal reached!", cell, self.rMap.goal)
             return
-        # Velocidades
-        v = 10
-        w = 0.8
-        # Transform constraints
-        rotation_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
-        position_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
-        changes            = False
-        sense              = 1
-        stops              = []
-
-        dinamic_walls = []
+        # Transformaciones iniciales
+        rotation_transform = Transform(Vector2.zero)
+        position_transform = Transform(Vector2.zero)
+        # 
+        dynamic_walls      = []
+        # Recorrido del path:
         while True:
             # Se obtiene la odometria del robot
             x, y, th, _ = self.readOdometry()
@@ -550,81 +525,366 @@ class Robot:
             #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
             #   - Despues se pasa a global.
             gpos        = self.ltow * Vector2(x, y, 1)
-            gfor        = self.ltow * Vector2.right.rotate(th, format="RAD")
-            print("------------------")
-            print(state)
-            print("xy1: " + str(Vector2(x, y, 1)))
-            print("gpos: " + str(gpos))
-            print("gfor: " + str(gfor))
-            print([x,y,th])
-            # Estado de reconocimiento del entorno
-            # Estado de rotacion en la celda
-            if state == "ROTATE":
+            gfor        = self.ltow * Vector2.right.rotate(th)
+            # A. Estado de inicializacion. Obtiene los parametros para la siguiente aventura
+            if state == "START_CELL_ADVENTURE":
+                # Obtenemos los datos de la siguiente celda
+                _, next_cell, next_pos = self.rMap.travel()
+                dir = (next_pos - pos).normalize()
+                # Obtenemos las transformaciones representativas del destino
+                rotation_transform = Transform(Vector2.zero, forward=dir)
+                position_transform = Transform(next_pos)
+                #print(gpos, next_pos)
+                #print(dir, gfor, dir.angle(gfor))
+                # Si la rotacion ya coincide, pasamos a reconocimiento
+                if rotation_transform == Transform(Vector2.zero, forward=gfor):
+                    state = "RECOGN"
+                    print("START_CELL_ADVENTURE -> RECOGN")
+                # Si no, primero rotamos el robot
+                else:
+                    state = "ROTATION"
+                    print("START_CELL_ADVENTURE -> ROTATION")
+                    self.setSpeed(0, gfor.cross(dir))
+                conn  = [2*cell[0]+1, 2*cell[1]+1]
+                cell  = next_cell
+                pos   = next_pos
+            # B. Estado de rotacion
+            elif state == "ROTATION":
                 transform = Transform(Vector2.zero, forward=gfor)
-                print(transform.rotation)
-                print(rotation_transform.rotation)
                 if rotation_transform == transform:
                     state = "RECOGN"
+                    print("ROTATION -> RECOGN")
+                    self.setSpeed(10,0)
+            # C. Estado de reconocimiento del entorno
             elif state == "RECOGN":
-                # Este if se quita porque con los estados anteriores nunca entrará en TRAVEL_PATH hasta que haya path.
-                if self.rMap.path:
-                    # Obtenemos el siguiente destino
-                    _, cell, next_pos = self.rMap.travel()
-                    # Obtenemos las transformaciones representativas del destino
-                    destination_dir    = (next_pos - previous_pos).normalize()
-                    print("prev: " + str(previous_pos))
-                    print("next: " + str(next_pos))
-                    print("dest: " + str(destination_dir))
-                    rotation_transform = Transform(Vector2.zero, forward=destination_dir, CUSTOM_ROTATION_ERROR=0.5)
-                    position_transform = Transform(next_pos, CUSTOM_POSITION_ERROR=0.05)
-                    # Si la rotacion ya coincide, nos ahorramos una iteracion
-                    transform = Transform(Vector2.zero, forward=gfor)
-                    print("transf_for: " + str(transform.forward))
-                    print("rot_transf_for: " + str(rotation_transform.forward))
-                    if not transform == rotation_transform:
-                        state = "ROTATE"
-                        self.setSpeed(0, transform.forward.cross(destination_dir) * w, 0)
-                    else:
-                        # # Antes de avanzar, comprobamos si hay obstáculo
-                        # obs, obs_coords = self.detectObstacle(previous_pos, next_pos)
-                        # if obs:
-                        #     # Si hay obstáculo, se marca la conexión como no válida
-                        #     self.rMap.deleteConnection(obs_coords)
-                        #     # Guardamos la pared en la lista de paredes dinámicas
-                        #     dinamic_walls.append(obs_coords)
-                        #     if abs(rotation_transform.forward.x) == 1:
-                        #         # Si el obstáculo está en x, se marca la conexión en y
-                        #         self.rMap.deleteConnection([obs_coords[0], obs_coords[1] + 1])
-                        #         self.rMap.deleteConnection([obs_coords[0], obs_coords[1] - 1])
-                        #     elif abs(rotation_transform.forward.y) == 1:
-                        #         # Si el obstáculo está en y, se marca la conexión en x
-                        #         self.rMap.deleteConnection([obs_coords[0] + 1, obs_coords[1]])
-                        #         self.rMap.deleteConnection([obs_coords[0] - 1, obs_coords[1]])
-                        #     else:
-                        #         # TODO: Si el obstáculo está en diagonal
-                        #         # Depende de si el obstáculo está en la adyacente o en la siguiente
-                        #         a = 0
-                        #     # Y  recalculamos los costes y el camino
-                        #     self.rMap.replanPath(cell, previous_pos)
-                        #     continue
-                        # else:
-                        #     state = "FORWARD"
-                        #     self.setSpeed(v, 0, 0)
-
-                        # Avanzar sin mirar obstáculos
-                        state = "FORWARD"
-                        self.setSpeed(v, 0, 0)
-                    previous_pos = next_pos
+                shift         = gfor.normalize()
+                dx, dy        = int(round(shift.y)), int(round(shift.x))
+                neighbor_conn = [conn[0]+dx, conn[1]+dy]
+                neighbor_left = [neighbor_conn[0]-dy, neighbor_conn[1]-dx]
+                neighbor_rght = [neighbor_conn[0]+dy, neighbor_conn[1]+dx]
+                # Si detecto obstucalo
+                if self.us_ev3_obstacle(gfor) and self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
+                    self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 0
+                    self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 0
+                    self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 0
+                    self.rMap.replanPath_4N(cell)
+                    if self.rMap.path:
+                        state = "START_CELL_ADVENTURE"
+                        print("RECOGN -> START_CELL_ADVENTURE")
+                # Si no detecto obstaculo pero lo habia antes y ademas no existia en el original
+                elif not self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and not self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
+                    self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]     = 1
+                    if self.rMap.connectionSource[neighbor_left[0]][neighbor_left[1]]:
+                        self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 1
+                    if self.rMap.connectionSource[neighbor_rght[0]][neighbor_rght[1]]:
+                        self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 1
+                    self.rMap.replanPath_4N(cell)
+                    if self.rMap.path:
+                        state = "START_CELL_ADVENTURE"    
+                        print("RECOGN -> START_CELL_ADVENTURE")
+                # Si ninguna ni otra, sigo adelante
                 else:
-                    self.setSpeed(0, -w, 0)
+                    state = "FORWARD"
+                    print("RECOGN -> FORWARD")
+                    self.setSpeed(10,0)
+            # D. Estado de backtracking. Vuelve a un camino anterior
+            #elif state == "BACKTRACKING":
+            #   neighbor_conn, neighbor_rght, neighbor_left = dynamic_walls.pop(0)
+            #   self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]     = 1
+            #   if self.rMap.connectionSource[neighbor_left[0]][neighbor_left[1]] and not any(neighbor_left in c for c in dynamic_walls):
+            #       self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 1
+            #   if self.rMap.connectionSource[neighbor_rght[0]][neighbor_rght[1]] and not any(neighbor_rght in c for c in dynamic_walls):
+            #       self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 1
+            #   self.rMap.replanPath_4N(cell)
+            #   if not self.rMap.path:
+            #       if not dynamic_walls:
+            #           state = "RECOGN"
+            #           print("BACKTRACKING -> RECOGN")
+            #       else:
+            #           state = "BACKTRACKING"
+            #           print("BACKTRACKING -> BACKTRACKING")
+            #   else:
+            #       state = "START_CELL_ADVENTURE"
+            #       print("BACKTRACKING -> START_CELL_ADVENTURE")
+            # E. Estado de avance hacia la siguiente celda
             elif state == "FORWARD":
-                transform = Transform(gpos)
-                print(transform.position)
-                print(position_transform.position)
-                if position_transform == transform:
-                    # Si la celda actual es la meta, hemos terminado
+                if not rotation_transform == Transform(Vector2.zero, forward=gfor):
+                    #print("MAL")
+                    self.setSpeed(10,gfor.cross(rotation_transform.forward) * 1)
+                else:
+                    #print("BIEN")
+                    self.setSpeed(10,0)
+                # 10-11 y 12-13
+                if (not position_transform == Transform(gpos) and self.us_ev3_stop() and (gpos - pos).magnitude() >= self.rMap.halfCell) or position_transform == Transform(gpos):
                     if cell == self.rMap.goal:
                         print("Goal reached!: ", cell, self.rMap.goal)
                         break
+                    state = "START_CELL_ADVENTURE"    
+                    print("FORWARD -> START_CELL_ADVENTURE")
+                    self.setSpeed(0,0)
+                    
+
+    #-- Navegacion -------------------------
+    def playNavigation_4N(self):
+        '''
+            Navegacion en 4-vecindad
+        '''
+
+        # Estado inicial
+        state = "START_CELL_ADVENTURE"
+        # Posicion inicial
+        _, cell, pos = self.rMap.travel()
+        # Si la celda actual es la meta, hemos terminado
+        if cell == self.rMap.goal:
+            print("Goal reached!: ", cell, self.rMap.goal)
+            return
+        # Transformaciones iniciales
+        rotation_transform = Transform(Vector2.zero)
+        position_transform = Transform(Vector2.zero)
+        # Va a ir a ReMapLib:
+        dynamic_walls      = []
+        sense              = 1
+
+
+        while True:
+            # Velocidades
+            v = 0; w = 0
+            # Se obtiene la odometria del robot
+            x, y, th, _ = self.readOdometry()
+            # print(th, Vector2.right.rotate(th))
+            # print(x, y, th)
+            # Se obtiene la transformacion correspondiente:
+            # 1. La posicion es local por defecto, hay que transformarla en global.
+            # 2. La orientacion del robot es local por defecto:
+            #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
+            #   - Despues se pasa a global.
+            gpos        = self.ltow * Vector2(x, y, 1)
+            gfor        = self.ltow * Vector2.right.rotate(th)
+            # Estados del camino
+            # A. Estado de inicializacion. Obtiene los parametros para la siguiente aventura
+            if state == "START_CELL_ADVENTURE":
+                # Obtenemos los datos de la siguiente celda
+                _, next_cell, next_pos  = self.rMap.travel()
+                dir = (next_pos - pos).normalize()
+                # Obtenemos las transformaciones representativas del destino
+                rotation_transform = Transform(Vector2.zero, forward=dir)
+                position_transform = Transform(position=next_pos)
+                # - Si la rotacion ya coincide, pasamos a reconocimiento
+                #print(gfor, dir)
+                transform = Transform(Vector2.zero, forward=gfor)
+                if rotation_transform == transform:
                     state = "RECOGN"
-                    self.setSpeed(0, 0, 0)
+                    print("RECOGN")
+                # - Si no, rotamos el robot
+                else:
+                    state = "ROTATE"
+                    print("ROTATE")
+                    sense = gfor.cross(rotation_transform.forward)
+            # B. Estado de rotacion
+            elif state == "ROTATE":
+                w = sense * 0.5
+                transform = Transform(Vector2.zero, forward=gfor)
+                print(transform.rotation, rotation_transform.rotation)
+                if rotation_transform == transform:
+                    state = "RECOGN"
+            # C. Estado de inicializacion del reconocimiento del entorno
+            #elif state == "RECOGN":
+            #    shift  = gfor.normalize()
+            #    dx, dy = int(round(shift.y)), int(round(shift.x))
+            #    conn   = [2*cell[0]+1, 2*cell[1]+1]
+            #    neighbor_conn  = [conn[0]+dx, conn[1]+dy]
+            #    neighbor_left  = [neighbor_conn[0]-dy, neighbor_conn[1]-dx]
+            #    neighbor_rght = [neighbor_conn[0]+dy, neighbor_conn[1]+dx]
+            #    # Si detecto obstaculo
+            #    if 0.5 < self.us_ev3.value and self.us_ev3.value < gfor.magnitude()*20 and self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] == 1:
+            #            self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]   = 0
+            #            self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]]   = 0
+            #            self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 0
+            #            self.rMap.replanPath_4N(cell)
+            #            if not self.rMap.path:
+            #                if dynamic_walls:
+            #                    dynamic_walls.append(neighbor_conn)
+            #                    state = "BACKTRACKING"
+            #            else:
+            #                state = "ROTATE"
+            #    # Si no detecto obstaculo pero lo habia antes y ademas no existia en el original
+            #    elif not self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and self.rMap.connectionSource[neighbor_conn[0]][neighbor_conn[1]]:
+            #            if neighbor_conn in dynamic_walls:
+            #                dynamic_walls.remove(neighbor_conn)
+            #            self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]     = 1
+            #            if self.rMap.connectionSource[neighbor_left[0]][neighbor_left[1]]:
+            #                self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 1
+            #            if self.rMap.connectionSource[neighbor_rght[0]][neighbor_rght[1]]:
+            #                self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 1
+            #            self.rMap.replanPath_4N(cell)
+            #            if not self.rMap.path:
+            #                if dynamic_walls:
+            #                    state = "BACKTRACKING"
+            #            else:
+            #                state = "START_CELL_ADVENTURE"
+            #    # Si ninguna ni otra, sigo adelante
+            #    else:
+            #        state = "FORWARD"
+            #        v = 10
+            ## D. Estado de backtracking. Vuelve a un camino anterior
+            #elif state == "BACKTRACKING":
+            #    neighbor_conn = dynamic_walls.pop(0)
+            #    self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 1
+            #    self.rMap.replanPath(cell)
+            #    state = "START_CELL_ADVENTURE"
+            # E. Estado de avance hacia la siguiente celda
+            elif state == "FORWARD":
+                transform = Transform(position=gpos)#Transform(position=gpos, forward=gfor)
+                #if not rotation_transform == Transform(Vector2.zero, forward=gfor):
+                #    w = gfor.cross(rotation_transform.forward) * 0.25
+                #print("PT:", position_transform)
+                #print("TT:", transform)
+                if not position_transform == transform:
+                    v = 10
+                else:
+                    # Si la celda actual es la meta, hemos terminado
+                    pos  = next_pos
+                    cell = next_cell
+                    if cell == self.rMap.goal:
+                        print("Goal reached!: ", cell, self.rMap.goal)
+                        break
+                    print("START_CELL_ADVENTURE")
+                    state = "START_CELL_ADVENTURE"
+
+            self.setSpeed(v, w, 0)
+
+    def playNavigation_8N(self):
+        '''
+            Navegacion en 8-vecindad
+        '''
+
+        # Estado inicial
+        state = "START_CELL_ADVENTURE"
+        # Posicion inicial
+        _, cell, pos = self.rMap.travel()
+        # Si la celda actual es la meta, hemos terminado
+        if cell == self.rMap.goal:
+            print("Goal reached!: ", cell, self.rMap.goal)
+            return
+        # Transform constraints
+        rotation_transform = Transform(Vector2.zero, CUSTOM_ROTATION_ERROR=2)
+        position_transform = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=2)
+        changes            = False
+        sense              = 1
+        stops              = []
+        dynamic_walls      = []
+        while True:
+            # Velocidades
+            v = 0; w = 0
+            # Se obtiene la odometria del robot
+            x, y, th, _ = self.readOdometry()
+            # print(x, y, th)
+            # Se obtiene la transformacion correspondiente:
+            # 1. La posicion es local por defecto, hay que transformarla en global.
+            # 2. La orientacion del robot es local por defecto:
+            #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
+            #   - Despues se pasa a global.
+            gpos        = self.ltow * Vector2(x, y, 1)
+            gfor        = self.ltow * Vector2.right.rotate(th, format="RAD")
+            # Estados del camino
+            # A. Estado de inicializacion. Obtiene los parametros para la siguiente aventura
+            if state == "START_CELL_ADVENTURE":
+                # Obtenemos los datos de la siguiente celda
+                _, next_cell, next_pos  = self.rMap.travel()
+                dir = (next_pos - pos).normalize()
+                # Obtenemos las transformaciones representativas del destino
+                rotation_transform = Transform(Vector2.zero, forward=dir)
+                position_transform = Transform(position=next_pos, forward=dir)
+                # - Si la rotacion ya coincide, pasamos a reconocimiento
+                if rotation_transform == Transform(position=pos, forward=gfor):
+                    state = "RECOGN"
+                # - Si no, rotamos el robot
+                else:
+                    w = gfor.cross(dir) * 1
+                    state = "ROTATE"
+            # B. Estado de rotacion
+            elif state == "ROTATE":
+                transform = Transform(Vector2.zero, forward=gfor)
+                if rotation_transform == transform:
+                    state = "RECOGN"
+            # C. Estado de inicializacion del reconocimiento del entorno
+            elif state == "RECOGN":
+                sense = 1
+                w     = sense*1
+                stops = [
+                  Transform(Vector2.zero, th+45),
+                  Transform(Vector2.zero, th-45),
+                  Transform(Vector2.zero, th)
+                ]
+                state = "BEGIN_RECOGN"
+            # D. Estado de reconocimiento
+            elif state == "BEGIN_RECOGN":
+                w      = sense*1
+                # Antes de avanzar, comprobamos si hay obstáculo
+                shift = gfor.normalize()
+                dx, dy = int(round(shift.y)), int(round(shift.x))
+                conn = [2*cell[0]+1, 2*cell[1]+1]
+                neighbor_conn = [conn[0] + dx, conn[1] + dy]
+                neighbor_left = [neighbor_conn[0]-(1-dx), neighbor_conn[1]-(1-dy)]
+                neighbor_rght = [neighbor_conn[0]+(1-dx), neighbor_conn[1]+(1-dy)]  
+                # Si detecto obstaculo
+                if 0.5 < self.us_ev3.value and self.us_ev3.value < gfor.magnitude()*20  and self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
+                    changes = True
+                    if dx | dy:
+                        dynamic_walls.append(neighbor_conn)
+                    self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 0
+                    self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 0
+                    self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 0
+                # Si no detecto obstaculo pero lo habia antes y ademas no existia en el original
+                elif not self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and self.rMap.connectionSource[neighbor_conn[0]][neighbor_conn[1]]:
+                    changes = True
+                    if dx | dy and neighbor_conn in dynamic_walls:
+                        dynamic_walls.remove(dynamic_walls)
+                    self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]     = 1
+                    if self.rMap.connectionSource[neighbor_left[0]][neighbor_left[1]]:
+                        self.rMap.connectionSource[neighbor_left[0]][neighbor_left[1]] = 1
+                    if self.rMap.connectionSource[neighbor_rght[0]][neighbor_rght[1]]:
+                        self.rMap.connectionSource[neighbor_rght[0]][neighbor_rght[1]] = 1
+                # Rota hasta la siguiente posicion de barrido
+                if stops[0] == transform:
+                    stops.pop(0)
+                    if not stops:
+                        if changes:
+                            state = "RECALCULATE_MAP"
+                        else: 
+                            state = "FORWARD"
+                    else:
+                        sense *= -1
+                        
+            # E. Recalcular mapa:
+            elif state == "RECALCULATE_MAP":
+                self.rMap.replanPath_8N()
+                if not self.rMap.path:
+                    if dynamic_walls:
+                        state = "BACKTRACKING"
+                else:
+                    state = "START_CELL_ADVENTURE"
+            # F. Estado de backtracking. Vuelve a un camino anterior
+            elif state == "BACKTRACKING":
+                neighbor_conn = dynamic_walls.pop(0)
+                self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 1
+                self.rMap.replanPath(cell)
+                state = "START_CELL_ADVENTURE"
+            # G. Estado de avance hacia la siguiente celda
+            elif state == "FORWARD":
+                v = 10
+                transform = Transform(position=gpos, forward=gfor) # Transform(gpos)
+                #if rotation_transform != Transform(Vector2.zero, forward=gfor):
+                #    w = gfor.cross(dir) * 0.25
+                if not position_transform == transform:
+                    w = gfor.cross(position_transform.forward) * 0.25
+                else:
+                    # Si la celda actual es la meta, hemos terminado
+                    pos  = next_pos
+                    cell = next_cell
+                    if cell == self.rMap.goal:
+                        print("Goal reached!: ", cell, self.rMap.goal)
+                        break
+                    state = "START_CELL_ADVENTURE"
+
+            self.setSpeed(w, v, 0)
