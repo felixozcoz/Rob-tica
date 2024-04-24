@@ -7,24 +7,16 @@ from ReMapLib import Map
 
 def main():    
     try:
+
         # 1. Inicializar el mapa
         print("Inicializando mapa ...")
-        #print("---------------------------------------------------")
-        #rMap = Map("maps/mapa0.txt", [0,0], [2,2])
-        #
-        #print("---------------------------------------------------")
-        #rMap = Map("maps/mapa1.txt", [0,0], [2,2])
-        #
-        #print("---------------------------------------------------")
-        #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
-
-        #print("---------------------------------------------------")
-        #rMap = Map("maps/mapa3.txt", [0,0], [4,6])
-
-        # 1. Inicializar el mapa
         print("---------------------------------------------------")
         neighborhood = 4
-        rMap = Map("maps/mapa_simple.txt", [0,0], [0,1], neighborhood=neighborhood)
+        #rMap = Map("maps/mapa_simple.txt", [0,0], [0,1], neighborhood=neighborhood)
+        #rMap = Map("maps/mapa0.txt", [0,0], [2,2], neighborhood=neighborhood)
+        #rMap = Map("maps/mapa1.txt", [0,0], [2,2], neighborhood=neighborhood)
+        #rMap = Map("maps/mapa2.txt", [0,0], [4,7], neighborhood=neighborhood)
+        rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=neighborhood)
         #rMap.drawMapWithRobotLocations()
 
         # 2. Inicializar el robot

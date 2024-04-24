@@ -611,7 +611,7 @@ class Transform:
         # Local minimum
         self.dmin = { "prev": False, "last": -np.inf }
         #self.rmin = { "prev": False, "last": -np.inf }
-        #self.vmin = { "prev": False, "last": -np.inf }
+        self.vmin = { "prev": False, "last": -np.inf }
         #self.rotation_inf = rotation - ROTATION_ERROR
         #self.rotation_sup = rotation + ROTATION_ERROR
 
@@ -668,22 +668,22 @@ class Transform:
         #if self.ROTATION_ERROR > angle_diff:
         #    print("Check por angulo entre dos vectores", angle_diff)
         # 4. Vectors angle local minimum check
-        #ROTATION  |= abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]
+        ROTATION  |= self.vmin["last"] < dist and dist - self.vmin["last"] > 3 and self.vmin["prev"]
         #if abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]:
         #    print("Check por minimo local de angulos entre dos vectores")
         #    print(angle_diff)
         #print(self.vmin, abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"])
-        #self.vmin  = {
-        #    "prev": self.vmin["last"] >= angle_diff,
-        #    "last": angle_diff
-        #}
+        self.vmin  = {
+            "prev": self.vmin["last"] >= angle_diff,
+            "last": angle_diff
+        }
     
         # BOTH CHECK
         if POSITION and ROTATION:
             # Reset local minimum registries
             self.dmin = { "prev": False, "last": -np.inf }
             #self.rmin = { "prev": False, "last": -np.inf }
-            #self.vmin = { "prev": False, "last": -np.inf }
+            self.vmin = { "prev": False, "last": -np.inf }
             return True
         return False
 
