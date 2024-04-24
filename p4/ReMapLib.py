@@ -188,6 +188,7 @@ class Map:
         self.index = 2
         self.propagate_4N()
         self.findPath_4N()
+        print(self)
 
     # 8-VECINDAD
     # Propagacion de costes

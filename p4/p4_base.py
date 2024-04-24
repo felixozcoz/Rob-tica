@@ -30,8 +30,10 @@ def main():
         # 2. Inicializar el robot
         global_reference = [20,20,90]
         robot = Robot(global_reference=global_reference, rMap=rMap)
-        time.sleep(4)
+        time.sleep(5)
+        
         robot.startOdometry()
+
 
         # 3. Recorrer mapa
         # print("Recorriendo mapa ... ")
