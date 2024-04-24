@@ -5,6 +5,9 @@ import time
 from Robot import Robot
 from ReMapLib import Map
 
+from decimal import Decimal
+
+
 def main():    
     try:
 
@@ -25,6 +28,12 @@ def main():
         time.sleep(5)
         
         robot.startOdometry()
+
+
+        #while True:
+        #    print(robot.us_ev3.value, Decimal(robot.us_ev3.value) % Decimal(20))
+        #    time.sleep(2)
+
 
 
         # 3. Recorrer mapa

@@ -12,6 +12,7 @@ import picamera
 import sys
 import time     # import the time library for the sleep function
 from picamera.array import PiRGBArray
+from decimal import Decimal
 from geometry import Vector2, Matrix2, Transform
 from ReMapLib import Map
 
@@ -518,7 +519,7 @@ class Robot:
         rotation_transform = Transform(Vector2.zero)
         position_transform = Transform(Vector2.zero)
         dynamic_walls      = []
-        v = 15; w = 1
+        v = 10; w = 0.75
         # Recorrido del path:
         while True:
             # Se obtiene la odometria del robot
@@ -609,8 +610,6 @@ class Robot:
                 else:
                     state = "FORWARD"
                     print("RECOGN -> FORWARD")
-                    cell  = next_cell
-                    pos   = next_pos
                     # TODO: Probar si funciona
                     self.setSpeed(v,0)
                 
@@ -642,11 +641,15 @@ class Robot:
                     #print("BIEN")
                     self.setSpeed(v, 0)
                 # 10-11 y 12-13
-                    
-
-                transform_flag = position_transform == Transform(gpos)
-                if transform_flag:
-                #if (not transform_flag and self.us_ev3_stop() and (pos - gpos).magnitude() < self.rMap.halfCell) or transform_flag:
+                pos_flag    = position_transform == Transform(gpos)
+                module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
+                #(10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
+                print(pos_flag, gpos, Decimal(self.us_ev3.value) % Decimal(20))
+                if (pos_flag and Decimal(self.us_ev3.value) % Decimal(20) <= 15): #or (not pos_flag and (next_pos - gpos).magnitude() < self.rMap.halfCell/2 and module_flag):
+                #if (not transform_flag and self.us_ev3_stop() and ):
+                    position_reached = False
+                    cell  = next_cell
+                    pos   = next_pos
                     if cell == self.rMap.goal:
                         print("Goal reached!: ", cell, self.rMap.goal)
                         break
