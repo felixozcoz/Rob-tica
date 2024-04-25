@@ -662,10 +662,10 @@ class Robot:
                 us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 12
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
                 #transform = Transform(gpos)
-                if position_reached or fixed_position_transform == transform:
+                if not position_reached or fixed_position_transform == transform:
                     # Si el ultrasonido NO INDICA que sea el centro sigue avanzando
-                    if not us_cell_center:
-                        position_reached = True
+                    #if not us_cell_center:
+                    #    position_reached = True
                         continue
                 # Si la posicion NO ha sido alcanzada y el ultrasonido TAMPOCO LO INDICA
                 # PERO, si se ha movido escasos cm de la posicion actual podria dar por
