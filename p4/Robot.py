@@ -646,7 +646,7 @@ class Robot:
                 # la posicion actual a la siguiente, corrige trayectoria
                 if not rotation_transform == Transform(Vector2.zero, forward=gfor):
                     #print("MAL")
-                    self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*w)
+                    self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*0.25)
                 # Si el vector de la posicion del robot a la siguiente posicion no coincide
                 # con el vector direccion de la posicion actual a la siguiente, tambie corrige
                 #if not rotation_transform == Transform(Vector2.zero, forward=gdir):
