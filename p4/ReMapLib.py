@@ -469,9 +469,16 @@ class Map:
     def insert(self, a_list, a_node: dict):
         if not a_list:
             return [a_node]
-        else: 
+        elif len(a_list) == 1:
             a_value = a_node["coords"]
+            e_value = a_list[0]["coords"]
+            if self.costMatrix[a_value[0]][a_value[1]] <= self.costMatrix[e_value[0]][e_value[1]]:
+                return [a_node, a_list[0]]
+            else:
+                return [a_list[0], a_node]
+        else: 
             # Avanzo mientras el coste del nuevo nodo sea mayor a los de la lista
+            a_value = a_node["coords"]
             for i, e_node in enumerate(a_list):
                 e_value = e_node["coords"]
                 # Si el valor del coste del nuevo nodo es menor, terminamos

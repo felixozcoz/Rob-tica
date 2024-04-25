@@ -68,14 +68,14 @@ def simulate_robot(key):
 #print("---------------------------------------------------")
 #rMap = Map("maps/mapa0.txt", [0,0], [2,2])
 #
-print("---------------------------------------------------")
-rMap = Map("maps/mapa1.txt", [0,0], [2,2])
+#print("---------------------------------------------------")
+#rMap = Map("maps/mapa1.txt", [0,0], [2,2])
 #
 #print("---------------------------------------------------")
 #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
 
-#print("---------------------------------------------------")
-#rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=4)
+print("---------------------------------------------------")
+rMap = Map("maps/mapa3.txt", [4,2], [0,7], neighborhood=4)
 np.set_printoptions(precision=2, suppress=True)
 #rMap.drawMapWithRobotLocations()
 
