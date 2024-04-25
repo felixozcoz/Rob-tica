@@ -686,8 +686,8 @@ class Robot:
                 #self.setSpeed(0,0)
 
                 # 10-11 y 12-13
-                pos_flag    = fixed_position_transform == Transform(gpos)
-                module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
+                #pos_flag    = fixed_position_transform == Transform(gpos)
+                #module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
                 ##(10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
                 #print(pos_flag, gpos, Decimal(self.us_ev3.value) % Decimal(20))
                 #if (pos_flag and Decimal(self.us_ev3.value) % Decimal(20) <= 15): #or (not pos_flag and (next_pos - gpos).magnitude() < self.rMap.halfCell/2 and module_flag):
