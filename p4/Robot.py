@@ -659,23 +659,14 @@ class Robot:
                 # El ultrasonido esta a unos 15 cm maximos debido a su posicion en el
                 # robot, entonces, si haciendo modulo de la mitad de la celda da un
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
-                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 12
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 14
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
-                #transform = Transform(gpos)
+                transform = Transform(gpos)
                 if position_reached or fixed_position_transform == transform:
                     # Si el ultrasonido NO INDICA que sea el centro sigue avanzando
                     if not us_cell_center:
                         position_reached = True
-                        continue
                     else:
-                # Si la posicion NO ha sido alcanzada y el ultrasonido TAMPOCO LO INDICA
-                # PERO, si se ha movido escasos cm de la posicion actual podria dar por
-                # valido esta condicion si se encuentra un muro, entonces se le indica
-                # que SOLO tenga en cuenta esto cuando el robot este cerca de la siguiente
-                # posicion.
-                #elif not light_position_transform == transform or not us_cell_center:
-                #    continue
-                
                         position_reached = False
                         cell  = next_cell
                         pos   = next_pos
@@ -685,6 +676,21 @@ class Robot:
                         state = "START_CELL_ADVENTURE"    
                         print("FORWARD -> START_CELL_ADVENTURE")
                         self.setSpeed(0,0)
+                # Si la posicion NO ha sido alcanzada y el ultrasonido TAMPOCO LO INDICA
+                # PERO, si se ha movido escasos cm de la posicion actual podria dar por
+                # valido esta condicion si se encuentra un muro, entonces se le indica
+                # que SOLO tenga en cuenta esto cuando el robot este cerca de la siguiente
+                # posicion.
+                #elif light_position_transform == transform and us_cell_center:
+                #    position_reached = False
+                #    cell  = next_cell
+                #    pos   = next_pos
+                #    if cell == self.rMap.goal:
+                #        print("Goal reached!: ", cell, self.rMap.goal)
+                #        break
+                #    state = "START_CELL_ADVENTURE"    
+                #    print("FORWARD -> START_CELL_ADVENTURE")
+                #    self.setSpeed(0,0)
 
                 # 10-11 y 12-13
                 #pos_flag    = fixed_position_transform == Transform(gpos)
