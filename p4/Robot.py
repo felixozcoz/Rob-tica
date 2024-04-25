@@ -642,13 +642,13 @@ class Robot:
                 gdir = (next_pos - gpos).normalize()
                 # Si el vector orientacion del robot no coincide con el vector direccion de 
                 # la posicion actual a la siguiente, corrige trayectoria
-                if not rotation_transform == Transform(Vector2.zero, forward=gfor):
+                #if not rotation_transform == Transform(Vector2.zero, forward=gfor):
                     #print("MAL")
-                    self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*w)
+                #    self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*w)
                 # Si el vector de la posicion del robot a la siguiente posicion no coincide
                 # con el vector direccion de la posicion actual a la siguiente, tambie corrige
-                #elif not rotation_transform == Transform(Vector2.zero, forward=gdir):
-                #    self.setSpeed(v, gdir.angle_sense(rotation_transform.forward)*w)
+                if not rotation_transform == Transform(Vector2.zero, forward=gdir):
+                    self.setSpeed(v, gdir.angle_sense(rotation_transform.forward)*w)
                     #print("BIEN")
                 # Si ambos coinciden, no necesita aplicar correccion
                 else:
@@ -659,7 +659,8 @@ class Robot:
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
                 us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 15
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
-                if position_reached or fixed_position_transform == Transform(gpos):
+                transform = Transform(gpos)
+                if position_reached or fixed_position_transform == transform:
                     # Si el ultrasonido NO INDICA que sea el centro sigue avanzando
                     if not us_cell_center:
                         position_reached = True
@@ -669,7 +670,7 @@ class Robot:
                 # valido esta condicion si se encuentra un muro, entonces se le indica
                 # que SOLO tenga en cuenta esto cuando el robot este cerca de la siguiente
                 # posicion.
-                elif not light_position_transform == Transform(gpos) or not us_cell_center:
+                elif not light_position_transform == transform or not us_cell_center:
                     continue
                 
                 position_reached = False
