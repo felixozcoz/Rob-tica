@@ -642,13 +642,13 @@ class Robot:
                 gdir = (next_pos - gpos).normalize()
                 # Si el vector orientacion del robot no coincide con el vector direccion de 
                 # la posicion actual a la siguiente, corrige trayectoria
-                #if not rotation_transform == Transform(Vector2.zero, forward=gfor):
+                if not rotation_transform == Transform(Vector2.zero, forward=gfor):
                     #print("MAL")
-                #    self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*w)
+                    self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*w)
                 # Si el vector de la posicion del robot a la siguiente posicion no coincide
                 # con el vector direccion de la posicion actual a la siguiente, tambie corrige
-                if not rotation_transform == Transform(Vector2.zero, forward=gdir):
-                    self.setSpeed(v, gdir.angle_sense(rotation_transform.forward)*w)
+                #if not rotation_transform == Transform(Vector2.zero, forward=gdir):
+                #    self.setSpeed(v, gdir.angle_sense(rotation_transform.forward)*w)
                     #print("BIEN")
                 # Si ambos coinciden, no necesita aplicar correccion
                 else:
