@@ -516,8 +516,10 @@ class Robot:
             print("Goal reached!", cell, self.rMap.goal)
             return
         # Transformaciones iniciales
+        light_error = self.rMap.sizeCell//10
         rotation_transform = Transform(Vector2.zero)
-        position_transform = Transform(Vector2.zero)
+        light_position_transform = Transform(Vector2.zero)
+        fixed_position_transform = Transform(Vector2.zero)
         position_reached   = False
         dynamic_walls      = []
         v = 10; w = 0.75
@@ -538,8 +540,9 @@ class Robot:
                 _, next_cell, next_pos = self.rMap.travel()
                 dir = (next_pos - pos).normalize()
                 # Obtenemos las transformaciones representativas del destino
-                rotation_transform = Transform(Vector2.zero, forward=dir)
-                position_transform = Transform(next_pos)
+                rotation_transform       = Transform(Vector2.zero, forward=dir)
+                light_position_transform = Transform(next_pos, CUSTOM_POSITION_ERROR=light_error)
+                fixed_position_transform = Transform(next_pos)
                 #print(gpos, next_pos)
                 #print(dir, gfor, dir.angle(gfor))
                 # Si la rotacion ya coincide, pasamos a reconocimiento
@@ -635,23 +638,37 @@ class Robot:
                    print("BACKTRACKING -> START_CELL_ADVENTURE")
             # E. Estado de avance hacia la siguiente celda
             elif state == "FORWARD":
+                gdir = (next_pos - gpos).normalize()
+                # Si el vector orientacion del robot no coincide con el vector direccion de 
+                # la posicion actual a la siguiente, corrige trayectoria
                 if not rotation_transform == Transform(Vector2.zero, forward=gfor):
                     #print("MAL")
                     self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*w)
-                else:
+                # Si el vector de la posicion del robot a la siguiente posicion no coincide
+                # con el vector direccion de la posicion actual a la siguiente, tambie corrige
+                elif not rotation_transform == Transform(Vector2.zero, forward=gdir):
+                    self.setSpeed(v, gdir.angle_sense(rotation_transform.forward)*w)
                     #print("BIEN")
+                # Si ambos coinciden, no necesita aplicar correccion
+                else:
                     self.setSpeed(v, 0)
 
-
-                us_cell_center = Decimal(self.us_ev3.value) % Decimal(20) <= 15
+                # El ultrasonido esta a unos 15 cm maximos debido a su posicion en el
+                # robot, entonces, si haciendo modulo de la mitad de la celda da un
+                # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 15
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
-                if position_reached or position_transform == Transform(gpos):
+                if position_reached or fixed_position_transform == Transform(gpos):
                     # Si el ultrasonido NO INDICA que sea el centro sigue avanzando
                     if not us_cell_center:
                         position_reached = True
                         continue
-                # Si la posicion NO ha sido alcanzada y el ultrasonido TAMPOCO LO INDICA sigo
-                elif not us_cell_center:
+                # Si la posicion NO ha sido alcanzada y el ultrasonido TAMPOCO LO INDICA
+                # PERO, si se ha movido escasos cm de la posicion actual podria dar por
+                # valido esta condicion si se encuentra un muro, entonces se le indica
+                # que SOLO tenga en cuenta esto cuando el robot este cerca de la siguiente
+                # posicion.
+                elif not light_position_transform == Transform(gpos) or not us_cell_center:
                     continue
                 
                 position_reached = False
@@ -667,7 +684,7 @@ class Robot:
 
                 
                 # 10-11 y 12-13
-                #pos_flag    = position_transform == Transform(gpos)
+                #pos_flag    = fixed_position_transform == Transform(gpos)
                 #module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
                 ##(10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
                 #print(pos_flag, gpos, Decimal(self.us_ev3.value) % Decimal(20))
