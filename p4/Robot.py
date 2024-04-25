@@ -518,6 +518,7 @@ class Robot:
         # Transformaciones iniciales
         rotation_transform = Transform(Vector2.zero)
         position_transform = Transform(Vector2.zero)
+        position_reached   = False
         dynamic_walls      = []
         v = 10; w = 0.75
         # Recorrido del path:
@@ -640,22 +641,47 @@ class Robot:
                 else:
                     #print("BIEN")
                     self.setSpeed(v, 0)
+
+
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(20) <= 15
+                # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
+                if position_reached or position_transform == Transform(gpos):
+                    # Si el ultrasonido NO INDICA que sea el centro sigue avanzando
+                    if not us_cell_center:
+                        position_reached = True
+                        continue
+                # Si la posicion NO ha sido alcanzada y el ultrasonido TAMPOCO LO INDICA sigo
+                elif not us_cell_center:
+                    continue
+                
+                position_reached = False
+                cell  = next_cell
+                pos   = next_pos
+                if cell == self.rMap.goal:
+                    print("Goal reached!: ", cell, self.rMap.goal)
+                    break
+                state = "START_CELL_ADVENTURE"    
+                print("FORWARD -> START_CELL_ADVENTURE")
+                self.setSpeed(0,0)
+
+
+                
                 # 10-11 y 12-13
-                pos_flag    = position_transform == Transform(gpos)
-                module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
-                #(10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
-                print(pos_flag, gpos, Decimal(self.us_ev3.value) % Decimal(20))
-                if (pos_flag and Decimal(self.us_ev3.value) % Decimal(20) <= 15): #or (not pos_flag and (next_pos - gpos).magnitude() < self.rMap.halfCell/2 and module_flag):
-                #if (not transform_flag and self.us_ev3_stop() and ):
-                    position_reached = False
-                    cell  = next_cell
-                    pos   = next_pos
-                    if cell == self.rMap.goal:
-                        print("Goal reached!: ", cell, self.rMap.goal)
-                        break
-                    state = "START_CELL_ADVENTURE"    
-                    print("FORWARD -> START_CELL_ADVENTURE")
-                    self.setSpeed(0,0)
+                #pos_flag    = position_transform == Transform(gpos)
+                #module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
+                ##(10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
+                #print(pos_flag, gpos, Decimal(self.us_ev3.value) % Decimal(20))
+                #if (pos_flag and Decimal(self.us_ev3.value) % Decimal(20) <= 15): #or (not pos_flag and (next_pos - gpos).magnitude() < self.rMap.halfCell/2 and module_flag):
+                ##if (not transform_flag and self.us_ev3_stop() and ):
+                #    position_reached = False
+                #    cell  = next_cell
+                #    pos   = next_pos
+                #    if cell == self.rMap.goal:
+                #        print("Goal reached!: ", cell, self.rMap.goal)
+                #        break
+                #    state = "START_CELL_ADVENTURE"    
+                #    print("FORWARD -> START_CELL_ADVENTURE")
+                #    self.setSpeed(0,0)
 
     def playNavigation_8N(self):
         '''
