@@ -7,7 +7,6 @@ from ReMapLib import Map
 
 from decimal import Decimal
 
-
 def main():    
     try:
 
@@ -28,12 +27,12 @@ def main():
         #start, goal = [0,0], [4,7]
         #rMap = Map("maps/mapa2.txt", [0,0], [4,7], neighborhood=neighborhood)
 
-        start, goal = [1,0], [4,7]
+        start, goal = [4,2], [0,7]
         rMap  = Map("maps/mapa3.txt", start, goal, neighborhood=neighborhood)
         #rMap.drawMapWithRobotLocations()
 
         # 2. Inicializar el robot
-        global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell, 90]
+        global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell, 0]
         robot = Robot(global_reference=global_reference, rMap=rMap)
         time.sleep(5)
         
