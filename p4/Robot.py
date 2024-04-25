@@ -647,8 +647,8 @@ class Robot:
                     self.setSpeed(v, gfor.angle_sense(rotation_transform.forward)*w)
                 # Si el vector de la posicion del robot a la siguiente posicion no coincide
                 # con el vector direccion de la posicion actual a la siguiente, tambie corrige
-                elif not rotation_transform == Transform(Vector2.zero, forward=gdir):
-                    self.setSpeed(v, gdir.angle_sense(rotation_transform.forward)*w)
+                #elif not rotation_transform == Transform(Vector2.zero, forward=gdir):
+                #    self.setSpeed(v, gdir.angle_sense(rotation_transform.forward)*w)
                     #print("BIEN")
                 # Si ambos coinciden, no necesita aplicar correccion
                 else:
