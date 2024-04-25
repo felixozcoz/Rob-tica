@@ -659,7 +659,7 @@ class Robot:
                 # El ultrasonido esta a unos 15 cm maximos debido a su posicion en el
                 # robot, entonces, si haciendo modulo de la mitad de la celda da un
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
-                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 14
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 15
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
                 transform = Transform(gpos)
                 if position_reached or fixed_position_transform == transform:
