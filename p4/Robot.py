@@ -524,7 +524,7 @@ class Robot:
         dynamic_walls      = []
         # Ultrasonic values
         us_index  = 0
-        us_values = [0,0,0]
+        us_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value,]
         # Velocidades
         after_recogn = "RECOGN"
         v = 10
@@ -569,6 +569,7 @@ class Robot:
 
             # C. Estado de reconocimiento del entorno
             elif state == "RECOGN":
+                # A. DESCOMENTAR LA DE ABAJO
                 #if after_recogn == "RECOGN":
                     # Antes de avanzar, comprobamos si hay obstáculo
                     shift         = gfor.normalize()
@@ -589,14 +590,18 @@ class Robot:
                             if not self.rMap.path:
                                 if dynamic_walls:
                                     dynamic_walls.append(wall)
+                                    # A. COMENTAR LA DE ABAJO
                                     state = "BACKTRACKING"
+                                    # A. DESCOMENTAR LA DE ABAJO
                                     #after_recogn = "BACKTRACKING"
                                     print("RECOGN -> BACKTRACKING")
                                 else:
                                     print("RECOGN -> RECOGN")
                             else:
                                 dynamic_walls.append(wall)
+                                # A. COMENTAR LA DE ABAJO
                                 state = "START_CELL_ADVENTURE"
+                                # A. DESCOMENTAR LA DE ABAJO
                                 #after_recogn = "START_CELL_ADVENTURE"
                                 print("RECOGN -> START_CELL_ADVENTURE")
                         #self.setSpeed(-v/2, 0)
@@ -613,21 +618,27 @@ class Robot:
                         if not self.rMap.path:
                             if dynamic_walls:
                                 dynamic_walls.append(wall)
+                                # A. COMENTAR LA DE ABAJO
                                 state = "BACKTRACKING"
+                                # A. DESCOMENTAR LA DE ABAJO
                                 #after_recogn = "BACKTRACKING"
                                 print("RECOGN -> BACKTRACKING")
                             else:
                                 print("RECOGN -> RECOGN")
                         else:
+                            # A. COMENTAR LA DE ABAJO
                             state = "START_CELL_ADVENTURE"
+                            # A. DESCOMENTAR LA DE ABAJO
                             #after_recogn = "START_CELL_ADVENTURE"    
                             print("RECOGN -> START_CELL_ADVENTURE")
+                        # A. DESCOMENTAR LA DE ABAJO
                         #self.setSpeed(-v/2, 0)
                     # Si ni una ni otra, sigo adelante
                     else:
                         state = "FORWARD"
                         print("RECOGN -> FORWARD")
                         self.setSpeed(v,0)
+                # A. DESCOMENTAR ELSE
                 #else:
                 #    us_values[us_index] = self.us_ev3.value
                 #    us_index = (us_index + 1) % len(us_values)
@@ -675,6 +686,9 @@ class Robot:
                 # El ultrasonido esta a unos 15 cm maximos debido a su posicion en el
                 # robot, entonces, si haciendo modulo de la mitad de la celda da un
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
+                # B. COMENTAR LA DE ABAJO
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 12
+                # B. DESCOMENTAR LAS 3 DE ABAJO
                 us_values[us_index] = self.us_ev3.value
                 us_index = (us_index + 1) % len(us_values)
                 us_cell_center = Decimal(np.median(us_values)) % Decimal(self.rMap.halfCell) <= 12
@@ -735,7 +749,7 @@ class Robot:
         dynamic_walls      = []
         # Ultrasonic values
         us_index  = 0
-        us_values = [0,0,0]
+        us_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value,]
         # Velocidades
         after_recogn = "RECALCULATE_MAP"
         v = 10
@@ -836,23 +850,30 @@ class Robot:
 
             # E. Recalcular mapa:
             elif state == "RECALCULATE_MAP":
+                # C. DESCOMENTAR LA DE ABAJO
                 #if after_recogn == "RECALCULATE_MAP":
                     self.rMap.replanPath_8N()
                     if not self.rMap.path:
                         if not dynamic_walls and len(dynamic_walls) == 1:
                             dynamic_walls = []
+                            # C. DESCOMENTAR LA DE ABAJO
                             #after_recogn = "BEGIN_RECOGN"
+                            # C. COMENTAR LA DE ABAJO
                             state = "BEGIN_RECOGN"
                             print("RECALCULATE_MAP -> BEGIN_RECOGN")
                         else:
+                            # C. DESCOMENTAR LA DE ABAJO
                             #after_recogn = "BACKTRACKING"
+                            # C. COMENTAR LA DE ABAJO
                             state = "BACKTRACKING"
                             print("RECALCULATE_MAP -> BACKTRACKING")
                     else:
                         #after_recogn = "START_CELL_ADVENTURE"
                         state = "START_CELL_ADVENTURE"
                         print("RECALCULATE_MAP -> START_CELL_ADVENTURE")
+                    # C. DESCOMENTAR LA DE ABAJO
                     #self.setSpeed(-v/2, 0)
+                # C. DESCOMENTAR ELSE
                 #else:
                 #    us_values[us_index] = self.us_ev3.value
                 #    us_index = (us_index + 1) % len(us_values)
@@ -900,9 +921,12 @@ class Robot:
                 # El ultrasonido esta a unos 15 cm maximos debido a su posicion en el
                 # robot, entonces, si haciendo modulo de la mitad de la celda da un
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
-                us_values[us_index] = self.us_ev3.value
-                us_index = (us_index + 1) % len(us_values)
-                us_cell_center = Decimal(np.median(us_values)) % Decimal(self.rMap.halfCell) <= 12
+                # D. COMENTAR LA DE ABAJO
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 12
+                # D. DESCOMENTAR LAS 3 DE ABAJO
+                #us_values[us_index] = self.us_ev3.value
+                #us_index = (us_index + 1) % len(us_values)
+                #us_cell_center = Decimal(np.median(us_values)) % Decimal(self.rMap.halfCell) <= 12
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
                 transform = Transform(gpos)
                 if position_reached or fixed_position_transform == transform:
