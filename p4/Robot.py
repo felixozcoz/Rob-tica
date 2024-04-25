@@ -690,8 +690,9 @@ class Robot:
                 module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
                 ##(10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
                 #print(pos_flag, gpos, Decimal(self.us_ev3.value) % Decimal(20))
-                if (pos_flag and Decimal(self.us_ev3.value) % Decimal(20) <= 15): #or (not pos_flag and (next_pos - gpos).magnitude() < self.rMap.halfCell/2 and module_flag):
+                #if (pos_flag and Decimal(self.us_ev3.value) % Decimal(20) <= 15): #or (not pos_flag and (next_pos - gpos).magnitude() < self.rMap.halfCell/2 and module_flag):
                 ##if (not transform_flag and self.us_ev3_stop() and ):
+                if fixed_position_transform == Transform(gpos):
                     position_reached = False
                     cell  = next_cell
                     pos   = next_pos
