@@ -636,6 +636,7 @@ class Robot:
                else:
                    state = "START_CELL_ADVENTURE"
                    print("BACKTRACKING -> START_CELL_ADVENTURE")
+            
             # E. Estado de avance hacia la siguiente celda
             elif state == "FORWARD":
                 gdir = (next_pos - gpos).normalize()
@@ -681,8 +682,6 @@ class Robot:
                 print("FORWARD -> START_CELL_ADVENTURE")
                 self.setSpeed(0,0)
 
-
-                
                 # 10-11 y 12-13
                 #pos_flag    = fixed_position_transform == Transform(gpos)
                 #module_flag = self.us_ev3.value < 100 and 15 < Decimal(self.us_ev3.value) % Decimal(20) < 18
