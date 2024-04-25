@@ -554,6 +554,7 @@ class Robot:
                     state = "ROTATION"
                     print("START_CELL_ADVENTURE -> ROTATION")
                     self.setSpeed(0, gfor.angle_sense(dir) * w)
+    
             # B. Estado de rotacion
             elif state == "ROTATION":
                 transform = Transform(Vector2.zero, forward=gfor)
@@ -561,6 +562,7 @@ class Robot:
                     state = "RECOGN"
                     print("ROTATION -> RECOGN")
                     self.setSpeed(0, 0)
+
             # C. Estado de reconocimiento del entorno
             elif state == "RECOGN":
                 shift         = gfor.normalize()
@@ -616,7 +618,7 @@ class Robot:
                     print("RECOGN -> FORWARD")
                     # TODO: Probar si funciona
                     self.setSpeed(v,0)
-                
+
             # D. Estado de backtracking. Vuelve a un camino anterior
             elif state == "BACKTRACKING":
                neighbor_conn, neighbor_rght, neighbor_left = dynamic_walls.pop(0)
@@ -639,7 +641,7 @@ class Robot:
             
             # E. Estado de avance hacia la siguiente celda
             elif state == "FORWARD":
-                gdir = (next_pos - gpos).normalize()
+                #gdir = (next_pos - gpos).normalize()
                 # Si el vector orientacion del robot no coincide con el vector direccion de 
                 # la posicion actual a la siguiente, corrige trayectoria
                 if not rotation_transform == Transform(Vector2.zero, forward=gfor):
@@ -670,8 +672,8 @@ class Robot:
                 # valido esta condicion si se encuentra un muro, entonces se le indica
                 # que SOLO tenga en cuenta esto cuando el robot este cerca de la siguiente
                 # posicion.
-                elif not light_position_transform == transform or not us_cell_center:
-                    continue
+                #elif not light_position_transform == transform or not us_cell_center:
+                #    continue
                 
                 position_reached = False
                 cell  = next_cell
