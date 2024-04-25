@@ -662,11 +662,11 @@ class Robot:
                 us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 12
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
                 #transform = Transform(gpos)
-                #if position_reached or fixed_position_transform == transform:
-                #    # Si el ultrasonido NO INDICA que sea el centro sigue avanzando
-                #    if not us_cell_center:
-                #        position_reached = True
-                #        continue
+                if position_reached or fixed_position_transform == transform:
+                    # Si el ultrasonido NO INDICA que sea el centro sigue avanzando
+                    if not us_cell_center:
+                        position_reached = True
+                        continue
                 # Si la posicion NO ha sido alcanzada y el ultrasonido TAMPOCO LO INDICA
                 # PERO, si se ha movido escasos cm de la posicion actual podria dar por
                 # valido esta condicion si se encuentra un muro, entonces se le indica
@@ -675,15 +675,15 @@ class Robot:
                 #elif not light_position_transform == transform or not us_cell_center:
                 #    continue
                 
-                #position_reached = False
-                #cell  = next_cell
-                #pos   = next_pos
-                #if cell == self.rMap.goal:
-                #    print("Goal reached!: ", cell, self.rMap.goal)
-                #    break
-                #state = "START_CELL_ADVENTURE"    
-                #print("FORWARD -> START_CELL_ADVENTURE")
-                #self.setSpeed(0,0)
+                position_reached = False
+                cell  = next_cell
+                pos   = next_pos
+                if cell == self.rMap.goal:
+                    print("Goal reached!: ", cell, self.rMap.goal)
+                    break
+                state = "START_CELL_ADVENTURE"    
+                print("FORWARD -> START_CELL_ADVENTURE")
+                self.setSpeed(0,0)
 
                 # 10-11 y 12-13
                 #pos_flag    = fixed_position_transform == Transform(gpos)
@@ -692,16 +692,16 @@ class Robot:
                 #print(pos_flag, gpos, Decimal(self.us_ev3.value) % Decimal(20))
                 #if (pos_flag and Decimal(self.us_ev3.value) % Decimal(20) <= 15): #or (not pos_flag and (next_pos - gpos).magnitude() < self.rMap.halfCell/2 and module_flag):
                 ##if (not transform_flag and self.us_ev3_stop() and ):
-                if fixed_position_transform == Transform(gpos):
-                    position_reached = False
-                    cell  = next_cell
-                    pos   = next_pos
-                    if cell == self.rMap.goal:
-                        print("Goal reached!: ", cell, self.rMap.goal)
-                        break
-                    state = "START_CELL_ADVENTURE"    
-                    print("FORWARD -> START_CELL_ADVENTURE")
-                    self.setSpeed(0,0)
+                #if fixed_position_transform == Transform(gpos):
+                #    position_reached = False
+                #    cell  = next_cell
+                #    pos   = next_pos
+                #    if cell == self.rMap.goal:
+                #        print("Goal reached!: ", cell, self.rMap.goal)
+                #        break
+                #    state = "START_CELL_ADVENTURE"    
+                #    print("FORWARD -> START_CELL_ADVENTURE")
+                #    self.setSpeed(0,0)
 
     def playNavigation_8N(self):
         '''
