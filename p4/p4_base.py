@@ -15,15 +15,25 @@ def main():
         print("Inicializando mapa ...")
         print("---------------------------------------------------")
         neighborhood = 4
+
+        #start, goal = [0,0], [0,1]
         #rMap = Map("maps/mapa_simple.txt", [0,0], [0,1], neighborhood=neighborhood)
+        
+        #start, goal = [0,0], [2,2]
         #rMap = Map("maps/mapa0.txt", [0,0], [2,2], neighborhood=neighborhood)
+        
+        #start, goal = [0,0], [2,2]
         #rMap = Map("maps/mapa1.txt", [0,0], [2,2], neighborhood=neighborhood)
+
+        #start, goal = [0,0], [4,7]
         #rMap = Map("maps/mapa2.txt", [0,0], [4,7], neighborhood=neighborhood)
-        rMap = Map("maps/mapa3.txt", [0,0], [4,7], neighborhood=neighborhood)
+
+        start, goal = [1,0], [4,7]
+        rMap  = Map("maps/mapa3.txt", start, goal, neighborhood=neighborhood)
         #rMap.drawMapWithRobotLocations()
 
         # 2. Inicializar el robot
-        global_reference = [20,20,90]
+        global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell, 90]
         robot = Robot(global_reference=global_reference, rMap=rMap)
         time.sleep(5)
         
