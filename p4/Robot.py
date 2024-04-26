@@ -126,6 +126,7 @@ class Robot:
         self.gy   = global_reference[1]
         self.gth  = global_reference[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
+        self.wtol = Matrix2.transform(Vector2(-self.gx, -self.gy, 0), -self.gth)
 
         self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
         self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
@@ -524,7 +525,7 @@ class Robot:
         dynamic_walls      = []
         # Ultrasonic values
         us_index  = 0
-        us_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value,]
+        us_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # Velocidades
         after_recogn = "RECOGN"
         v = 10
@@ -544,6 +545,7 @@ class Robot:
             if state == "START_CELL_ADVENTURE":
                 # Obtenemos los datos de la siguiente celda
                 _, next_cell, next_pos = self.rMap.travel()
+                print(next_pos, gpos)
                 dir = (next_pos - pos).normalize()
                 # Obtenemos las transformaciones representativas del destino
                 rotation_transform       = Transform(Vector2.zero, forward=dir)
@@ -687,11 +689,14 @@ class Robot:
                 # robot, entonces, si haciendo modulo de la mitad de la celda da un
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
                 # B. COMENTAR LA DE ABAJO
-                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 12
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 13.5
                 # B. DESCOMENTAR LAS 3 DE ABAJO
                 us_values[us_index] = self.us_ev3.value
                 us_index = (us_index + 1) % len(us_values)
-                us_cell_center = Decimal(np.median(us_values)) % Decimal(self.rMap.halfCell) <= 12
+                us_cell_center = True
+                for us_value in us_values:
+                    us_cell_center &= Decimal(us_value) % Decimal(self.rMap.halfCell) <= 15.5
+                #us_cell_center = Decimal(np.mean(us_values)) % Decimal(self.rMap.halfCell) <= 16
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
                 transform = Transform(gpos)
                 if position_reached or fixed_position_transform == transform:
@@ -700,6 +705,8 @@ class Robot:
                         position_reached = True
                     else:
                         position_reached = False
+                        # self.x.value = abs(next_pos.y * rotation_transform.forward.y)
+                        # self.y.value = abs(next_pos.x * rotation_transform.forward.x)
                         cell  = next_cell
                         pos   = next_pos
                         if cell == self.rMap.goal:
@@ -922,11 +929,14 @@ class Robot:
                 # robot, entonces, si haciendo modulo de la mitad de la celda da un
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
                 # D. COMENTAR LA DE ABAJO
-                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 12
+                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 13.5
                 # D. DESCOMENTAR LAS 3 DE ABAJO
-                #us_values[us_index] = self.us_ev3.value
-                #us_index = (us_index + 1) % len(us_values)
-                #us_cell_center = Decimal(np.median(us_values)) % Decimal(self.rMap.halfCell) <= 12
+                us_values[us_index] = self.us_ev3.value
+                us_index = (us_index + 1) % len(us_values)
+                us_cell_center = True
+                for us_value in us_values:
+                    us_cell_center &= Decimal(us_value) % Decimal(self.rMap.halfCell) <= 15.5
+                #us_cell_center = Decimal(np.mean(us_values)) % Decimal(self.rMap.halfCell) <= 16
                 # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
                 transform = Transform(gpos)
                 if position_reached or fixed_position_transform == transform:
