@@ -451,25 +451,7 @@ class Matrix2:
             for j in range(3):
                 self.A[i].append(A[i][j])
                 self.T[i].append(A[j][i])
-
-    def invert(self):
-        """
-            Invert a matrix
-        """
-        R = np.array(self.A)[0:2, 0:2]
-        p = np.array(self.A)[0:2, 2]
-
-        # Calculamos la transpuesta de R
-        R_T = np.transpose(R)
-
-        # Calculamos -R^T*p
-        p_new = -np.dot(R_T, p)
-
-        # Construimos la matriz de transformación de B a A
-        T_BA = np.eye(3)
-        T_BA[0:2, 0:2] = R_T
-        T_BA[0:2, 2] = p_new
-        return Matrix2(T_BA)
+        self.INV = [[],[],[]]
 
     @staticmethod
     def zero():
@@ -496,6 +478,7 @@ class Matrix2:
             [np.sin(rotation),  np.cos(rotation), translation.y],
             [               0,                 0,             1]
         ])
+        
     
     def __mul__(self: "Matrix2", other): 
         if isinstance(other, Number):

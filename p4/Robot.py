@@ -126,7 +126,7 @@ class Robot:
         self.gy   = global_reference[1]
         self.gth  = global_reference[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
-        self.wtol = Matrix2.transform(Vector2(-self.gx, -self.gy, 0), -self.gth)
+        self.wtol = self.ltow.invert()
 
         self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
         self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
