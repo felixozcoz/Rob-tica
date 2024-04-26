@@ -1,0 +1,80 @@
+# Cambios del codigo
+### Robot.py
+- Ahora setSpeed recibe tres parametros en vez de dos, la velocidad lineal, angular y la velocidad de la cesta:
+
+    ```python
+    # Linea 136
+    def setSpeed(self, v: float, w: float, wb: float = 0):
+        # ...
+    ```
+
+### MapLib.py
+- Originalmente el mapa se guardaba en un array con las filas del mapa en las columnas del array y las columnas mapa en las filas del array. Ahora se guarda al reves:
+
+    ```python
+        Mapa original:     Array antes:       Array ahora:
+          0 0 0 0 0          0 0 0 0 0          0 0 0 0 0
+          0 1 1 1 0          0 1 1 1 0          0 1 1 1 0
+          0 1 1 1 0          0 1 1 0 0          0 1 1 1 0
+          0 1 0 1 0          0 1 1 1 0          0 1 0 1 0
+          0 0 0 0 0          0 0 0 0 0          0 0 0 0 0
+    ```
+
+- Ahora se guarda el mapa de conexiones en dos variables, una con la copia original inmodificable y la otra que se modificará en tiempo real:
+
+    ```python
+    # Linea 59-61:
+    self.connectionSource = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+    self.connectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+    ```
+
+- Ahora se guarda en el mapa el inicio y el final del camino a encontrar, el propio camino y en que paso del camino se encuentra el robot en un momento dado:
+
+    ```python
+        # Linea 81-85
+        self.costMatrix = np.zeros((self.sizeY, self.sizeX))
+        self.path       = []
+        self.index      = 1
+        self.start      = start
+        self.goal       = goal
+    ```
+
+- La propagación se realiza mediante algoritmo NF1. Tanto en propagacion de cuatro vecindad como en ocho vecindad:
+
+    ```python
+        # Linea 99
+        def propagate_4N(self):
+            # ...
+
+        # Linea 185
+        def propagate_8N(self):
+            # ...
+    ```
+
+- La planificacion del camino menos costoso se realiza mediante A*. Esto es debido a que era el algoritmo que se tenia más mano y más trabajado, tras realizar pruebas se ha visto que era bastante eficiente y con poco coste (al menos con mapas del tamaño de la práctica), como además se trabajaba con frontera de expansión y con caminos, pues se consideraba uno de los más adecuados (ya que el A* trabaja con frontera y teoricamente es de los mejores para encontrar el mejor camino):
+
+    ```python
+        # Linea 145
+        def findPath_4N(self):
+            # ...
+        
+        # Linea 237
+        def findPath_8N(self):
+            # ...
+
+        # Linea 465: para insertar un nodo en la frontera para el A* en base a los costes de la matriz de costes
+        def insert(self, a_list, a_node: dict):
+            # ...
+    ```
+
+- Se han mantenido las funciones para imprimir el mapa con Matplotlib.
+
+- Como se ha mencionado antes, el camino se guarda en el mapa, y en que nodo del camino se encuentra el robot. El robot va obteniendo el siguiente destino y calcula su siguiente accion en tiempo real, no obtiene la secuencia de estados a priori:
+
+    ```python
+        # Linea 454:
+        def insert(self, a_list, a_node: dict):
+            # ...
+    ```
+
+

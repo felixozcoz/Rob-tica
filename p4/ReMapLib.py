@@ -57,8 +57,8 @@ class Map:
         self.halfCell = self.sizeCell//2
 
         # Obtener conexiones entre celdas
-        self.connectionSource  = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
-        self.connectionMatrix  = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+        self.connectionSource = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+        self.connectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
         rows = 0
         while rows < self.connectionMatrix.shape[0]:
             rows += 1
@@ -451,6 +451,7 @@ class Map:
     #            break
     #    return a_list[:i] + [a_node] + a_list[i:]
   
+    # Obtiene el siguiente destino del robot
     def travel(self):
         # Si el path esta vacio, no puede devolver celda
         if not self.path:
@@ -460,10 +461,6 @@ class Map:
         cell        = self.path[-index]
         self.index += 1
         return index, cell, Vector2(self.halfCell+cell[1]*self.sizeCell, self.halfCell+cell[0]*self.sizeCell, 1)
-
-    def getPath(self, index):
-        cell = self.path[-index]
-        return cell, Vector2((1+cell[1])*self.halfCell, (1+cell[0])*self.halfCell, 1)
 
     # Insertar un nodo para el A*
     def insert(self, a_list, a_node: dict):
