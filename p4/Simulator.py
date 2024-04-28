@@ -74,28 +74,42 @@ def simulate_robot(key):
 #print("---------------------------------------------------")
 #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
 
+
+points = [0.5, 0.5], [1.0, 0.5]
+for point in points:
+    print(point)
+
+exit(0)
 print("---------------------------------------------------")
 rMap = Map("maps/mapa3.txt", [4,2], [0,7], neighborhood=4)
 np.set_printoptions(precision=2, suppress=True)
 #rMap.drawMapWithRobotLocations()
 
-exit(0)
+
+
 
 gref = [20,20,90]
 gfor = Vector2.right
 grig = Vector2.up
 
 ltow = Matrix2.transform(Vector2(gref[0], gref[1], 0), gref[2])
+wtol = Matrix2.transform(Vector2(-gref[0], gref[1], 0), -gref[2])
 lref = [0,0,0]
-lpos = Vector2(lref[0], lref[1], 1)
+lpos = Vector2(lref[0], lref[1]-5, 1)
 lfor = Vector2.right
 lrig = Vector2.up
 
-#print("POSICION LOCAL:", lpos)
+
+
+print("POSICION LOCAL:", lpos)
+print("POSICION GLOBAL:", ltow*lpos)
+print("POSICION LOCAL AGAIN:", wtol * ltow * lpos)
 #print("BASE LOCAL:", lfor, "|", lrig)
 #print("POSICION GLOBAL:", ltow * lpos)
 #print("BASE GLOBAL (L):", ltow*lfor, "|", ltow*lrig)
 #print("BASE GLOBAL (G):", gfor, "|", grig)
+
+exit(0)
 
 # ESTO ES LO QUE VA A SER
 position_transform, rotation_transform = None, None

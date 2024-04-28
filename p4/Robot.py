@@ -61,7 +61,7 @@ class Robot:
         self.th = Value('d', local_reference[2])
                                                # Robot orientation.
         self.us_ev3 = Value('d', 0)            # Latest distances ultrasonic EV3 sensor stored
-        self.us_nxt = Value('d', 0)            # Latest distances ultrasonic NXT sensor stored
+        #self.us_nxt = Value('d', 0)            # Latest distances ultrasonic NXT sensor stored
         self.bh = Value('d', 0)                # Robot basket angle [0 to ~90º].
         self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
@@ -126,7 +126,7 @@ class Robot:
         self.gy   = global_reference[1]
         self.gth  = global_reference[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
-        self.wtol = self.ltow.invert()
+        self.wtol = Matrix2.transform(Vector2(-self.gx, -self.gy, 0), -self.gth) #self.ltow.invert()
 
         self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
         self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
@@ -268,14 +268,18 @@ class Robot:
         sys.stdout.write("Stopping odometry ... X=  %.2f, \
                 Y=  %.2f, th=  %.2f \n" %(self.x.value, self.y.value, self.th.value))
 
-    # Stop the odometry thread.
     def stopOdometry(self):
+        """ Stop the odometry thread """
         self.finished.value = True
         self.BP.reset_all()
 
 
     #-- Generacion de trayectorias ---------
-    # Para el trabajo final...
+    def playTrayectory(points):
+
+        for point in points:
+            print(point)
+
 
 
     #-- Seguimiento de objetos -------------
