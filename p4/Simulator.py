@@ -75,9 +75,12 @@ def simulate_robot(key):
 #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
 
 
-points = [0.5, 0.5], [1.0, 0.5]
+points = [[0,0],[1,1],[1,2]]
+pos    = Vector2()
 for point in points:
-    print(point)
+    if (pos  == points[-1]):
+        break
+    print(Vector2(point[0], point[1], 1))
 
 exit(0)
 print("---------------------------------------------------")
