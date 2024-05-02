@@ -16,6 +16,7 @@ from decimal import Decimal
 from geometry import Vector2, Matrix2, Transform
 from ReMapLib import Map
 from scipy.interpolate import PchipInterpolator
+from matplotlib import pyplot as plt
 
 # Threading package could be used too
 from multiprocessing import Process, Value, Array, Lock
@@ -45,8 +46,8 @@ class Robot:
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
         # Configure color sensor
-        self.PORT_COLOR = self.BP.PORT_3
-        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
+        #self.PORT_COLOR = self.BP.PORT_3
+        #self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
         # Configure motors
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
@@ -125,15 +126,16 @@ class Robot:
         self.fv_max = self.fv(0)               # Maximum linear speed.
         ##################################################
         # MAPS & PATH TRAYECTORY
-        self.rMap = rMap
-        self.gx   = global_reference[0]
-        self.gy   = global_reference[1]
-        self.gth  = global_reference[2]
-        self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
-        self.wtol = self.ltow.invert()
+        if rMap:
+            self.rMap = rMap
+            self.gx   = global_reference[0]
+            self.gy   = global_reference[1]
+            self.gth  = global_reference[2]
+            self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
+            self.wtol = self.ltow.invert()
 
-        self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
-        self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
+            self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
+            self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
 
 
     # -- Velocidad -------------------------
@@ -537,7 +539,10 @@ class Robot:
         #  mediante PCHIP (quita los minimos y maximos que 
         #  añade la polinómica)
         trajectory = PchipInterpolator(x, y)
-        x_values   = np.linspace(min(x), max(x), segments)
+        x_values   = np.linspace(min(x), max(x), segments-len(x)+1)
+        x.remove(min(x))
+
+        x_values   = list(x_values) + x; x_values.sort()
         y_values   = trajectory(x_values)
         #w_values  = np.arctan(trajectory.derivative()(y_values)/trajectory.derivative()(x_values))
         if showPlot:
@@ -558,27 +563,35 @@ class Robot:
         position = Vector2(x_values[0], y_values[0], 1)
         position_transform = Transform(Vector2.zero)
         v = 10
-        w = 0.75
+        w = 1
 
-        for i in range(1, segments):
+
+        point   = 0
+        segment = 1
+        while True:
             # Leer odometria
             x, y, th, _ = self.readOdometry()
-            transform   = Transform(Vector2(x, y), th)
+            transform   = Transform(Vector2(x, y), 0)
             forward     = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
-                next_position      = Vector2(x_values[i], y_values[i])
+                next_position      = Vector2(x_values[segment], y_values[segment])
                 direction          = next_position - position
                 position_transform = Transform(next_position, 0)
                 self.setSpeed(v, forward.sense(direction) * w)
+                #if [x_values[segment], y_values[segment]] in points:
+                #    point += 1
+                #self.setSpeed(v, forward.sense(direction) * w * 1/(Vector2(x_values[segment], y_values[segment]) - position).magnitude())
                 state = "GO"
                 print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 if position_transform == transform:
+                    segment += 1
                     position = next_position
                     state = "START_SEGMENT_ADVENTURE"
                     print("GO -> START_SEGMENT_ADVENTURE")
-
+                    if segment >= segments:
+                        break
         self.setSpeed(0,0)
 
     #-- Navegacion -------------------------
@@ -590,7 +603,7 @@ class Robot:
         state = "START_CELL_ADVENTURE"
         # Posicion inicial
         _, cell, pos = self.rMap.travel()
-        # Si la celda actual es la meta, hemos terminado
+       # Si la celda actual es la meta, hemos terminado
         if cell == self.rMap.goal:
             print("Goal reached!", cell, self.rMap.goal)
             return

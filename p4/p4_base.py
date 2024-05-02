@@ -39,14 +39,14 @@ def main():
 #
         ## 2. Inicializar el robot
         #global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
-        robot = Robot(global_reference=global_reference, rMap=rMap)
+        robot = Robot()
         time.sleep(5)
         
         robot.startOdometry()
 
 
         points = [[0,0], [40,0], [80,40], [160,-40], [190,0], [200,0]]
-        robot.playTrajectory(points, 100, True)
+        robot.playTrajectory(points, 30)
 
         # 3. Recorrer mapa
         #print("Recorriendo mapa ... ")
