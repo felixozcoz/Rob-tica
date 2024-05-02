@@ -522,6 +522,64 @@ class Robot:
                 # Robot speed
                 self.setSpeed(v, w, wb)
 
+    #-- Trayectoria
+        #-- Generacion de trayectorias ---------
+    def playTrajectory(self, points, segments, showPlot=False):
+        # . Separar coordenadas de la trayectoria
+        x = [point[0] for point in points]
+        y = [point[1] for point in points]
+        # . (DEPRECATED) Función interpolada respecto de los
+        #  puntos dados mediante interpolación polinómica
+        # deg          = len(x)-1
+        # coefficients = np.polyfit(x,y,deg)
+        # trajectory   = np.poly1d(coefficients)
+        # . Función interpolada respecto de los puntos dados
+        #  mediante PCHIP (quita los minimos y maximos que 
+        #  añade la polinómica)
+        trajectory = PchipInterpolator(x, y)
+        x_values   = np.linspace(min(x), max(x), segments)
+        y_values   = trajectory(x_values)
+        #w_values  = np.arctan(trajectory.derivative()(y_values)/trajectory.derivative()(x_values))
+        if showPlot:
+            plt.figure(figsize=(8,6))
+            plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
+            #plt.plot(x_values, w, label="Velocidad angular", color="green")
+            plt.scatter(x, y, label="Puntos conocidos", color="red")
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.title("Interpolacion polinomica")
+            plt.legend()
+            plt.axis("equal")
+            plt.grid(True)
+            plt.show()
+
+        # Recorrer trayectoria
+        state    = "START_SEGMENT_ADVENTURE"
+        position = Vector2(x_values[0], y_values[0], 1)
+        position_transform = Transform(Vector2.zero)
+        v = 10
+        w = 0.75
+
+        for i in range(1, segments):
+            # Leer odometria
+            x, y, th, _ = self.readOdometry()
+            transform   = Transform(Vector2(x, y), th)
+            forward     = Vector2.right.rotate(th)
+            # Estados
+            if state == "START_SEGMENT_ADVENTURE":
+                next_position      = Vector2(x_values[i], y_values[i])
+                direction          = next_position - position
+                position_transform = Transform(next_position, 0)
+                self.setSpeed(v, forward.sense(direction) * w)
+                state = "GO"
+                print("START_SEGMENT_ADVENTURE -> GO")
+            elif state == "GO":
+                if position_transform == transform:
+                    position = next_position
+                    state = "START_SEGMENT_ADVENTURE"
+                    print("GO -> START_SEGMENT_ADVENTURE")
+
+        self.setSpeed(0,0)
 
     #-- Navegacion -------------------------
     def playNavigation_4N(self):
@@ -566,7 +624,7 @@ class Robot:
                 # Obtenemos los datos de la siguiente celda
                 _, next_cell, next_pos = self.rMap.travel()
                 dir = (next_pos - pos).normalize()
-                print(next_pos, dir, gfor)
+                print(pos, next_pos, dir, gfor)
                 # Obtenemos las transformaciones representativas del destino
                 rotation_transform       = Transform(Vector2.zero, forward=dir)
                 #light_position_transform = Transform(next_pos, CUSTOM_POSITION_ERROR=light_error)
