@@ -668,10 +668,11 @@ class Transform:
         # 1. Distance check
         angle_diff = self.rotation - transform.rotation
         angle_diff = (angle_diff + 180) % 360 - 180
+        print(angle_diff)
         #ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
         ROTATION   = angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff)
-        #if angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff):
-        #    print("Check por distancia de angulos:", self.rotation, transform.rotation)
+        if angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff):
+            print("Check por distancia de angulos:", self.rotation, transform.rotation)
         # 2. Distance local minimum check (peor por culpa de la odometria)
         #ROTATION  |= (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]
         #if (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]:
@@ -683,16 +684,14 @@ class Transform:
         #}
         # 3. Vectors angle check
         angle_diff = self.forward.angle(transform.forward)
-        #print(angle_diff)
         ROTATION  |= self.ROTATION_ERROR > angle_diff
-        #if self.ROTATION_ERROR > angle_diff:
-        #    print("Check por angulo entre dos vectores", angle_diff)
+        if self.ROTATION_ERROR > angle_diff:
+            print("Check por angulo entre dos vectores", angle_diff)
         # 4. Vectors angle local minimum check
         # E. COMENTAR SI NO VA
         ROTATION  |= self.vmin["last"] < dist and dist - self.vmin["last"] > 3 and self.vmin["prev"]
-        #if abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]:
-        #    print("Check por minimo local de angulos entre dos vectores")
-        #    print(angle_diff)
+        if abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]:
+            print("Check por minimo local de angulos entre dos vectores")
         #print(self.vmin, abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"])
         # E. COMENTAR SI NO VA
         self.vmin  = {
