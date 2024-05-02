@@ -12,17 +12,22 @@ def main():
 
         # 2a. Inicializar parametros en base al sensor 
         while True:
-            color     = robot.getColor()
-            luminance = 0.2126*color[0] + 0.7512*color[1] + 0.0722*color[2]
-            if luminance < 0.2:
+            #color     = robot.getColor()
+            #luminance = 0.2126*color[0] + 0.7512*color[1] + 0.0722*color[2]
+            intensity = robot.getIntensity()
+            #if luminance < 0.2:
+            if 2000 < intensity <= 2200:
                 # Generación de trayectoria:
+                #r2d2: R2-D2_s.png
                 points = [[0,0], [20,0], [40,20], [80,-20], [99,0], [100,0]]
                 # Mapa
                 rMap   = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
                 #global_reference = [60,280,-90]
                 #global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
                 break
-            elif luminance > 0.8:
+            #elif luminance > 0.8:
+            elif 2600 < intensity <= 2800
+                #bb8: BB8_s.png
                 # Generación de trayectoria:
                 points = [[0,0], [20,0], [40,-20], [80,20], [99,0], [100,0]]
                 # Mapa
