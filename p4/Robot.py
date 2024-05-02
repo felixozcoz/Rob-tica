@@ -15,6 +15,7 @@ from picamera.array import PiRGBArray
 from decimal import Decimal
 from geometry import Vector2, Matrix2, Transform
 from ReMapLib import Map
+from scipy.interpolate import PchipInterpolator
 
 # Threading package could be used too
 from multiprocessing import Process, Value, Array, Lock
@@ -43,6 +44,9 @@ class Robot:
         # Configure gyroscope
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
+        # Configure color sensor
+        self.PORT_COLOR = self.BP.PORT_3
+        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
         # Configure motors
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
@@ -126,7 +130,7 @@ class Robot:
         self.gy   = global_reference[1]
         self.gth  = global_reference[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
-        self.wtol = Matrix2.transform(Vector2(-self.gx, -self.gy, 0), -self.gth) #self.ltow.invert()
+        self.wtol = self.ltow.invert()
 
         self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
         self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
@@ -215,6 +219,7 @@ class Robot:
             while not self.finished.value:
                 # current processor time in a floating point value, in seconds
                 tIni = time.clock()
+                
                 # Update odometry uses values that require mutex, they are declared as value, so lock
                 # is implicitly done for atomic operations (BUT =+ is NOT atomic)
                 # Calculate the arc of circumfrence traveled by each wheel
@@ -280,7 +285,18 @@ class Robot:
         for point in points:
             print(point)
 
-
+    #-- Deteccion de cartulina -------------
+    def detectCardboard(self):
+        """
+        Detect cardboard using the color sensor, return 1 if it is detected, -1 otherwise
+        """
+        # Read the color sensor
+        value = self.BP.get_sensor(self.PORT_COLOR)
+        # If the value is between 2600 and 2800, the carboard is black
+        if 2600 < value < 2800:
+            return 1
+        else:
+            return -1
 
     #-- Seguimiento de objetos -------------
     def initCamera(self):
@@ -549,7 +565,7 @@ class Robot:
             if state == "START_CELL_ADVENTURE":
                 # Obtenemos los datos de la siguiente celda
                 _, next_cell, next_pos = self.rMap.travel()
-                print(next_pos, gpos)
+                print(next_pos, gpos, [x,y])
                 dir = (next_pos - pos).normalize()
                 # Obtenemos las transformaciones representativas del destino
                 rotation_transform       = Transform(Vector2.zero, forward=dir)
@@ -561,6 +577,13 @@ class Robot:
                     print("START_CELL_ADVENTURE -> RECOGN")
                 # Si no, primero rotamos el robot
                 else:
+                    # update odometry
+                    lpos = self.wtol * pos
+                    print(lpos)
+                    self.lock_odometry.acquire()
+                    self.x.value = lpos.x
+                    self.y.value = lpos.y
+                    self.lock_odometry.release()
                     state = "ROTATION"
                     print("START_CELL_ADVENTURE -> ROTATION")
                     self.setSpeed(0, gfor.angle_sense(dir) * w)
@@ -610,6 +633,7 @@ class Robot:
                                 # A. DESCOMENTAR LA DE ABAJO
                                 #after_recogn = "START_CELL_ADVENTURE"
                                 print("RECOGN -> START_CELL_ADVENTURE")
+
                         #self.setSpeed(-v/2, 0)
                     # Si no detecto obstaculo pero lo habia antes:
                     elif not self.rMap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:

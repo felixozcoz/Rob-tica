@@ -28,7 +28,7 @@ def main():
         #start, goal = [0,0], [4,7]
         #rMap = Map("maps/mapa2.txt", [0,0], [4,7], neighborhood=neighborhood)
 
-        start, goal = [0,0], [2,6]
+        start, goal = [1,0], [3,4]
         rMap  = Map("maps/mapa2.txt", start, goal, neighborhood=neighborhood)
         #rMap.drawMapWithRobotLocations()
 
@@ -40,14 +40,14 @@ def main():
         robot.startOdometry()
 
 
-        #while True:
-        #    print(robot.us_ev3.value, Decimal(robot.us_ev3.value) % Decimal(20))
+        # while True:
+        # #    print(robot.us_ev3.value, Decimal(robot.us_ev3.value) % Decimal(20))
         #    time.sleep(2)
 
 
 
         # 3. Recorrer mapa
-        # print("Recorriendo mapa ... ")
+        print("Recorriendo mapa ... ")
         if neighborhood == 4:
             robot.playNavigation_4N()
         else:
