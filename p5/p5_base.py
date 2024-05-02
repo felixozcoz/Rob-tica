@@ -1,54 +1,50 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-import numpy as np
 import time
 from Robot import Robot
 from ReMapLib import Map
 
-from decimal import Decimal
-
-
 def main():    
     try:
-
-        # 1. Inicializar el mapa
-        print("Inicializando mapa ...")
-        print("---------------------------------------------------")
-        neighborhood = 4
-
-        #start, goal = [0,0], [0,1]
-        #rMap = Map("maps/mapa_simple.txt", [0,0], [0,1], neighborhood=neighborhood)
-        
-        #start, goal = [0,0], [2,2]
-        #rMap = Map("maps/mapa0.txt", [0,0], [2,2], neighborhood=neighborhood)
-        
-        #start, goal = [0,0], [2,2]
-        #rMap = Map("maps/mapa1.txt", [0,0], [2,2], neighborhood=neighborhood)
-
-        #start, goal = [0,0], [4,7]
-        #rMap = Map("maps/mapa2.txt", [0,0], [4,7], neighborhood=neighborhood)
-
-        start, goal = [0,0], [2,6]
-        rMap  = Map("maps/mapa2.txt", start, goal, neighborhood=neighborhood)
-        #rMap.drawMapWithRobotLocations()
-
-        # 2. Inicializar el robot
-        global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
-        robot = Robot(global_reference=global_reference, rMap=rMap)
+        # 1. Inicializar robot
+        robot = Robot()
         time.sleep(5)
-        
+
+        # 2a. Inicializar parametros en base al sensor 
+        while True:
+            color     = robot.getColor()
+            luminance = 0.2126*color[0] + 0.7512*color[1] + 0.0722*color[2]
+            if luminance < 0.2:
+                # Generación de trayectoria:
+                points = [[0,0], [20,0], [40,20], [80,-20], [99,0], [100,0]]
+                # Mapa
+                rMap   = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
+                #global_reference = [60,280,-90]
+                #global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
+                break
+            elif luminance > 0.8:
+                # Generación de trayectoria:
+                points = [[0,0], [20,0], [40,-20], [80,20], [99,0], [100,0]]
+                # Mapa
+                rMap   = Map("mapaB_CARRERA.txt", [2,6], [3,3], neighborhood=4)
+                #global_reference = [220,280,-90]
+                #global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
+                break
+
+        # 2b. Iniciar la odometria
         robot.startOdometry()
 
-        #while True:
-        #    print(robot.us_ev3.value, Decimal(robot.us_ev3.value) % Decimal(20))
-        #    time.sleep(2)
-
-        # 3. Recorrer mapa
-        # print("Recorriendo mapa ... ")
-        if neighborhood == 4:
-            robot.playNavigation_4N()
-        else:
-            robot.playNavigation_8N()
+        # 3. Ejecutar recorrido
+        # . 1º fase. Ejecucion de trayectoria
+        robot.playTrajectory(points, 100)
+        # . 2º fase. Navegacion
+        robot.playNavigation(rMap)
+        # . 3º fase. Obtencion de la salida
+        # robot.NoTieneNombreTodavia()
+        # . 4º fase. Tracking (mascara con colores negativos)
+        robot.trackObject((80, 70, 50), (100, 255, 255))
+        # . 5º fase. Salida
+        # robot.NoTieneNombreTodavia()
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

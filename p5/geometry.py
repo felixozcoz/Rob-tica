@@ -1,6 +1,7 @@
 from numbers import Number
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import random as rnd
 
 np.set_printoptions(precision=2, suppress=True)
 POSITION_ERROR = 1
@@ -44,13 +45,12 @@ class Vector2:
         """
         return (self.x * v.y) - (self.y * v.x)
     
-    def angle_sense(self, v: 'Vector2'):
-
-        res = self.cross(v)
-        if res == 0:
-            return 1
+    def sense(self, v: 'Vector2'):
+        sense = self.cross(v)
+        if sense == 0:
+            return rnd.choice([-1,1]) * (round(self.angle(v))/180)
         else:
-            return np.sign(res)
+            return np.sign(sense)
 
     def magnitude(self):
         """
