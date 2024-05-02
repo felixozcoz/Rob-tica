@@ -688,8 +688,6 @@ class Robot:
                             else:
                                 dynamic_walls.append(wall)
                                 # A. COMENTAR LA DE ABAJO
-                                cell  = next_cell
-                                pos   = next_pos
                                 state = "START_CELL_ADVENTURE"
                                 # A. DESCOMENTAR LA DE ABAJO
                                 #after_recogn = "START_CELL_ADVENTURE"
@@ -718,8 +716,6 @@ class Robot:
                                 print("RECOGN -> RECOGN")
                         else:
                             # A. COMENTAR LA DE ABAJO
-                            cell  = next_cell
-                            pos   = next_pos
                             state = "START_CELL_ADVENTURE"
                             # A. DESCOMENTAR LA DE ABAJO
                             #after_recogn = "START_CELL_ADVENTURE"    
