@@ -545,7 +545,7 @@ class Robot:
         dynamic_walls      = []
         # Ultrasonic values
         us_index  = 0
-        us_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
+        us_values = [self.us_ev3.value, self.us_ev3.value]
         # Velocidades
         after_recogn = "RECOGN"
         v = 10
@@ -565,8 +565,8 @@ class Robot:
             if state == "START_CELL_ADVENTURE":
                 # Obtenemos los datos de la siguiente celda
                 _, next_cell, next_pos = self.rMap.travel()
-                print(next_pos, gpos, [x,y])
                 dir = (next_pos - pos).normalize()
+                print(next_pos, dir, gfor)
                 # Obtenemos las transformaciones representativas del destino
                 rotation_transform       = Transform(Vector2.zero, forward=dir)
                 #light_position_transform = Transform(next_pos, CUSTOM_POSITION_ERROR=light_error)
@@ -616,6 +616,7 @@ class Robot:
                             self.rMap.connectionMatrix[neighbor_left[0]][neighbor_left[1]] = 0
                             self.rMap.connectionMatrix[neighbor_rght[0]][neighbor_rght[1]] = 0
                             self.rMap.replanPath_4N(cell)
+                            print("Recalculando trayectoria ...")
                             if not self.rMap.path:
                                 if dynamic_walls:
                                     dynamic_walls.append(wall)
@@ -629,6 +630,8 @@ class Robot:
                             else:
                                 dynamic_walls.append(wall)
                                 # A. COMENTAR LA DE ABAJO
+                                cell  = next_cell
+                                pos   = next_pos
                                 state = "START_CELL_ADVENTURE"
                                 # A. DESCOMENTAR LA DE ABAJO
                                 #after_recogn = "START_CELL_ADVENTURE"
@@ -657,6 +660,8 @@ class Robot:
                                 print("RECOGN -> RECOGN")
                         else:
                             # A. COMENTAR LA DE ABAJO
+                            cell  = next_cell
+                            pos   = next_pos
                             state = "START_CELL_ADVENTURE"
                             # A. DESCOMENTAR LA DE ABAJO
                             #after_recogn = "START_CELL_ADVENTURE"    
@@ -717,15 +722,14 @@ class Robot:
                 # robot, entonces, si haciendo modulo de la mitad de la celda da un
                 # valor menor que estos 15 cm maximos, esta en el centro de la celda (+-)
                 # B. COMENTAR LA DE ABAJO
-                us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 13.5
+                # us_cell_center = Decimal(self.us_ev3.value) % Decimal(self.rMap.halfCell) <= 13.5
                 # B. DESCOMENTAR LAS 3 DE ABAJO
+
                 us_values[us_index] = self.us_ev3.value
                 us_index = (us_index + 1) % len(us_values)
-                us_cell_center = True
-                for us_value in us_values:
-                    us_cell_center &= Decimal(us_value) % Decimal(self.rMap.halfCell) <= 15.5
-                #us_cell_center = Decimal(np.mean(us_values)) % Decimal(self.rMap.halfCell) <= 16
-                # Si la posicion YA ha sido alcanzada o es alcanzada en odometria
+
+                us_cell_center = Decimal(np.mean(us_values)) % Decimal(self.rMap.sizeCell) <= 14   # Distancia óptima de sensor frontal a muro
+                # Si la posicion YA ha sido alcanzada o es alcanzada en odometría
                 transform = Transform(gpos)
                 if position_reached or fixed_position_transform == transform:
                     # Si el ultrasonido NO INDICA que sea el centro sigue avanzando

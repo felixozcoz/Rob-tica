@@ -683,6 +683,7 @@ class Transform:
         #}
         # 3. Vectors angle check
         angle_diff = self.forward.angle(transform.forward)
+        #print(angle_diff)
         ROTATION  |= self.ROTATION_ERROR > angle_diff
         #if self.ROTATION_ERROR > angle_diff:
         #    print("Check por angulo entre dos vectores", angle_diff)
