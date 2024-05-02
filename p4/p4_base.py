@@ -46,7 +46,7 @@ def main():
 
 
         points = [[0,0], [40,0], [80,40], [160,-40], [190,0], [200,0]]
-        robot.playTrajectory(points, 30)
+        robot.playTrajectory(points, 3)
 
         # 3. Recorrer mapa
         #print("Recorriendo mapa ... ")

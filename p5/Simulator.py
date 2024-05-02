@@ -1,7 +1,7 @@
 import numpy as np
 from geometry import Vector2, Matrix2, Transform
-from pynput import keyboard
-from pynput.keyboard import Key
+# from pynput import keyboard
+# from pynput.keyboard import Key
 from ReMapLib import Map
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline, PchipInterpolator

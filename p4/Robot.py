@@ -526,7 +526,7 @@ class Robot:
 
     #-- Trayectoria
         #-- Generacion de trayectorias ---------
-    def playTrajectory(self, points, segments, showPlot=False):
+    def playTrajectory(self, points, segments, showPlot=True):
         # . Separar coordenadas de la trayectoria
         x = [point[0] for point in points]
         y = [point[1] for point in points]
@@ -539,10 +539,12 @@ class Robot:
         #  mediante PCHIP (quita los minimos y maximos que 
         #  añade la polinómica)
         trajectory = PchipInterpolator(x, y)
-        x_values   = np.linspace(min(x), max(x), segments-len(x)+1)
-        x.remove(min(x))
 
-        x_values   = list(x_values) + x; x_values.sort()
+        x_values = []
+        for i in range(len(x)-1):
+            x_values = x_values + list(np.linspace(x[i], x[i+1], segments))
+        x_values = x_values + [x[-1]]
+        print(x_values)
         y_values   = trajectory(x_values)
         #w_values  = np.arctan(trajectory.derivative()(y_values)/trajectory.derivative()(x_values))
         if showPlot:
@@ -568,6 +570,7 @@ class Robot:
 
         point   = 0
         segment = 1
+        angle = 0
         while True:
             # Leer odometria
             x, y, th, _ = self.readOdometry()
@@ -577,17 +580,27 @@ class Robot:
             if state == "START_SEGMENT_ADVENTURE":
                 next_position      = Vector2(x_values[segment], y_values[segment])
                 direction          = next_position - position
+                next_angle         = forward.angle(direction, "RAD")
+                rotation_transform = Transform(Vector2.zero, forward=direction)
                 position_transform = Transform(next_position, 0)
-                self.setSpeed(v, forward.sense(direction) * w)
-                #if [x_values[segment], y_values[segment]] in points:
+                #self.setSpeed(v, forward.sense(direction) * abs(next_angle - angle))
+                #if abs(next_angle - angle) > 0.001:
+                #    self.setSpeed(v, forward.sense(direction) * next_angle * w)
+                #else:
+                #    self.setSpeed(v, forward.sense(direction) * next_angle * 0.25)
+                ##if [x_values[segment], y_values[segment]] in points:
                 #    point += 1
                 #self.setSpeed(v, forward.sense(direction) * w * 1/(Vector2(x_values[segment], y_values[segment]) - position).magnitude())
+                self.setSpeed(v, forward.sense(direction) * w)
                 state = "GO"
                 print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
+                #if not rotation_transform == Transform(Vector2.zero, forward=forward):
+                #    self.setSpeed(v, forward.sense(direction) * 0.25)
                 if position_transform == transform:
                     segment += 1
                     position = next_position
+                    angle = next_angle
                     state = "START_SEGMENT_ADVENTURE"
                     print("GO -> START_SEGMENT_ADVENTURE")
                     if segment >= segments:

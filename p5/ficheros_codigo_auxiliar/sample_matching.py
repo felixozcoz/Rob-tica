@@ -12,7 +12,7 @@ import os
 import time
 
 # SET TO FALSE when running OUT of the raspberry to use the webcam
-PI = True
+PI = False
 if PI:
     import picamera
     from picamera.array import PiRGBArray
