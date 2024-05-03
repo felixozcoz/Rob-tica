@@ -1,6 +1,6 @@
 from numbers import Number
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import random as rnd
 
 np.set_printoptions(precision=2, suppress=True)
@@ -32,9 +32,9 @@ class Vector2:
         dot   = self.normalize()*v.normalize()
         if dot > 1.0 or dot < -1.0:
             dot = round(dot)
-        angle = np.arccos(dot)
-        if format == "DEG":
-            angle = np.rad2deg(angle)
+        angle = normalize(np.rad2deg(np.arccos(dot)), 0, 360)
+        if format == "RAD":
+            angle = np.deg2rad(angle)
 
         return angle
 
@@ -46,10 +46,9 @@ class Vector2:
         return (self.x * v.y) - (self.y * v.x)
     
     def sense(self, v: 'Vector2'):
-
         sense = self.cross(v)
         if sense == 0:
-            return rnd.choice([-1, 1]) * (round(self.angle(v))/180)
+            return rnd.choice([-1,1]) * (round(self.angle(v))/180)
         else:
             return np.sign(sense)
 
@@ -591,122 +590,113 @@ class Matrix3:
             row_str.append("\n  [ " + str(round(self.A[i][0], 7)) + "," + str(round(self.A[i][1], 7)) + "," + str(round(self.A[i][2], 7)) + "," + str(round(self.A[i][3], 7)) + " ]")
         return "(" + row_str[0] + row_str[1] + row_str[2] + row_str[3] + "\n)" 
 
-
 ###########################################################
 # TRANSFORM
 ###########################################################
 class Transform:
     # Constructor
-    def __init__(self, position: Vector2, rotation: float =None, forward: Vector2 =None, CUSTOM_POSITION_ERROR =None, CUSTOM_ROTATION_ERROR =None):
+    def __init__(self, position: Vector2, rotation: float = None, forward: Vector2 = None, CUSTOM_POSITION_ERROR = None, CUSTOM_ROTATION_ERROR = None):
         """
             Transform class constructor
         """
-        # Position
+        # POSITION
+        self.POSITION = False
         self.position = position
+        # . Errores
         self.POSITION_ERROR = POSITION_ERROR
-        self.VECTOR_ERROR   = Vector2.error
+        self.POSITION_SHIFT = Vector2.one.normalize(POSITION_ERROR)
         if CUSTOM_POSITION_ERROR is not None:
             self.POSITION_ERROR = CUSTOM_POSITION_ERROR
-            self.VECTOR_ERROR   = Vector2(CUSTOM_POSITION_ERROR, CUSTOM_POSITION_ERROR, 0).normalize()
-        # Rotation and orientation
+            self.POSITION_SHIFT = Vector2.one.normalize(CUSTOM_POSITION_ERROR)
+        # . Verificacion de area
+        self.position_inf = self.position - self.POSITION_SHIFT
+        self.position_sup = self.position + self.POSITION_SHIFT
+        # . Mínimo local
+        self.dmin = [-np.inf, -np.inf, -np.inf]
+
+        # ROTACION Y ORIENTACION
         if rotation is None and forward is None:
             self.rotation = 0
             self.forward  = Vector2.right
-            #self.right    = Vector2.up
         elif rotation is not None:
-            self.rotation = (rotation + 180) % 360 - 180
+            self.rotation = normalize(rotation, 0, 360)
             self.forward  = Vector2.right.rotate(self.rotation)
-            #self.right    = Matrix2.transform(Vector2.zero, 90) * self.forward
         else:
-            self.rotation = forward.angle(Vector2.right, "DEG")
+            self.rotation = forward.angle(Vector2.right)
             self.forward  = forward
-            #self.right    = self.forward * Matrix2.transform(Vector2.zero, 90)
+        # . Errores
         self.ROTATION_ERROR = ROTATION_ERROR
-        if CUSTOM_ROTATION_ERROR is not None:
+        if CUSTOM_ROTATION_ERROR is not None: # Si no le pongo is not none, comprueba si es 0
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
-        # Area error
-        position_shift    = self.VECTOR_ERROR
-        self.position_inf = self.position - position_shift
-        self.position_sup = self.position + position_shift
-        # Local minimum
-        self.dmin = { "prev": False, "last": -np.inf }
-        #self.rmin = { "prev": False, "last": -np.inf }
-        self.vmin = { "prev": False, "last": -np.inf }
-        #self.rotation_inf = rotation - ROTATION_ERROR
-        #self.rotation_sup = rotation + ROTATION_ERROR
+        # . Verificacion de area
+        self.rotation_inf = normalize(rotation - self.ROTATION_ERROR, 0, 360)
+        self.rotation_sup = normalize(rotation + self.ROTATION_ERROR, 0, 360)
+        # . Mínimo local
+        self.rmin = [-np.inf, -np.inf, -np.inf]
+        self.omin = [-np.inf, -np.inf, -np.inf]
 
     # Equivalencia
     def __eq__(self, transform):
         """
             Transform equality check within an error margin
         """
-        # POSITION CHECK
-        # 1. Area check
-        POSITION = (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
-        #if (self.position_inf.x <= transform.position.x and transform.position.x < self.position_sup.x) and \
-        #    (self.position_inf.y <= transform.position.y and transform.position.y < self.position_sup.y):
-        #    print("Check por area", self.position_inf, self.position_sup)
-        # 2. Distance check
-        dist = (self.position - transform.position).magnitude()
-        POSITION |= self.POSITION_ERROR > dist
-        #if self.POSITION_ERROR > dist:
-        #    print("Check por distancia de posiciones")
-        # 3. Local minimum check
-        # \ -> El valor guardado es mayor que el siguiente valor.
-        # / -> El valor guardado es menor que el siguiente valor.
-        # Mientras el valor guardado sea mayor, no hay minimo, 
-        # en el momento en el que cambie la pendiente, es que se 
-        # ha pasado el minimo
-        POSITION |= self.dmin["last"] < dist and dist - self.dmin["last"] >= 0.1 and self.dmin["prev"]
-        #if self.dmin["last"] < dist and self.dmin["last"] - dist > 0.1 and self.dmin["prev"]:
-        #    print("Check por minimo local de distancia")
-        #print(dist, self.dmin, self.dmin["last"] < dist and self.dmin["last"] - dist > 0.1)
-        self.dmin = {
-            "prev": self.dmin["last"] >= dist,
-            "last": dist
-        }
-        # ROTATION CHECK
-        # 1. Distance check
-        angle_diff = self.rotation - transform.rotation
-        angle_diff = (angle_diff + 180) % 360 - 180
-        #print(angle_diff)
-        #ROTATION  = self.ROTATION_ERROR > abs(self.rotation - transform.rotation)
-        #ROTATION   = angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff)
-        #if angle_diff <= 0 and self.ROTATION_ERROR > abs(angle_diff):
-        #    print("Check por distancia de angulos:", self.rotation, transform.rotation)
-        # 2. Distance local minimum check (peor por culpa de la odometria)
-        #ROTATION  |= (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]
-        #if (self.rmin["last"] < abs(angle_diff)) and self.rmin["prev"]:
-        #    print("Check por minimo local de distancia")
-        ##print(self.rmin, (self.rmin["last"] < angle_diff))
-        #self.rmin  = {
-        #    "prev": (self.rmin["last"] >= abs(angle_diff)),
-        #    "last": abs(angle_diff)
-        #}
-        # 3. Vectors angle check
-        angle_diff = self.forward.angle(transform.forward)
-        ROTATION   = self.ROTATION_ERROR > angle_diff
-        #if self.ROTATION_ERROR > angle_diff:
-        #    print("Check por angulo entre dos vectores", angle_diff)
-        # 4. Vectors angle local minimum check
-        # E. COMENTAR SI NO VA
-        ROTATION  |= self.vmin["last"] < dist and dist - self.vmin["last"] > 3 and self.vmin["prev"]
-        #if abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"]:
-        #    print("Check por minimo local de angulos entre dos vectores")
-        #print(self.vmin, abs(self.vmin["last"] - angle_diff) > 3 and self.vmin["prev"])
-        # E. COMENTAR SI NO VA
-        self.vmin  = {
-            "prev": self.vmin["last"] >= angle_diff,
-            "last": angle_diff
-        }
-    
-        # BOTH CHECK
-        if POSITION and ROTATION:
+        # VERIFICAR POSICION
+        # A. Area
+        self.POSITION |= (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
+        if (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y):
+            print("Check por area:", self.position_inf, ">", transform.position, "<", self.position_sup)
+        # B. Distancia (cm)
+        distance = (self.position - transform.position).magnitude()
+        self.POSITION |= self.POSITION_ERROR > distance
+        if self.POSITION_ERROR > distance:
+            print("Check por distancia de posiciones:", self.POSITION_ERROR, ">", distance)
+        # C. Minimo local en distancia (cm)
+        # \ . / -> El valor anterior [1] y siguiente [2] son mayores que el actual [1].
+        # Pues esto es más fácil xd
+        self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2] # self.POSITION_ERROR >= (self.dmin[0]-self.dmin[1]) and self.POSITION_ERROR >= (self.dmin[2]-self.dmin[1])
+        if self.dmin[0] > self.dmin[1] < self.dmin[2]:
+            print("Check por mínimo local de distancia:", self.dmin)
+        self.dmin = self.dmin[1:] + [distance]
+
+        # VERIFICAR ROTACION
+        # A. Area
+        self.ROTATION |= (transform.rotation - self.rotation_inf) % 360 <= (self.rotation_sup - self.rotation_inf) % 360
+        if (transform.rotation - self.rotation_inf) % 360 <= (self.rotation_sup - self.rotation_inf) % 360:
+            print("Check por area:", self.rotation_inf, ">", transform.rotation, "<", self.rotation_sup)
+        # B. Distancia (grados)
+        distance = abs(normalize(self.rotation - transform.rotation, -180, 180))
+        self.ROTATION |= self.ROTATION_ERROR >= distance
+        if (self.ROTATION_ERROR >= distance):
+            print("Check por distancia de angulos:", self.ROTATION_ERROR, distance, "(", self.rotation, ",", transform.rotation, ")")
+        # C. Minimo local en distancia (grados)
+        # \ . / -> El valor anterior [1] y siguiente [2] son mayores que el actual [1].
+        self.ROTATION |= self.rmin[0] > self.rmin[1] < self.rmin[2] # and self.ROTATION_ERROR >= (self.rmin[0]-self.rmin[1]) and self.ROTATION_ERROR >= (self.rmin[2]-self.rmin[1])
+        if self.rmin[0] > self.rmin[1] < self.rmin[2]:
+            print("Check por mínimo local de distancia de grados:", self.rmin)
+        self.rmin = self.rmin[1:] + [distance]
+        # D. Orientacion 
+        distance = abs(normalize(self.forward.angle(transform.forward), -180, 180))
+        self.ROTATION |= self.ROTATION_ERROR >= distance
+        if (self.ROTATION_ERROR >= distance):
+            print("Check por angulo de vectores:", self.ROTATION_ERROR, distance, "(", self.forward, ",", transform.forward, ")")
+        # E. Minimo local en orientacion (grados)
+        # \ . / -> El valor anterior [1] y siguiente [2] son mayores que el actual [1].
+        self.ROTATION |= self.omin[0] > self.omin[1] < self.omin[2] # and self.ROTATION_ERROR >= (self.omin[0]-self.omin[1]) and self.ROTATION_ERROR >= (self.omin[2]-self.omin[1])
+        if self.omin[0] > self.omin[1] < self.omin[2]:
+            print("Check por mínimo local de distancia entre vectores:", self.omin)
+        self.omin = self.omin[1:] + [distance]
+
+        # Si cumple posición y rotación, ha llegado
+        if self.POSITION and self.ROTATION:
+            # Reset state
+            self.POSITION = False
+            self.ROTATION = False
             # Reset local minimum registries
-            self.dmin = { "prev": False, "last": -np.inf }
-            #self.rmin = { "prev": False, "last": -np.inf }
-            self.vmin = { "prev": False, "last": -np.inf }
+            self.dmin = [-np.inf, -np.inf, -np.inf]
+            self.rmin = [-np.inf, -np.inf, -np.inf]
+            self.vmin = [-np.inf, -np.inf, -np.inf]
             return True
+        # Si no, no ha llegado
         return False
 
     # ToString
@@ -778,6 +768,12 @@ def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
 
     # Returning the points
     return P1, P2, P3, P4
+
+def normalize(value, start, end):
+    """ Normaliza un valor entre los extremos dados """
+    width  = end - start
+    offset = value - start
+    return (offset - (np.floor(offset/width) * width)) + start
 
 #a = Matrix2.identity() * 3
 #b = Matrix2.identity() * 2
