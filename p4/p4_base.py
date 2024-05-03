@@ -1,9 +1,11 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
+from turtle import position
 import numpy as np
 import time
 from Robot import Robot
 from ReMapLib import Map
+from geometry import Transform, Vector2
 
 from decimal import Decimal
 
@@ -19,7 +21,7 @@ def main():
         # 1. Inicializar el mapa
         #print("Inicializando mapa ...")
         #print("---------------------------------------------------")
-        #neighborhood = 4
+        neighborhood = 4
 #
         ##start, goal = [0,0], [0,1]
         ##rMap = Map("maps/mapa_simple.txt", [0,0], [0,1], neighborhood=neighborhood)
@@ -33,20 +35,20 @@ def main():
         ##start, goal = [0,0], [4,7]
         ##rMap = Map("maps/mapa2.txt", [0,0], [4,7], neighborhood=neighborhood)
 #
-        #start, goal = [1,0], [3,4]
-        #rMap  = Map("maps/mapa2.txt", start, goal, neighborhood=neighborhood)
-        ##rMap.drawMapWithRobotLocations()
+        start, goal = [1,0], [3,4]
+        rMap  = Map("maps/mapa2.txt", start, goal, neighborhood=neighborhood)
+        #rMap.drawMapWithRobotLocations()
 #
         ## 2. Inicializar el robot
-        #global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
-        robot = Robot()
+        global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
+        robot = Robot(global_reference=global_reference, rMap=rMap)
         time.sleep(5)
         
         robot.startOdometry()
+        robot.playNavigation()
 
-
-        points = [[0,0], [40,0], [80,40], [160,-40], [190,0], [200,0]]
-        robot.playTrajectory(points, 3)
+        #points = [[0,0], [40,0], [80,40], [160,-40], [190,0], [200,0]]
+        #robot.playTrajectory(points, 3)
 
         # 3. Recorrer mapa
         #print("Recorriendo mapa ... ")
@@ -54,6 +56,7 @@ def main():
         #    robot.playNavigation_4N()
         #else:
         #    robot.playNavigation_8N()
+
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

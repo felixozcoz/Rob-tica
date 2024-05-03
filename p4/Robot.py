@@ -1,7 +1,8 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 from __future__ import print_function # use python 3 syntax but make it compatible with python 2
-from __future__ import division       #                           ''
+from __future__ import division
+from turtle import position       #                           ''
 
 import brickpi3 # import the BrickPi3 drivers
 import csv      # write csv
@@ -201,8 +202,11 @@ class Robot:
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
+
+        self.umin = []
         for i in range(3):
-            print(self.us_ev3.value)
+            #print(self.us_ev3.value)
+            self.umin.append(self.us_ev3.value)
             time.sleep(self.P)
 
     def readOdometry(self):
@@ -442,7 +446,6 @@ class Robot:
 
                 # Get robot odometry
                 x, y, _, bh = self.readOdometry()
-
                 # Get a new frame
                 # https://stackoverflow.com/questions/32522989/opencv-better-detection-of-red-color
                 # Negative image + Blue mask
@@ -608,6 +611,100 @@ class Robot:
         self.setSpeed(0,0)
 
     #-- Navegacion -------------------------
+    def playNavigation(self):
+        '''
+            Navegacion a traves de un mapa cargado
+        '''
+        # Estado inicial
+        state = "START_CELL_ADVENTURE"
+        # Posicion inicial
+        _, cell, pos = self.rMap.travel()
+        # Si la celda actual es la meta, hemos terminado
+        if cell == self.rMap.goal:
+            print("Goal Reachaed!", cell, self.rMap.goal)
+            return
+        # Transformaciones inciiales
+        rotation_transform = Transform()
+        position_transform = Transform()
+        position_reached   = False
+        # Velocidades
+        v = 10; w = 0.75
+        # Recorrido del camino encontrado
+        while True:
+            # Se obtiene la odometria del robot
+            x, y, th, _ = self.readOdometry()
+            # Se obtiene la transformacion correspondiente
+            # 1. La posicion es local por defecto, hay que transformarla en global.
+            # 2. La orientacion del robot es local por defecto:
+            #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
+            #   - Despues se pasa a global.
+            gpos = self.ltow * Vector2(x,y,1)
+            gfor = self.ltow * Vector2.right.rotate(th)
+            transform = Transform(gpos, forward=gfor)
+
+            # A. Estado de inicializacion. Obtiene los parametros para la siguiente aventura
+            if state == "START_CELL_ADVENTURE":
+                _, next_cell, next_pos = self.rMap.travel()
+                dir = (next_pos - pos).normalize()
+                # Obtenemos las transformaciones representativas del destino
+                rotation_transform = Transform(pos, forward=dir)
+                position_transform = Transform(next_pos, forward=dir)
+                # Si la rotacion ya coincide, pasamos a reconocimiento
+                if rotation_transform == transform:
+                    #state = "RECOGN"
+                    #print("START_CELL_ADVENTURE -> RECOGN")
+                    state = "FORWARD"
+                    print("START_CELL_ADVENTURE -> FORWARD")
+                    self.setSpeed(v, 0)
+                # Si no, primero rotamos el robot
+                else:
+                    state = "ROTATION"
+                    print("START_CELL_ADVENTURE -> ROTATION")
+                    self.setSpeed(0, gfor.sense(dir) * w)
+            # B. Estado de rotacion
+            elif state == "ROTATION":
+                if rotation_transform == transform:
+                    #state = "RECOGN"
+                    #print("ROTATION -> RECOGN")
+                    #self.setSpeed(0, 0)
+                    state = "FORWARD"
+                    print("ROTATION -> FORWARD")
+                    self.setSpeed(v, 0)
+            # E. Estado de avance hacia la siguiente celda
+            elif state == "FORWARD":
+                # Si el vector orientacion del robot no coincide con el vector direccion de 
+                # la posicion actual a la siguiente, corrige trayectoria
+                #if not rotation_transform == Transform(Vector2.zero, forward=gfor):
+                #    #print("MAL")
+                #    self.setSpeed(v, gfor.sense(rotation_transform.forward)*0.15)
+                #else:
+                #    self.setSpeed(v, 0)
+                # Obtenemos los datos del ultrasonido
+                us_position_reached = Decimal(np.mean(self.umin)) % Decimal(self.rMap.sizeCell) <= 14
+                self.umin = self.umin[1:] + [self.us_ev3.value]
+                # Si la posicion coincide, he llegado a la celda
+                if position_reached or position_transform == transform:
+                    # Si el ultrasonido no indica que sea el centro sigue avanzando
+                    if not us_position_reached:
+                        position_reached = True
+                        continue
+                    # Si era la ultima celda, termina
+                    if next_cell == self.rMap.goal:
+                        print("Goal Reached!: ", next_cell, self.rMap.goal)
+                        self.setSpeed(0, 0)
+                        break
+                    else:
+                        cell = next_cell
+                        pos  = next_pos
+                        state = "START_CELL_ADVENTURE"
+                        print("FORWARD -> START_CELL_ADVENTURE")
+                        self.setSpeed(0, 0)
+                        position_reached = False
+
+                #elif us_position_reached:
+
+
+
     def playNavigation_4N(self):
         '''
             Navegacion en 4-vecindad
@@ -652,7 +749,7 @@ class Robot:
                 dir = (next_pos - pos).normalize()
                 print(pos, next_pos, dir, gfor)
                 # Obtenemos las transformaciones representativas del destino
-                rotation_transform       = Transform(Vector2.zero, forward=dir)
+                rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=0.5)
                 #light_position_transform = Transform(next_pos, CUSTOM_POSITION_ERROR=light_error)
                 fixed_position_transform = Transform(next_pos)
                 # Si la rotacion ya coincide, pasamos a reconocimiento
