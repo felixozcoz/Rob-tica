@@ -13,7 +13,7 @@ import re
 
 class Map:
     # Constructor
-    def __init__(self, path, start, goal, neighborhood=8):
+    def __init__(self, path_name, neighborhood=8):
         """
             Load and initialize map from file.
 
@@ -39,15 +39,21 @@ class Map:
         # self.verbose = False
         self.current_ax = None
 
-        # LECTURA DEL MAPA
-        self.name = re.split(r'[\\/]', path)[-1]
-        mapF = open(path, "r")
-
-        # Guardar vecindad
+        # Configurar modo de vecindad del mapa
         self.neighborhood = neighborhood
+        if self.neighborhood == 4:
+            self.propagate = self.propagate_4N
+            self.findPath  = self.findPath_4N
+        elif self.neighborhood == 8:
+            self.propagate = self.propagate_8N
+            self.findPath  = self.findPath_8N
+
+        # LECTURA DEL MAPA
+        self.name = re.split(r'[\\/]', path_name)[-1]
+        map_file = open(path_name, "r")
 
         # Obtener dimensiones del mapa y de las celdas
-        header = mapF.readline().split()
+        header = map_file.readline().split()
         if len(header) != 3:
             print("Error -- El encabezado '" + ' '.join(header) + "' tiene un formato incorrecto...")
             exit(1)
@@ -57,13 +63,13 @@ class Map:
         self.halfCell = self.sizeCell//2
 
         # Obtener conexiones entre celdas
-        self.connectionSource = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
-        self.connectionMatrix = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+        self.connectionSource  = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
+        self.connectionMatrix  = np.zeros((2*self.sizeY+1, 2*self.sizeX+1))
         rows = 0
         while rows < self.connectionMatrix.shape[0]:
             rows += 1
             # Se obtienen los valores de la fila actual
-            connections = mapF.readline().split()
+            connections = map_file.readline().split()
             if len(connections) == 0:
                 continue
             if not len(connections) == self.connectionMatrix.shape[1]:
@@ -73,26 +79,15 @@ class Map:
             self.connectionSource[-rows] = [int(e) for e in connections]
             self.connectionMatrix[-rows] = [int(e) for e in connections]
 
-
         if not rows == self.connectionMatrix.shape[0]:
             print("Error -- El mapa tiene el formato incorrecto")
 
         # Obtener la matriz de costes y el mejor camino
         self.costMatrix = np.zeros((self.sizeY, self.sizeX))
-        self.path       = []
-        self.index      = 1
-        self.start      = start
-        self.goal       = goal
+        self.propagate()
 
-        if neighborhood == 4:
-            self.propagate_4N()
-            self.findPath_4N()
-        elif neighborhood == 8:
-            self.propagate_8N()
-            self.findPath_8N()
-
-        if self.verbose:
-            print(self)
+        #if self.verbose:
+        #    print(self)
 
     # 4-VECINDAD
     # Propagacion de costes
@@ -142,17 +137,18 @@ class Map:
 
         # print(str(round((time.time() - now)*1000000.0, 4)) + "ns")
 
-    def findPath_4N(self):
+    def findPath_4N(self, start, goal):
         """
             Encuentra el camino menos costoso mediante A*. La heuristica es el coste, y en este
             caso la funcion de g(x) es 0.
         """
+        path   = []
         # https://medium.com/@nicholas.w.swift/easy-a-star-pathfinding-7e6689c7f7b2
         # En este metodo los nodos cambian, necesitamos guardar el padre para poder
         # hacer backtracking y obtener el camino. 
         border = [{
             "parent": None,
-            "coords": self.start
+            "coords": start
         }]
         # Nodos expandidos
         expand = []
@@ -162,9 +158,9 @@ class Map:
             node = border.pop(0)
             cell = node["coords"]
             # Si el nodo actual es la meta, hemos terminado
-            if cell == self.goal:
+            if cell == goal:
                 while node:
-                    self.path.append(node["coords"])
+                    path.append(node["coords"])
                     node = node["parent"]
                 break
             # Si no, obtenemos los vecinos del nodo actual
@@ -181,14 +177,8 @@ class Map:
                     # Si esta libre la conexion y no pertenece a ninguna frontera, es candidato a ser expandido
                     if self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
-
-    def replanPath_4N(self, cell):
-        self.start = cell
-        self.path  = []
-        self.index = 2
-        self.propagate_4N()
-        self.findPath_4N()
-        print(self)
+        # Devolver el mejor camino encontrado
+        return reversed(path)
 
     # 8-VECINDAD
     # Propagacion de costes
@@ -234,17 +224,18 @@ class Map:
             border = new_border
             cost += 1
 
-    def findPath_8N(self):
+    def findPath_8N(self, start, goal):
         """
             Encuentra el camino menos costoso mediante A*. La heuristica es el coste, y en este
             caso la funcion de g(x) es 0.
         """
+        path   = []
         # https://medium.com/@nicholas.w.swift/easy-a-star-pathfinding-7e6689c7f7b2
         # En este metodo los nodos cambian, necesitamos guardar el padre para poder
         # hacer backtracking y obtener el camino. 
         border = [{
             "parent": None,
-            "coords": self.start
+            "coords": start
         }]
         # Nodos expandidos
         expand = []
@@ -254,9 +245,9 @@ class Map:
             node = border.pop(0)
             cell = node["coords"]
             # Si el nodo actual es la meta, hemos terminado
-            if cell == self.goal:
+            if cell == goal:
                 while node:
-                    self.path.append(node["coords"])
+                    path.append(node["coords"])
                     node = node["parent"]
                 break
             # Si no, obtenemos los vecinos del nodo actual
@@ -271,14 +262,8 @@ class Map:
                     # Si esta libre la conexion y no pertenece a ninguna frontera, es candidato a ser expandido
                     if not (dx==0 and dy==0) and self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
-
-    def replanPath_8N(self, cell):
-        """ Replanifica el camino con una nueva posicion de inicio"""
-        self.start = cell
-        self.path  = []
-        self.index = 2
-        self.propagate_8N()
-        self.findPath_8N()
+        # Devolver el mejor camino encontrado
+        return reversed(path)
 
     # -- DRAW MAP --------------------------
     def _drawGrid(self):
@@ -450,17 +435,6 @@ class Map:
     #        if a_node[0] < e_node[0] or (a_node[0] == e_node[0] and a_node[1] < e_node[1]):
     #            break
     #    return a_list[:i] + [a_node] + a_list[i:]
-  
-    # Obtiene el siguiente destino del robot
-    def travel(self):
-        # Si el path esta vacio, no puede devolver celda
-        if not self.path:
-            return self.index, [-1,-1], Vector2.zero
-        # Obtenemos la celda correspondiente
-        index       = self.index
-        cell        = self.path[-index]
-        self.index += 1
-        return index, cell, Vector2(self.halfCell+cell[1]*self.sizeCell, self.halfCell+cell[0]*self.sizeCell, 1)
 
     # Insertar un nodo para el A*
     def insert(self, a_list, a_node: dict):
@@ -484,33 +458,33 @@ class Map:
             # Devolvemos la lista con el nuevo elemento
             return a_list[:i] + [a_node] + a_list[i:]
         
-    def __repr__(self) -> str:
-        """
-            Representacion de un mapa en pantalla
-        """
-        map_str  = "MAPA '" + self.name + "'\n"
-        map_str += "- Dimensiones: " + str(self.sizeX) + " x " + str(self.sizeY) + " / " + str(self.sizeCell) + "cm\n"  
-        map_str += "- Costes:\n" + str(self.costMatrix[::-1]) + "\n"
-        map_str += "- Camino encontrado:\n"
-        map_str += "  " + str(self.path) + "\n"
-        for i, row in reversed(list(enumerate(self.connectionMatrix))):
-            for j, connection in enumerate(row):
-                if not connection:
-                    map_str += "■ "
-                else:
-                    if i%2==1 and j%2==1:
-                        cell = [(i-1)//2,(j-1)//2]
-                        if cell in self.path:
-                            if cell == self.goal:
-                                map_str += "⚑ "
-                            elif cell == self.start:
-                                map_str += "○ "
-                            else:
-                                map_str += "● "
-                        else:
-                            map_str += ". "
-                    else:
-                        map_str += "□ "
-            map_str += "\n"
-
-        return map_str
+    #def __repr__(self) -> str:
+    #    """
+    #        Representacion de un mapa en pantalla
+    #    """
+    #    map_str  = "MAPA '" + self.name + "'\n"
+    #    map_str += "- Dimensiones: " + str(self.sizeX) + " x " + str(self.sizeY) + " / " + str(self.sizeCell) + "cm\n"  
+    #    map_str += "- Costes:\n" + str(self.costMatrix[::-1]) + "\n"
+    #    map_str += "- Camino encontrado:\n"
+    #    map_str += "  " + str(self.path) + "\n"
+    #    for i, row in reversed(list(enumerate(self.connectionMatrix))):
+    #        for j, connection in enumerate(row):
+    #            if not connection:
+    #                map_str += "■ "
+    #            else:
+    #                if i%2==1 and j%2==1:
+    #                    cell = [(i-1)//2,(j-1)//2]
+    #                    if cell in self.path:
+    #                        if cell == self.goal:
+    #                            map_str += "⚑ "
+    #                        elif cell == self.start:
+    #                            map_str += "○ "
+    #                        else:
+    #                            map_str += "● "
+    #                    else:
+    #                        map_str += ". "
+    #                else:
+    #                    map_str += "□ "
+    #        map_str += "\n"
+    #    # Devolver mapa como string
+    #    return map_str

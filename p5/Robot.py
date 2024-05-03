@@ -558,7 +558,15 @@ class Robot:
 
 
     #-- Navegacion -------------------------
-    def playNavigation(self, remap):
+    def playNavigation(self, rmap, global_ref, start, goal):
+        """
+            Ejecutar mapa de navegacion cargado
+        """
+        # 
+        self.rmap   = rmap
+        gx, gy, gth = [rmap.sizeCell*global_ref[0] + rmap.halfCell, rmap.sizeCell*global_ref[1] + rmap.halfCell, global_ref[2]]
+        ltow        = Matrix2.transform(Vector2(gx, gy, 0), gth)
+        wtol        = ltow.invert()
         return
 
 
@@ -567,12 +575,6 @@ class Robot:
     #         Ejectuar navegacion del mapa cargado
     #     '''
     #     # MAPS & PATH TRAYECTORY
-    #     self.rMap = rMap
-    #     #self.gx   = global_reference[0]
-    #     #self.gy   = global_reference[1]
-    #     #self.gth  = global_reference[2]
-    #     #self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
-    #     #self.wtol = self.ltow.invert()
     #     #
     #     self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
     #     #self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
