@@ -32,9 +32,9 @@ class Vector2:
         dot   = self.normalize()*v.normalize()
         if dot > 1.0 or dot < -1.0:
             dot = round(dot)
-        angle = normalize(np.rad2deg(np.arccos(dot)), 0, 360)
-        if format == "RAD":
-            angle = np.deg2rad(angle)
+        angle = np.arccos(dot)
+        if format == "DEG":
+            angle = np.rad2deg(angle)
 
         return angle
 
@@ -590,10 +590,14 @@ class Matrix3:
             row_str.append("\n  [ " + str(round(self.A[i][0], 7)) + "," + str(round(self.A[i][1], 7)) + "," + str(round(self.A[i][2], 7)) + "," + str(round(self.A[i][3], 7)) + " ]")
         return "(" + row_str[0] + row_str[1] + row_str[2] + row_str[3] + "\n)" 
 
+
+
+
 ###########################################################
 # TRANSFORM
 ###########################################################
 class Transform:
+
     # Constructor
     def __init__(self, position: Vector2 = Vector2.zero, rotation: float = None, forward: Vector2 = None, CUSTOM_POSITION_ERROR = None, CUSTOM_ROTATION_ERROR = None):
         """
@@ -602,7 +606,6 @@ class Transform:
         # POSITION
         self.POSITION = False
         self.position = position
-        
         # . Errores
         self.POSITION_ERROR = POSITION_ERROR
         self.POSITION_SHIFT = Vector2.one.normalize(POSITION_ERROR)
@@ -622,18 +625,18 @@ class Transform:
             self.rotation = 0
             self.forward  = Vector2.right
         elif rotation is not None:
-            self.rotation = normalize(rotation, 0, 360)
-            self.forward  = Vector2.right.rotate(self.rotation)
+            self.rotation = (rotation + 180) % 360 - 180
+            self.forward  = Vector2.right.rotate(rotation % 360)
         else:
-            self.rotation = forward.angle(Vector2.right)
+            self.rotation = forward.sense(Vector2.right) * forward.angle(Vector2.right)
             self.forward  = forward
         # . Errores
         self.ROTATION_ERROR = ROTATION_ERROR
         if CUSTOM_ROTATION_ERROR is not None: # Si no le pongo is not none, comprueba si es 0
             self.ROTATION_ERROR = CUSTOM_ROTATION_ERROR
         # . Verificacion de area
-        self.rotation_inf = normalize(self.rotation - self.ROTATION_ERROR, 0, 360)
-        self.rotation_sup = normalize(self.rotation + self.ROTATION_ERROR, 0, 360)
+        #self.rotation_inf = (self.rotation - self.ROTATION_ERROR + 180) % 360 - 180
+        #self.rotation_sup = (self.rotation + self.ROTATION_ERROR + 180) % 360 - 180
         # . Minimo local (angulo entre dos rotaciones)
         self.rmin = [-np.inf, -np.inf, -np.inf]
         self.rmin_counter = 0
@@ -669,12 +672,12 @@ class Transform:
 
         # VERIFICAR ROTACION
         # A. Area
-        self.ROTATION |= (transform.rotation - self.rotation_inf) % 360 <= (self.rotation_sup - self.rotation_inf) % 360
+        #self.ROTATION |= (transform.rotation - self.rotation_inf) % 360 <= (self.rotation_sup - self.rotation_inf) % 360
         #if (transform.rotation - self.rotation_inf) % 360 <= (self.rotation_sup - self.rotation_inf) % 360:
         #    print("Check por area:", self.rotation_inf, ">", transform.rotation, "<", self.rotation_sup)
         # B. Distancia (grados)
-        distance = abs(normalize(self.rotation - transform.rotation, -180, 180))
-        self.ROTATION |= self.ROTATION_ERROR >= distance
+        distance = abs((self.rotation - transform.rotation + 180) % 360 - 180)
+        self.ROTATION |= self.ROTATION_ERROR > distance
         #if (self.ROTATION_ERROR >= distance):
         #    print("Check por distancia de angulos:", self.ROTATION_ERROR, ">", distance, "(", self.rotation, ",", transform.rotation, ")")
         # C. Minimo local en distancia (grados)
@@ -688,7 +691,7 @@ class Transform:
         #else:
         #    self.rmin_counter += 1
         # D. Orientacion    
-        distance = abs(normalize(self.forward.angle(transform.forward), -180, 180))
+        distance = abs((self.forward.angle(transform.forward) + 180) % 360 - 180)
         self.ROTATION |= self.ROTATION_ERROR >= distance
         # if (self.ROTATION_ERROR >= distance):
         #     print("Check por angulo de vectores:", self.ROTATION_ERROR, ">", distance, "(", self.forward, ",", transform.forward, ")")
@@ -788,11 +791,11 @@ def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
     # Returning the points
     return P1, P2, P3, P4
 
-def normalize(value, start, end):
-    """ Normaliza un valor entre los extremos dados """
-    width  = end - start
-    offset = value - start
-    return (offset - (np.floor(offset/width) * width)) + start
+# def normalize(value, start, end):
+#     """ Normaliza un valor entre los extremos dados """
+#     width  = end - start
+#     offset = value - start
+#     return (offset - (np.floor(offset/width) * width)) + start
 
 #a = Matrix2.identity() * 3
 #b = Matrix2.identity() * 2

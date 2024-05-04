@@ -623,12 +623,13 @@ class Robot:
         if cell == self.rMap.goal:
             print("Goal Reachaed!", cell, self.rMap.goal)
             return
-        # Transformaciones inciiales
+        # Transformaciones iniciales
         rotation_transform = Transform()
         position_transform = Transform()
         position_reached   = False
         # Velocidades
-        v = 10; w = 0.75
+        v = 10
+        w = 0.75
         # Recorrido del camino encontrado
         while True:
             # Se obtiene la odometria del robot
@@ -674,11 +675,11 @@ class Robot:
             elif state == "FORWARD":
                 # Si el vector orientacion del robot no coincide con el vector direccion de 
                 # la posicion actual a la siguiente, corrige trayectoria
-                #if not rotation_transform == Transform(Vector2.zero, forward=gfor):
-                #    #print("MAL")
-                #    self.setSpeed(v, gfor.sense(rotation_transform.forward)*0.15)
-                #else:
-                #    self.setSpeed(v, 0)
+                if not rotation_transform == Transform(Vector2.zero, forward=gfor):
+                    #print("MAL")
+                    self.setSpeed(v, gfor.sense(rotation_transform.forward)*0.15)
+                else:
+                    self.setSpeed(v, 0)
                 # Obtenemos los datos del ultrasonido
                 us_position_reached = Decimal(np.mean(self.umin)) % Decimal(self.rMap.sizeCell) <= 14
                 self.umin = self.umin[1:] + [self.us_ev3.value]
