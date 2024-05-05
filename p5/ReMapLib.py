@@ -13,11 +13,11 @@ import re
 
 class Map:
     # Constructor
-    def __init__(self, path, start, goal, neighborhood=8):
+    def __init__(self, filename, start, goal, neighborhood=8):
         """
             Load and initialize map from file.
 
-            path: path to a text file containing map description in the standard format. \
+            filename: path to a text file containing map description in the standard format. \
             Example for a 3x3 grid map, with (squared) cells of 400mm side length called mapa0. \
             All free space, i.e., all connections between cells are open, except those on the limits of the map
 
@@ -40,11 +40,8 @@ class Map:
         self.current_ax = None
 
         # LECTURA DEL MAPA
-        self.name = re.split(r'[\\/]', path)[-1]
-        mapF = open(path, "r")
-
-        # Guardar vecindad
-        self.neighborhood = neighborhood
+        self.name = re.split(r'[\\/]', filename)[-1]
+        mapF = open(filename, "r")
 
         # Obtener dimensiones del mapa y de las celdas
         header = mapF.readline().split()
@@ -77,7 +74,8 @@ class Map:
         if not rows == self.connectionMatrix.shape[0]:
             print("Error -- El mapa tiene el formato incorrecto")
 
-        # Obtener la matriz de costes y el mejor camino
+        #  Guardar vecindad y obtener la matriz de costes y el mejor camino
+        self.neighborhood = neighborhood
         self.costMatrix = np.zeros((self.sizeY, self.sizeX))
         self.path       = []
         self.index      = 1

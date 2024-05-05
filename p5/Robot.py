@@ -697,19 +697,18 @@ class Robot:
 
 
     #-- Navegacion -------------------------
-    def loadMap(self, filename="", path_start=[0,0], path_goal=[0,0], neighborhood=4, robot_start=[0,0], robot_orientation=0.0):
+    def loadMap(self, rmap, rmap_ref):
         ##################################################
         # Navegacion
-        self.rmap = Map(filename, path_start, path_goal, neighborhood=neighborhood)
-        self.gx   = robot_start[0]*self.rmap.sizeCell + self.rmap.halfCell
-        self.gy   = robot_start[1]*self.rmap.sizeCell + self.rmap.halfCell
-        self.gth  = robot_orientation
+        self.rmap = rmap
+        self.gx   = rmap_ref[0]
+        self.gy   = rmap_ref[1]
+        self.gth  = rmap_ref[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
         self.wtol = self.ltow.invert()
-        #self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3[-1] < (self.rmap.halfCell+5)
-        #self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
 
-    def playMap(self):
+
+    def playMap(self, start, goal):
         '''
             Navegacion a traves de un mapa cargado
         '''
