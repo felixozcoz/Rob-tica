@@ -26,7 +26,7 @@ def main():
             img_R2D2_or_BB8 = cv.imread("images/BB8_s.png", cv.IMREAD_COLOR)
             exit_cells      = [[6,4], [6,1]]
         # 2b. Iniciar la odometria
-        robot.loadMap()
+        robot.loadMap(rmap, rmap_ref)
         robot.startOdometry()
 
         # 3. Ejecutar recorrido
@@ -36,7 +36,7 @@ def main():
         robot.playMap()
         # . 3º fase. Obtencion de la salida
         #found = robot.matchObject(img_R2D2_or_BB8)
-        #exit  = exits[int(not found)]
+        #exit  = exit_cells[int(not found)]
         # . 4º fase. Tracking (mascara con colores negativos)
         #robot.trackObject((80, 70, 50), (100, 255, 255))
         # . 5º fase. Salida

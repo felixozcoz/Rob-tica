@@ -128,9 +128,7 @@ class Map:
                         neighbor = [cell[0], cell[1]]
                         neighbor[dy] += dx
                         if neighbor[0] < 0 or neighbor[0] >= self.sizeX or neighbor[1] < 0 or neighbor[1] >= self.sizeY:
-                            print(neighbor)
                             continue
-
                         neighbor_conn = [conn[0], conn[1]]
                         neighbor_conn[dy] += dx
                         # Si esta libre la conexion y no pertenece a ninguna frontera, es candidato a ser expandido
@@ -198,7 +196,7 @@ class Map:
         self.start = start
         self.goal  = goal
         self.path  = []
-        self.index = 2
+        self.index = 1
         self.propagate_4N()
         self.findPath_4N()
         if self.verbose:
@@ -238,6 +236,8 @@ class Map:
                         # Existe una propiedad graciosa en esta estructura y es que al sumar dx y dy a la celda
                         # se obtiene el vecino, pero al sumarselo a la conexion, da la direccion al vecino
                         neighbor      = [cell[0]+dx, cell[1]+dy]
+                        if neighbor[0] < 0 or neighbor[0] >= self.sizeX or neighbor[1] < 0 or neighbor[1] >= self.sizeY:
+                            continue
                         neighbor_conn = [conn[0]+dx, conn[1]+dy]
                         # Si esta libre la conexion y no pertenece a ninguna frontera, es candidato a ser expandido
                         if self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and (neighbor not in border and neighbor not in old_border and neighbor not in new_border):
@@ -301,7 +301,7 @@ class Map:
         self.start = start
         self.goal  = goal
         self.path  = []
-        self.index = 2
+        self.index = 1
         self.propagate_8N()
         self.findPath_8N()
         if self.verbose:
