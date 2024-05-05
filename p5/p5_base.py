@@ -36,9 +36,9 @@ def main():
         # . 2º fase. Navegacion
         robot.playMap()
         # . 3º fase. Obtencion de la salida
-        exit = exits(int(not robot.matchObject(img_R2D2_or_BB8)))
-        # . 4º fase. Tracking (mascara con colores negativos)
-        robot.trackObject((80, 70, 50), (100, 255, 255))
+        #exit = exits(int(not robot.matchObject(img_R2D2_or_BB8)))
+        ## . 4º fase. Tracking (mascara con colores negativos)
+        #robot.trackObject((80, 70, 50), (100, 255, 255))
         # . 5º fase. Salida
         # robot.NoTieneNombreTodavia()
 
