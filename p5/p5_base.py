@@ -5,7 +5,6 @@ import cv2 as cv
 
 from Robot import Robot
 from ReMapLib import Map
-from geometry import Vector2
 
 def main():    
     try:
