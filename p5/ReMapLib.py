@@ -41,10 +41,10 @@ class Map:
 
         # LECTURA DEL MAPA
         self.name = re.split(r'[\\/]', filename)[-1]
-        mapF = open(filename, "r")
+        map_file = open(filename, "r")
 
         # Obtener dimensiones del mapa y de las celdas
-        header = mapF.readline().split()
+        header = map_file.readline().split()
         if len(header) != 3:
             print("Error -- El encabezado '" + ' '.join(header) + "' tiene un formato incorrecto...")
             exit(1)
@@ -60,7 +60,7 @@ class Map:
         while rows < self.connectionMatrix.shape[0]:
             rows += 1
             # Se obtienen los valores de la fila actual
-            connections = mapF.readline().split()
+            connections = map_file.readline().split()
             if len(connections) == 0:
                 continue
             if not len(connections) == self.connectionMatrix.shape[1]:
@@ -74,7 +74,7 @@ class Map:
         if not rows == self.connectionMatrix.shape[0]:
             print("Error -- El mapa tiene el formato incorrecto")
 
-        #  Guardar vecindad y obtener la matriz de costes y el mejor camino
+        # Guardar vecindad y obtener la matriz de costes y el mejor camino
         self.neighborhood = neighborhood
         self.costMatrix = np.zeros((self.sizeY, self.sizeX))
         self.path       = []
@@ -190,7 +190,19 @@ class Map:
         self.index = 2
         self.propagate_4N()
         self.findPath_4N()
-        print(self)
+        if self.verbose:
+            print(self)
+
+    def setPath_4N(self, start, goal):
+        """ Crea un path totalmente nuevo """
+        self.start = start
+        self.goal  = goal
+        self.path  = []
+        self.index = 2
+        self.propagate_4N()
+        self.findPath_4N()
+        if self.verbose:
+            print(self)
 
     # 8-VECINDAD
     # Propagacion de costes
@@ -281,6 +293,20 @@ class Map:
         self.index = 2
         self.propagate_8N()
         self.findPath_8N()
+        if self.verbose:
+            print(self)
+
+    def setPath_8N(self, start, goal):
+        """ Crea un path totalmente nuevo """
+        self.start = start
+        self.goal  = goal
+        self.path  = []
+        self.index = 2
+        self.propagate_8N()
+        self.findPath_8N()
+        if self.verbose:
+            print(self)
+
 
     # -- DRAW MAP --------------------------
     def _drawGrid(self):
@@ -446,13 +472,15 @@ class Map:
 
 
     # UTILS
-    # Insertar una coordenada para la propagacion en fronteras. Por si el bisect no existe
-    #def insert(self, a_list, a_node: list):
-    #    for i, e_node in enumerate(a_list):
-    #        if a_node[0] < e_node[0] or (a_node[0] == e_node[0] and a_node[1] < e_node[1]):
-    #            break
-    #    return a_list[:i] + [a_node] + a_list[i:]
-  
+    def cell2pos(self, cell, format=Vector2):
+        pos = Vector2(cell[1]*self.sizeCell + self.halfCell, cell[0]*self.sizeCell + self.halfCell, 1)
+        if format == list:
+            pos = [pos.x, pos.y]
+        return pos
+
+    def pos2cell(self, x, y):
+        return [(y - self.halfCell) // self.sizeCell, (x - self.halfCell) // self.sizeCell]
+
     # Obtiene el siguiente destino del robot
     def travel(self):
         # Si el path esta vacio, no puede devolver celda
@@ -462,13 +490,14 @@ class Map:
         index       = self.index
         cell        = self.path[-index]
         self.index += 1
-        return index, cell, self.toVector2(cell)
+        return index, cell, self.cell2pos(cell)
 
-    def cell2List(self, cell: list):
-        return [cell[1]*self.sizeCell + self.halfCell, cell[0]*self.sizeCell + self.halfCell]
-
-    def cell2Vector2(self, cell: list):
-        return Vector2(cell[1]*self.sizeCell + self.halfCell, cell[0]*self.sizeCell + self.halfCell, 1)
+    # Insertar una coordenada para la propagacion en fronteras. Por si el bisect no existe
+    #def insert(self, a_list, a_node: list):
+    #    for i, e_node in enumerate(a_list):
+    #        if a_node[0] < e_node[0] or (a_node[0] == e_node[0] and a_node[1] < e_node[1]):
+    #            break
+    #    return a_list[:i] + [a_node] + a_list[i:]
 
     # Insertar un nodo para el A*
     def insert(self, a_list, a_node: dict):

@@ -698,8 +698,9 @@ class Robot:
 
     #-- Navegacion -------------------------
     def loadMap(self, rmap, rmap_ref):
-        ##################################################
-        # Navegacion
+        '''
+            Cargar un mapa en el robot
+        '''
         self.rmap = rmap
         self.gx   = rmap_ref[0]
         self.gy   = rmap_ref[1]
@@ -707,8 +708,7 @@ class Robot:
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
         self.wtol = self.ltow.invert()
 
-
-    def playMap(self, start, goal):
+    def playMap(self):
         '''
             Navegacion a traves de un mapa cargado
         '''
