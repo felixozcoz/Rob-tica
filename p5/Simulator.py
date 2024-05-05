@@ -2,7 +2,7 @@ import numpy as np
 from geometry import Vector2, Matrix2, Transform
 # from pynput import keyboard
 # from pynput.keyboard import Key
-from ReMapLib import Map
+from p5.ReMapLibold import Map
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline, PchipInterpolator
 
@@ -61,11 +61,22 @@ hermite_interpolator = PchipInterpolator(x, y)
 x_values = np.linspace(min(x), max(x), 100)
 y_values = hermite_interpolator(x_values)
 
-w        = hermite_interpolator.derivative()(x_values)
+angle    = 0
+pos      = Vector2(x_values[0], y_values[0])
+a_values = [0, 0, 0]
+for i in range(1,99):
+    next_pos = Vector2(x_values[i], y_values[i])
+    next_next_pos = Vector2(x_values[i+1], y_values[i+1])
+    next_dir = next_pos - pos
+    next_next_dir = next_next_pos - next_pos
+    print(next_pos, "--", a_values)
+    a_values = a_values[1:] + [next_dir.sense(next_next_dir) * next_dir.angle(next_next_dir, "RAD")]
+
+
+
 
 plt.figure(figsize=(8,6))
 plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
-plt.plot(x_values, w, label="Velocidad angular", color="green")
 plt.scatter(x, y, label="Puntos conocidos", color="red")
 plt.xlabel("x")
 plt.ylabel("y")

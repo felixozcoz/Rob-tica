@@ -137,8 +137,7 @@ def match_images(img1_bgr, img2_bgr):
         h,w = img1.shape
         pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
         dst = cv2.perspectiveTransform(pts,H_21)
-        img2_res = cv2.polylines(img2_bgr, [np.int32(dst)], True, 
-                                 color=(255,255,255), thickness=3)
+        img2_res = cv2.polylines(img2_bgr, [np.int32(dst)], True, color=(255,255,255), thickness=3)
         found = True
         print("ROBUST matches found - %d (out of %d) --> OBJECT FOUND" % (np.sum(matchesMask), len(good)))
     else:
@@ -244,13 +243,13 @@ def main():
     
     if args.image is not None:
         if not os.path.isfile(args.image):
-            print("test image %s does not exist" % args.image);
+            print("test image %s does not exist" % args.image)
             return
         im = cv2.imread(args.image, cv2.IMREAD_COLOR)
         mirror=False
         
     if not os.path.isfile(args.robot):
-            print("target template image %s does not exist" % args.robot);
+            print("target template image %s does not exist" % args.robot)
             return
     else:
         target_robot_file = args.robot

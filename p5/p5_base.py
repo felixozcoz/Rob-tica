@@ -1,8 +1,11 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 import time
+import cv2 as cv
+
 from Robot import Robot
 from ReMapLib import Map
+from geometry import Vector2
 
 def main():    
     try:
@@ -11,41 +14,29 @@ def main():
         time.sleep(5)
 
         # 2a. Inicializar parametros en base al sensor 
-        while True:
-            #color     = robot.getColor()
-            #luminance = 0.2126*color[0] + 0.7512*color[1] + 0.0722*color[2]
-            intensity = robot.getIntensity()
-            #if luminance < 0.2:
-            if 2000 < intensity <= 2200:
-                # Generación de trayectoria:
-                #r2d2: R2-D2_s.png
-                points = [[0,0], [20,0], [40,20], [80,-20], [99,0], [100,0]]
-                # Mapa
-                rMap   = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
-                #global_reference = [60,280,-90]
-                #global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
-                break
-            #elif luminance > 0.8:
-            elif 2600 < intensity <= 2800
-                #bb8: BB8_s.png
-                # Generación de trayectoria:
-                points = [[0,0], [20,0], [40,-20], [80,20], [99,0], [100,0]]
-                # Mapa
-                rMap   = Map("mapaB_CARRERA.txt", [2,6], [3,3], neighborhood=4)
-                #global_reference = [220,280,-90]
-                #global_reference = [rMap.halfCell+start[1]*rMap.sizeCell, rMap.halfCell+start[0]*rMap.sizeCell,90]
-                break
-
+        if 2000 < robot.light <= 2200:
+            points          = [[0,0], [20,0], [40,20], [80,-20], [99,0], [100,0]]
+            rmap            = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
+            rmap_ref        = rmap.cell2List([7,1]) + [-90]
+            img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
+            exits           = [rmap.cell2Vector2([6,3]), rmap.cell2Vector2([6,6])]
+        elif 2600 < robot.light <= 2800:
+            points          = [[0,0], [20,0], [40,-20], [80,20], [99,0], [100,0]]
+            rmap            = Map("mapaB_CARRERA.txt", [2,6], [3,3], neighborhood=4)
+            rmap_ref        = rmap.cell2List([7,5]) + [-90]
+            img_R2D2_or_BB8 = cv.imread("images/BB8_s.png", cv.IMREAD_COLOR)
+            exits           = [rmap.cell2Vector2([6,4]), rmap.cell2Vector2([6,1])]
         # 2b. Iniciar la odometria
+        robot.loadMap()
         robot.startOdometry()
 
         # 3. Ejecutar recorrido
         # . 1º fase. Ejecucion de trayectoria
         robot.playTrajectory(points, 100)
         # . 2º fase. Navegacion
-        robot.playNavigation(rMap)
+        robot.playMap()
         # . 3º fase. Obtencion de la salida
-        # robot.NoTieneNombreTodavia()
+        exit = exits(int(not robot.matchObject(img_R2D2_or_BB8)))
         # . 4º fase. Tracking (mascara con colores negativos)
         robot.trackObject((80, 70, 50), (100, 255, 255))
         # . 5º fase. Salida

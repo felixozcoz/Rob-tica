@@ -2,7 +2,11 @@
 # -*- coding: UTF-8 -*-
 from __future__ import print_function # use python 3 syntax but make it compatible with python 2
 from __future__ import division
-from turtle import position       #                           ''
+from operator import ne
+from pickle import FALSE
+from turtle import position
+
+from networkx import neighbors       #                           ''
 
 import brickpi3 # import the BrickPi3 drivers
 import csv      # write csv
@@ -67,7 +71,6 @@ class Robot:
         self.th = Value('d', local_reference[2])
                                                # Robot orientation.
         self.us_ev3 = Value('d', 0)            # Latest distances ultrasonic EV3 sensor stored
-        #self.us_nxt = Value('d', 0)            # Latest distances ultrasonic NXT sensor stored
         self.bh = Value('d', 0)                # Robot basket angle [0 to ~90º].
         self.sD = Value('i', 0)                # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)                # Latest stored LEFT encoder value.
@@ -135,8 +138,8 @@ class Robot:
             self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
             self.wtol = self.ltow.invert()
 
-            self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3.value < (self.rMap.halfCell+5)
-            self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
+            #self.us_ev3_obstacle = lambda : 0.5 < self.us_ev3[-1] < (self.rMap.halfCell+5)
+            #self.us_ev3_stop     = lambda : (10 <= self.us_ev3.value <= 11) or (12 <= self.us_ev3.value <= 13)
 
 
     # -- Velocidad -------------------------
@@ -198,15 +201,12 @@ class Robot:
     #-- Odometria --------------------------
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
-
+        
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
-
-        self.umin = []
-        for i in range(3):
-            #print(self.us_ev3.value)
-            self.umin.append(self.us_ev3.value)
+        for _ in range(3):
+            print(self.us_ev3.value)
             time.sleep(self.P)
 
     def readOdometry(self):
@@ -265,7 +265,7 @@ class Robot:
                 self.sI.value = left_encoder
                 self.sC.value = basket_encoder
                 # update ultrasonic sensors value
-                self.us_ev3.value = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3) 
+                self.us_ev3   = self.us_ev3[1:] + [self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)]
                 self.lock_odometry.release()
 
                 # Save LOG
@@ -283,13 +283,6 @@ class Robot:
         """ Stop the odometry thread """
         self.finished.value = True
         self.BP.reset_all()
-
-
-    #-- Generacion de trayectorias ---------
-    def playTrayectory(points):
-
-        for point in points:
-            print(point)
 
     #-- Deteccion de cartulina -------------
     def detectCardboard(self):
@@ -527,185 +520,8 @@ class Robot:
                 # Robot speed
                 self.setSpeed(v, w, wb)
 
-    #-- Trayectoria
-        #-- Generacion de trayectorias ---------
-    def playTrajectory(self, points, segments, showPlot=True):
-        # . Separar coordenadas de la trayectoria
-        x = [point[0] for point in points]
-        y = [point[1] for point in points]
-        # . (DEPRECATED) Función interpolada respecto de los
-        #  puntos dados mediante interpolación polinómica
-        # deg          = len(x)-1
-        # coefficients = np.polyfit(x,y,deg)
-        # trajectory   = np.poly1d(coefficients)
-        # . Función interpolada respecto de los puntos dados
-        #  mediante PCHIP (quita los minimos y maximos que 
-        #  añade la polinómica)
-        trajectory = PchipInterpolator(x, y)
 
-        x_values = []
-        for i in range(len(x)-1):
-            x_values = x_values + list(np.linspace(x[i], x[i+1], segments))
-        x_values = x_values + [x[-1]]
-        print(x_values)
-        y_values   = trajectory(x_values)
-        #w_values  = np.arctan(trajectory.derivative()(y_values)/trajectory.derivative()(x_values))
-        if showPlot:
-            plt.figure(figsize=(8,6))
-            plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
-            #plt.plot(x_values, w, label="Velocidad angular", color="green")
-            plt.scatter(x, y, label="Puntos conocidos", color="red")
-            plt.xlabel("x")
-            plt.ylabel("y")
-            plt.title("Interpolacion polinomica")
-            plt.legend()
-            plt.axis("equal")
-            plt.grid(True)
-            plt.show()
-
-        # Recorrer trayectoria
-        state    = "START_SEGMENT_ADVENTURE"
-        position = Vector2(x_values[0], y_values[0], 1)
-        position_transform = Transform(Vector2.zero)
-        v = 10
-        w = 1
-
-
-        point   = 0
-        segment = 1
-        angle = 0
-        while True:
-            # Leer odometria
-            x, y, th, _ = self.readOdometry()
-            transform   = Transform(Vector2(x, y), 0)
-            forward     = Vector2.right.rotate(th)
-            # Estados
-            if state == "START_SEGMENT_ADVENTURE":
-                next_position      = Vector2(x_values[segment], y_values[segment])
-                direction          = next_position - position
-                next_angle         = forward.angle(direction, "RAD")
-                rotation_transform = Transform(Vector2.zero, forward=direction)
-                position_transform = Transform(next_position, 0)
-                #self.setSpeed(v, forward.sense(direction) * abs(next_angle - angle))
-                #if abs(next_angle - angle) > 0.001:
-                #    self.setSpeed(v, forward.sense(direction) * next_angle * w)
-                #else:
-                #    self.setSpeed(v, forward.sense(direction) * next_angle * 0.25)
-                ##if [x_values[segment], y_values[segment]] in points:
-                #    point += 1
-                #self.setSpeed(v, forward.sense(direction) * w * 1/(Vector2(x_values[segment], y_values[segment]) - position).magnitude())
-                self.setSpeed(v, forward.sense(direction) * w)
-                state = "GO"
-                print("START_SEGMENT_ADVENTURE -> GO")
-            elif state == "GO":
-                #if not rotation_transform == Transform(Vector2.zero, forward=forward):
-                #    self.setSpeed(v, forward.sense(direction) * 0.25)
-                if position_transform == transform:
-                    segment += 1
-                    position = next_position
-                    angle = next_angle
-                    state = "START_SEGMENT_ADVENTURE"
-                    print("GO -> START_SEGMENT_ADVENTURE")
-                    if segment >= segments:
-                        break
-        self.setSpeed(0,0)
-
-    #-- Navegacion -------------------------
-    def playNavigation(self):
-        '''
-            Navegacion a traves de un mapa cargado
-        '''
-        # Estado inicial
-        state = "START_CELL_ADVENTURE"
-        # Posicion inicial
-        _, cell, pos = self.rMap.travel()
-        # Si la celda actual es la meta, hemos terminado
-        if cell == self.rMap.goal:
-            print("Goal Reachaed!", cell, self.rMap.goal)
-            return
-        # Transformaciones iniciales
-        rotation_transform = Transform()
-        position_transform = Transform()
-        position_reached   = False
-        # Velocidades
-        v = 10
-        w = 0.75
-        # Recorrido del camino encontrado
-        while True:
-            # Se obtiene la odometria del robot
-            x, y, th, _ = self.readOdometry()
-            # Se obtiene la transformacion correspondiente
-            # 1. La posicion es local por defecto, hay que transformarla en global.
-            # 2. La orientacion del robot es local por defecto:
-            #   - Primero se rota el eje X [1,0] segun la orientacion del robot th en local.
-            #   - Despues se pasa a global.
-            gpos = self.ltow * Vector2(x,y,1)
-            gfor = self.ltow * Vector2.right.rotate(th)
-            transform = Transform(gpos, forward=gfor)
-
-            # A. Estado de inicializacion. Obtiene los parametros para la siguiente aventura
-            if state == "START_CELL_ADVENTURE":
-                _, next_cell, next_pos = self.rMap.travel()
-                dir = (next_pos - pos).normalize()
-                # Obtenemos las transformaciones representativas del destino
-                rotation_transform = Transform(pos, forward=dir)
-                position_transform = Transform(next_pos, forward=dir)
-                # Si la rotacion ya coincide, pasamos a reconocimiento
-                if rotation_transform == transform:
-                    #state = "RECOGN"
-                    #print("START_CELL_ADVENTURE -> RECOGN")
-                    state = "FORWARD"
-                    print("START_CELL_ADVENTURE -> FORWARD")
-                    self.setSpeed(v, 0)
-                # Si no, primero rotamos el robot
-                else:
-                    state = "ROTATION"
-                    print("START_CELL_ADVENTURE -> ROTATION")
-                    self.setSpeed(0, gfor.sense(dir) * w)
-            # B. Estado de rotacion
-            elif state == "ROTATION":
-                if rotation_transform == transform:
-                    #state = "RECOGN"
-                    #print("ROTATION -> RECOGN")
-                    #self.setSpeed(0, 0)
-                    state = "FORWARD"
-                    print("ROTATION -> FORWARD")
-                    self.setSpeed(v, 0)
-            # E. Estado de avance hacia la siguiente celda
-            elif state == "FORWARD":
-                # Si el vector orientacion del robot no coincide con el vector direccion de 
-                # la posicion actual a la siguiente, corrige trayectoria
-                if not rotation_transform == Transform(Vector2.zero, forward=gfor):
-                    #print("MAL")
-                    self.setSpeed(v, gfor.sense(rotation_transform.forward)*0.15)
-                else:
-                    self.setSpeed(v, 0)
-                # Obtenemos los datos del ultrasonido
-                us_position_reached = Decimal(np.mean(self.umin)) % Decimal(self.rMap.sizeCell) <= 14
-                self.umin = self.umin[1:] + [self.us_ev3.value]
-                # Si la posicion coincide, he llegado a la celda
-                if position_reached or position_transform == transform:
-                    # Si el ultrasonido no indica que sea el centro sigue avanzando
-                    if not us_position_reached:
-                        position_reached = True
-                        continue
-                    # Si era la ultima celda, termina
-                    if next_cell == self.rMap.goal:
-                        print("Goal Reached!: ", next_cell, self.rMap.goal)
-                        self.setSpeed(0, 0)
-                        break
-                    else:
-                        cell = next_cell
-                        pos  = next_pos
-                        state = "START_CELL_ADVENTURE"
-                        print("FORWARD -> START_CELL_ADVENTURE")
-                        self.setSpeed(0, 0)
-                        position_reached = False
-
-                #elif us_position_reached:
-
-
-
+    # -- Navegacion de mapas ---------------
     def playNavigation_4N(self):
         '''
             Navegacion en 4-vecindad
