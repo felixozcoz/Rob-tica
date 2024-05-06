@@ -591,13 +591,10 @@ class Matrix3:
         return "(" + row_str[0] + row_str[1] + row_str[2] + row_str[3] + "\n)" 
 
 
-
-
 ###########################################################
 # TRANSFORM
 ###########################################################
 class Transform:
-
     # Constructor
     def __init__(self, position: Vector2 = Vector2.zero, rotation: float = None, forward: Vector2 = None, CUSTOM_POSITION_ERROR = None, CUSTOM_ROTATION_ERROR = None):
         """
