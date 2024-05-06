@@ -61,7 +61,7 @@ class Robot:
         for _ in range(3):
             # self.light = self.BP.get_sensor(self.PORT_COLOR)
             self.light = 0.0
-        # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
+        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
         # Configure gyroscope
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
@@ -290,14 +290,14 @@ class Robot:
         # . Separar coordenadas de la trayectoria
         x = [point[0] for point in trajectory_points]
         y = [point[1] for point in trajectory_points]
-        # . (DEPRECATED) Función interpolada respecto de los
-        #  puntos dados mediante interpolación polinómica
+        # . (DEPRECATED) Funcion interpolada respecto de los
+        #  puntos dados mediante interpolacion polinomica
         # deg          = len(x)-1
         # coefficients = np.polyfit(x,y,deg)
         # trajectory   = np.poly1d(coefficients)
-        # . Función interpolada respecto de los puntos dados
+        # . Funcion interpolada respecto de los puntos dados
         #  mediante PCHIP (quita los minimos y maximos que 
-        #  añade la polinómica)
+        #  agrega la polinomica)
         trajectory = PchipInterpolator(x, y)
         x_values = np.linspace(min(x), max(x), segments)
         y_values = trajectory(x_values)
@@ -318,37 +318,66 @@ class Robot:
         state    = "START_SEGMENT_ADVENTURE"
         position = Vector2(x_values[0], y_values[0], 1)
         position_transform = Transform(Vector2.zero)
+        #last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
+        rotation_reached = False
         v = 10
 
         while True:
             # Leer odometria
             x, y, th, _ = self.readOdometry()
+            print("--- Odometry: ", x, y, th)
+
             forward = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
-                #print("--- Odometry: ", x, y, th)
                 next_position      = Vector2(x_values[segment], y_values[segment])
                 direction          = next_position - position
                 print("NEXT POSITION: ", next_position)
                 rotation_transform = Transform(Vector2.zero, forward=direction)
+                rotation_reached   = False
                 position_transform = Transform(next_position, 0)
-                self.setSpeed(v, forward.sense(direction) * 0.5) #forward.angle(direction, "RAD"))
+
+
+                sense  = forward.sense(direction)
+                w      = forward.angle(direction, "RAD")
+                #curr_w = 1
+                self.setSpeed(v, sense * w) #forward.angle(direction, "RAD"))
                 state = "GO"
                 #print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
-                if rotation_transform == Transform(Vector2.zero, forward=forward):
-                    self.setSpeed(v, 0)
-            
+                #print(position_transform.dmin)
+                if not rotation_reached:
+                    if rotation_transform == Transform(Vector2.zero, forward=forward):
+                    #    if curr_w > 0:
+                    #        curr_w -= self.P
+                    #        self.setSpeed(v, sense*(w - curr_w))
+                    #    else:
+                    #        self.setSpeed(v, sense*w)
+                    #else:
+                        rotation_reached = True
+                        self.setSpeed(v, 0)
+                else:
+                    if not rotation_transform == Transform(Vector2.zero, forward=forward):
+                        self.setSpeed(v, sense * 0.25)
+
                 if position_transform == Transform(Vector2(x,y), 0):
+                    segment += 1
                     if segment >= segments:
-                        self.setSpeed(0,0)
-                        break
+                        self.setSpeed(0, sense*w)
+                        state == "END"
                     else:
                         #print("*** Odometry: ", x, y, th)
-                        segment += 1
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
                         print(segment, "GO -> START_SEGMENT_ADVENTURE")
+            elif state == "END":
+                if rotation_transform == Transform(Vector2.zero, forward=forward):
+                    self.setSpeed(0,0)
+                    break
+
+                #elif last_transform == Transform(Vector2(x,y), 0):
+                #    self.setSpeed(0,0)
+                #    break
                 
 
     #-- Seguimiento de objetos -------------

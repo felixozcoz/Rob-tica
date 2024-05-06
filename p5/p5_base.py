@@ -14,34 +14,33 @@ def main():
         robot = Robot()
         time.sleep(5)
         
-        light = []
-        for i in range(3):
-            light.append(robot.getLight())
-            time.sleep(0.5) 
-        print("Light: ", light)
-        light = light[-1]
-        rmap = None
-        rmap_ref = None
-
-
-        # 2a. Inicializar parametros en base al sensor 
-        # if 2000 < light <= 2200:
-        print("Mapa A")
-        # points          = [[0,0], [20,0], [40,-20], [80,20], [99,0], [100,0]]
-        points = [[0,0], [20,0], [40,-20], [120, 20], [200,0]]
-        rmap            = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
-        rmap_ref        = rmap.cell2pos([7,1], list) + [-90]
-            # img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
-            # exit_cells      = [[6,3], [6,6]]
-        # elif 2600 < light <= 2800:
-            # print("Mapa B")
-            # points          = [[0,0], [20,0], [40,20], [80,-20], [99,0], [100,0]]
-            # rmap            = Map("mapaB_CARRERA.txt", [2,6], [3,3], neighborhood=4)
-            # rmap_ref        = rmap.cell2pos([7,5], list) + [-90]
-            # img_R2D2_or_BB8 = cv.imread("images/BB8_s.png", cv.IMREAD_COLOR)
-            # exit_cells      = [[6,4], [6,1]]
-        # 2b. Iniciar la odometria
-        robot.loadMap(rmap, rmap_ref)
+        #light = []
+        #for i in range(3):
+        #    light.append(robot.getLight())
+        #    time.sleep(0.5) 
+        #print("Light: ", light)
+        #light = light[-1]
+        #rmap = None
+        #rmap_ref = None
+#
+#
+        ## 2a. Inicializar parametros en base al sensor 
+        ## if 2000 < light <= 2200:
+        #print("Mapa A")
+        points          = [[0,0], [35,0], [80,-35], [140,35], [195,0], [205,0]]
+        ##rmap            = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
+        #rmap_ref        = rmap.cell2pos([7,1], list) + [-90]
+        #    # img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
+        #    # exit_cells      = [[6,3], [6,6]]
+        ## elif 2600 < light <= 2800:
+        #    # print("Mapa B")
+        points          = [[0,0], [35,0], [80,35], [140,-35], [195,0], [205,0]]
+        #    # rmap            = Map("mapaB_CARRERA.txt", [2,6], [3,3], neighborhood=4)
+        #    # rmap_ref        = rmap.cell2pos([7,5], list) + [-90]
+        #    # img_R2D2_or_BB8 = cv.imread("images/BB8_s.png", cv.IMREAD_COLOR)
+        #    # exit_cells      = [[6,4], [6,1]]
+        ## 2b. Iniciar la odometria
+        #robot.loadMap(rmap, rmap_ref)
         robot.startOdometry()
 
 
@@ -55,16 +54,17 @@ def main():
         #        break
                 
         # 3. Ejecutar recorrido
-        # . 1º fase. Ejecucion de trayectoria
-        robot.playTrajectory(points, 30)
-        # . 2º fase. Navegacion
+        # . 1a fase. Ejecucion de trayectoria
+        #points = [[0,0], [30,0], [30,10], [40,40]]
+        robot.playTrajectory(points, 30, False)
+        # . 2a fase. Navegacion
         # robot.playMap()
-        # . 3º fase. Obtencion de la salida
+        # . 3a fase. Obtencion de la salida
         #found = robot.matchObject(img_R2D2_or_BB8)
         #exit  = exit_cells[int(not found)]
-        # . 4º fase. Tracking (mascara con colores negativos)
+        # . 4a fase. Tracking (mascara con colores negativos)
         #robot.trackObject((80, 70, 50), (100, 255, 255))
-        # . 5º fase. Salida
+        # . 5a fase. Salida
         #x, y, _, _ = robot.readOdometry()
         #rmap.replanPath_8N(rmap.pos2cell(pos.x, pos.y), exit)
         #points = reversed(rmap.path)

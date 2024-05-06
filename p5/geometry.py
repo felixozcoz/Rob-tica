@@ -648,25 +648,32 @@ class Transform:
         """
         # VERIFICAR POSICION
         # A. Area
-        #self.POSITION |= (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
+        self.POSITION |= (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
         #if  transform.position != Vector2.zero and (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y):
         #    print("Check por area:", self.position_inf, ">", transform.position, "<", self.position_sup)
         # B. Distancia (cm)
         distance = (self.position - transform.position).magnitude()
-        #self.POSITION |= self.POSITION_ERROR > distance
+        self.POSITION |= self.POSITION_ERROR > distance
         #if self.POSITION_ERROR > distance and transform.position != Vector2.zero:
         #    print("Check por distancia de posiciones:", self.POSITION_ERROR, ">", distance)
         # C. Minimo local en distancia (cm)
         # \ . / -> El valor anterior [1] y siguiente [2] son mayores que el actual [1].
-        self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1])
-        print(self.dmin)
-        if self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1]):
+        #self.POSITION |= ((self.dmin[0] > self.dmin[1] and self.dmin[0]-self.dmin[1] >= 0.001) or self.dmin[0] == self.dmin[1]) and (self.dmin[1] < self.dmin[2] and self.dmin[2]-self.dmin[1] >= 0.001)
+        #if ((self.dmin[0] > self.dmin[1] and self.dmin[0]-self.dmin[1] >= 0.001) or self.dmin[0] == self.dmin[1]) and (self.dmin[1] < self.dmin[2] and self.dmin[2]-self.dmin[1] >= 0.001):
+        #self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1])
+        #if self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1]):
+
+
+        distance = round(distance)
+        self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2]
+        if self.dmin[0] > self.dmin[1] < self.dmin[2]:
             print("Check por minimo local de distancia:", self.dmin)
-        if self.dmin_counter >= 250:
+        #if self.dmin_counter >= 2000:
+        if not self.dmin[-1] == distance:
             self.dmin = self.dmin[1:] + [distance]
-            self.dmin_counter  = 0
-        else:
-            self.dmin_counter += 1
+        #    self.dmin_counter  = 0
+        #else:
+        #    self.dmin_counter += 1
 
         # VERIFICAR ROTACION
         # A. Area
@@ -704,20 +711,21 @@ class Transform:
         #else:
         #    self.omin_counter += 1
         # Si cumple posicion y rotacion, ha llegado
-        if self.POSITION and self.ROTATION:
-            # Reset state
-            self.POSITION = False
-            self.ROTATION = False
-            # Reset local minimum registries
-            self.dmin = [-np.inf, -np.inf, -np.inf]
-            self.dmin_counter = 0
-            self.rmin = [-np.inf, -np.inf, -np.inf]
-            self.rmin_counter = 0
-            self.omin = [-np.inf, -np.inf, -np.inf]
-            self.omin_counter = 0
-            return True
-        # Si no, no ha llegado
-        return False
+        return self.POSITION and self.ROTATION
+        #if self.POSITION and self.ROTATION:
+        #    # Reset state
+        #    self.POSITION = False
+        #    self.ROTATION = False
+        #    # Reset local minimum registries
+        #    self.dmin = [-np.inf, -np.inf, -np.inf]
+        #    self.dmin_counter = 0
+        #    self.rmin = [-np.inf, -np.inf, -np.inf]
+        #    self.rmin_counter = 0
+        #    self.omin = [-np.inf, -np.inf, -np.inf]
+        #    self.omin_counter = 0
+        #    return True
+        ## Si no, no ha llegado
+        #return False
 
     # ToString
     def __repr__(self) -> str:
