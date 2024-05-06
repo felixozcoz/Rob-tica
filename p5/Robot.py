@@ -348,7 +348,7 @@ class Robot:
                         segment += 1
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
-                        #print(segment, "GO -> START_SEGMENT_ADVENTURE")
+                        print(segment, "GO -> START_SEGMENT_ADVENTURE")
                 
 
     #-- Seguimiento de objetos -------------
