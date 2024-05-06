@@ -49,21 +49,19 @@ class Robot:
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_EV3, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
         self.us_ev3 = Array('d', 3)            # Latest distances ultrasonic EV3 sensor stored
         for i in range(3):
-            self.us_ev3[i] = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3) 
-            time.sleep(0.35)
+            self.us_ev3[i] = 0.0
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
         self.us_nxt = Array('d', 3)
         for i in range(3):
-            self.us_nxt[i] = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
-            time.sleep(0.35)
+            self.us_nxt[i] = 0.0
         # Configure color sensor
         self.PORT_COLOR = self.BP.PORT_3
         self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
         self.light = 0
         for _ in range(3):
-            self.light = self.BP.get_sensor(self.PORT_COLOR)
-            time.sleep(0.35)
-        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
+            # self.light = self.BP.get_sensor(self.PORT_COLOR)
+            self.light = 0.0
+        # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
         # Configure gyroscope
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
@@ -141,6 +139,11 @@ class Robot:
                                                # Maximum angular speed.
         self.fv_max = self.fv(0)               # Maximum linear speed.
 
+    def getLight(self):
+        """
+        Get the light value from the color sensor.
+        """
+        return self.BP.get_sensor(self.PORT_COLOR)
 
     #-- Odometria --------------------------
     def startOdometry(self):
@@ -320,29 +323,32 @@ class Robot:
         while True:
             # Leer odometria
             x, y, th, _ = self.readOdometry()
-            transform   = Transform(Vector2(x, y), th)
-            forward     = Vector2.right.rotate(th)
+            forward = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
+                #print("--- Odometry: ", x, y, th)
                 next_position      = Vector2(x_values[segment], y_values[segment])
                 direction          = next_position - position
+                print("NEXT POSITION: ", next_position)
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 position_transform = Transform(next_position, 0)
-                self.setSpeed(v, forward.sense(direction) * forward.angle(direction, "RAD"))
+                self.setSpeed(v, forward.sense(direction) * 0.5) #forward.angle(direction, "RAD"))
                 state = "GO"
-                print("START_SEGMENT_ADVENTURE -> GO")
+                #print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 if rotation_transform == Transform(Vector2.zero, forward=forward):
                     self.setSpeed(v, 0)
-                if position_transform == transform:
+            
+                if position_transform == Transform(Vector2(x,y), 0):
                     if segment >= segments:
                         self.setSpeed(0,0)
                         break
                     else:
+                        #print("*** Odometry: ", x, y, th)
                         segment += 1
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
-                        print("GO -> START_SEGMENT_ADVENTURE")
+                        #print(segment, "GO -> START_SEGMENT_ADVENTURE")
                 
 
     #-- Seguimiento de objetos -------------

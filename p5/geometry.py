@@ -648,17 +648,18 @@ class Transform:
         """
         # VERIFICAR POSICION
         # A. Area
-        self.POSITION |= (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
-        if (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y):
-            print("Check por area:", self.position_inf, ">", transform.position, "<", self.position_sup)
+        #self.POSITION |= (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
+        #if  transform.position != Vector2.zero and (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y):
+        #    print("Check por area:", self.position_inf, ">", transform.position, "<", self.position_sup)
         # B. Distancia (cm)
         distance = (self.position - transform.position).magnitude()
-        self.POSITION |= self.POSITION_ERROR > distance
-        if self.POSITION_ERROR > distance:
-            print("Check por distancia de posiciones:", self.POSITION_ERROR, ">", distance)
+        #self.POSITION |= self.POSITION_ERROR > distance
+        #if self.POSITION_ERROR > distance and transform.position != Vector2.zero:
+        #    print("Check por distancia de posiciones:", self.POSITION_ERROR, ">", distance)
         # C. Minimo local en distancia (cm)
         # \ . / -> El valor anterior [1] y siguiente [2] son mayores que el actual [1].
         self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1])
+        print(self.dmin)
         if self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1]):
             print("Check por minimo local de distancia:", self.dmin)
         if self.dmin_counter >= 250:
