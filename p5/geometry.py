@@ -663,17 +663,12 @@ class Transform:
         #self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1])
         #if self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1]):
 
-
         distance = round(distance)
         self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2]
         if self.dmin[0] > self.dmin[1] < self.dmin[2]:
             print("Check por minimo local de distancia:", self.dmin)
-        #if self.dmin_counter >= 2000:
         if not self.dmin[-1] == distance:
             self.dmin = self.dmin[1:] + [distance]
-        #    self.dmin_counter  = 0
-        #else:
-        #    self.dmin_counter += 1
 
         # VERIFICAR ROTACION
         # A. Area
