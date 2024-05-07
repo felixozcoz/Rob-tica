@@ -335,47 +335,35 @@ class Robot:
                 print("NEXT POSITION: ", next_position)
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 rotation_reached   = False
-                position_transform = Transform(next_position, 0)
-
-
+                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=2)
                 sense  = forward.sense(direction)
                 w      = forward.angle(direction, "RAD")
-                #curr_w = 1
-                self.setSpeed(v, sense * w) #forward.angle(direction, "RAD"))
+                self.setSpeed(v, sense * w)
                 state = "GO"
-                #print("START_SEGMENT_ADVENTURE -> GO")
+                print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 #print(position_transform.dmin)
                 if not rotation_reached:
                     if rotation_transform == Transform(Vector2.zero, forward=forward):
-                    #    if curr_w > 0:
-                    #        curr_w -= self.P
-                    #        self.setSpeed(v, sense*(w - curr_w))
-                    #    else:
-                    #        self.setSpeed(v, sense*w)
-                    #else:
                         rotation_reached = True
                         self.setSpeed(v, 0)
                 else:
                     if not rotation_transform == Transform(Vector2.zero, forward=forward):
-                        self.setSpeed(v, sense * 0.25)
+                        self.setSpeed(v, sense*w)
 
                 if position_transform == Transform(Vector2(x,y), 0):
+                    if not rotation_transform == Transform(Vector2.zero, forward=forward):
+                        self.setSpeed(v, sense*w)
+                        continue
                     segment += 1
                     if segment >= segments:
-                        self.setSpeed(0, sense*w)
-                        state == "END"
+                        self.setSpeed(0, 0)
+                        break
                     else:
-                        #print("*** Odometry: ", x, y, th)
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
                         print(segment, "GO -> START_SEGMENT_ADVENTURE")
-            elif state == "END":
-                if rotation_transform == Transform(Vector2.zero, forward=forward):
-                    self.setSpeed(0,0)
-                    break
-
-                #elif last_transform == Transform(Vector2(x,y), 0):
+                #elif last_transform == Transform(Vector2(x,y), 0)
                 #    self.setSpeed(0,0)
                 #    break
                 
