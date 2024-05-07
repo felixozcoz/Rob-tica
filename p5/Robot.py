@@ -61,7 +61,7 @@ class Robot:
         for _ in range(3):
             # self.light = self.BP.get_sensor(self.PORT_COLOR)
             self.light = 0.0
-        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
+        #self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
         # Configure gyroscope
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
@@ -325,22 +325,23 @@ class Robot:
         while True:
             # Leer odometria
             x, y, th, _ = self.readOdometry()
-            print("--- Odometry: ", x, y, th)
+            # print("--- Odometry: ", x, y, th)
 
             forward = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
+                # print("Odometry: ", [x,y,th])
                 next_position      = Vector2(x_values[segment], y_values[segment])
                 direction          = next_position - position
-                print("NEXT POSITION: ", next_position)
+                # print("NEXT POSITION: ", next_position)
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 rotation_reached   = False
-                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=2)
+                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=0.5)
                 sense  = forward.sense(direction)
                 w      = forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
                 state = "GO"
-                print("START_SEGMENT_ADVENTURE -> GO")
+                # print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 #print(position_transform.dmin)
                 if not rotation_reached:
@@ -352,12 +353,19 @@ class Robot:
                         self.setSpeed(v, sense*w)
 
                 if position_transform == Transform(Vector2(x,y), 0):
-                    if not rotation_transform == Transform(Vector2.zero, forward=forward):
-                        self.setSpeed(v, sense*w)
-                        continue
+                    # if not rotation_transform == Transform(Vector2.zero, forward=forward):
+                    #     self.setSpeed(v, sense*w)
+                    #     continue
                     segment += 1
                     if segment >= segments:
+                        # Orientar el robot a th 0
+                        rotation_transform = Transform(Vector2.zero, rotation=th)
+                        while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
+                            x, y, th, _ = self.readOdometry()
+                            rotation_transform = Transform(Vector2.zero, rotation=th)
+                            self.setSpeed(0, sense*w)
                         self.setSpeed(0, 0)
+                        print("Odom: ", [x,y,th])
                         break
                     else:
                         position = next_position
@@ -757,6 +765,7 @@ class Robot:
 
                 # A. Estado de inicializacion. Obtiene los parametros para la siguiente aventura
                 if state == "START_CELL_ADVENTURE":
+                    # Extraer siguiente posición
                     _, next_cell, next_pos = self.rmap.travel()
                     dir = (next_pos - pos).normalize()
                     # Obtenemos las transformaciones representativas del destino

@@ -665,8 +665,8 @@ class Transform:
 
         distance = round(distance)
         self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2]
-        if self.dmin[0] > self.dmin[1] < self.dmin[2]:
-            print("Check por minimo local de distancia:", self.dmin)
+        # if self.dmin[0] > self.dmin[1] < self.dmin[2]:
+            # print("Check por minimo local de distancia:", self.dmin)
         if not self.dmin[-1] == distance:
             self.dmin = self.dmin[1:] + [distance]
 
