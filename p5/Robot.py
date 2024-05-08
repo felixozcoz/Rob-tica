@@ -47,13 +47,17 @@ class Robot:
         self.PORT_ULTRASONIC_EV3 = self.BP.PORT_1
         self.PORT_ULTRASONIC_NXT = self.BP.PORT_2
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_EV3, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
-        self.us_ev3 = Array('d', 3)            # Latest distances ultrasonic EV3 sensor stored
-        for i in range(3):
-            self.us_ev3[i] = 0.0
+        self.us_ev3 = Value('d', 0)            # Latest distances ultrasonic EV3 sensor stored
+        for _ in range(3):
+            self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
+            time.sleep(self.P)
+        
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
-        self.us_nxt = Array('d', 3)
-        for i in range(3):
-            self.us_nxt[i] = 0.0
+        self.us_nxt = Value('d', 0)
+        for _ in range(3):
+            self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+            time.sleep(self.P)
+
         # Configure color sensor
         self.PORT_COLOR = self.BP.PORT_3
         self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
@@ -208,10 +212,11 @@ class Robot:
                 self.sI.value = left_encoder
                 self.sC.value = basket_encoder
                 # update ultrasonic sensors value
-                self.us_ev3   = self.us_ev3[1:] + [self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)]
+                self.us_ev3   = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
+                self.us_nxt   = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
                 self.lock_odometry.release()
                 # Aquí sale bien (print correcto) pero en playTrajectory da 0
-                print(self.us_ev3, np.mean(self.us_ev3) % self.rmap.sizeCell)
+                print(self.us_ev3)
                 # Save LOG
                 LOG_WRITER.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), round(self.x.value, 4), round(self.y.value, 4), round(self.th.value, 4)])
 
@@ -321,6 +326,9 @@ class Robot:
         position_transform = Transform(Vector2.zero)
         #last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
         rotation_reached = False
+        us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
+        us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
+
         v = 10
 
         while True:
@@ -368,12 +376,15 @@ class Robot:
                         self.setSpeed(0, 0)
                         # Centrar el robot en x en la celda con la distancia al muro de delante
                         while True:
+
                             # Dentro de updateOdometry se calcula bien pero aquí da 0
-                            d = np.mean(self.us_ev3) % self.rmap.sizeCell
-                            print(d)
-                            if d < 14.5:
+                            distance = np.mean(self.us_ev3) % self.rmap.sizeCell
+                            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+                            #us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+                            print(distance)
+                            if distance < 14.5:
                                 self.setSpeed(-3,0)
-                            elif d > 15.5:
+                            elif distance > 15.5:
                                 self.setSpeed(3,0)
                             else:
                                 self.setSpeed(0,0)
@@ -761,6 +772,9 @@ class Robot:
         # Velocidades
         v = 10
         w = 0.75
+        # Valores de los ultrasonidos
+        us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
+        us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         
         if self.rmap.neighborhood == 4:
             # Recorrido del camino encontrado
@@ -814,7 +828,7 @@ class Robot:
                     neighbor_rght = [neighbor_conn[0]+dy, neighbor_conn[1]+dx]
                     wall          = [neighbor_conn, neighbor_rght, neighbor_left]
                     # Si detecto obstucalo
-                    if 0.5 < self.us_ev3[-1] < (self.rmap.halfCell+5):
+                    if 0.5 < self.us_ev3.value < (self.rmap.halfCell+5):
                         if self.rmap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
                             self.rmap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 0
                             self.rmap.connectionMatrix[neighbor_left[0]][neighbor_conn[1]] = 0
@@ -884,7 +898,9 @@ class Robot:
                     else:
                         self.setSpeed(v, 0)
                     # Obtenemos los datos del ultrasonido
-                    us_position_reached = Decimal(np.mean(self.us_ev3)) % Decimal(self.rmap.sizeCell) <= 14
+                    us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
+                    us_ev3_values = us_ev3_values[1:] + self.us_ev3
+                    us_nxt_values = us_nxt_values[1:] + self.us_nxt
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell or reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
@@ -990,7 +1006,7 @@ class Robot:
                     neighbor_rght = [neighbor_conn[0]+(1-dx), neighbor_conn[1]+(1-dy)]  
                     wall          = [neighbor_conn, neighbor_rght, neighbor_left]
                     # Si detecto obstaculo
-                    if 0.5 < self.us_ev3[-1] < (self.rmap.halfCell+5):
+                    if 0.5 < self.us_ev3.value < (self.rmap.halfCell+5):
                         if self.rmap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
                             changes = True
                             self.rmap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] = 0
@@ -1066,7 +1082,10 @@ class Robot:
                     else:
                         self.setSpeed(v, 0)
                     # Obtenemos los datos del ultrasonido
-                    us_position_reached = Decimal(np.mean(self.us_ev3)) % Decimal(self.rmap.sizeCell) <= 14
+                    # Obtenemos los datos del ultrasonido
+                    us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
+                    us_ev3_values = us_ev3_values[1:] + self.us_ev3
+                    us_nxt_values = us_nxt_values[1:] + self.us_nxt
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell or reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando

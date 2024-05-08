@@ -265,7 +265,7 @@ class Robot:
                 self.sI.value = left_encoder
                 self.sC.value = basket_encoder
                 # update ultrasonic sensors value
-                self.us_ev3   = self.us_ev3[1:] + [self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)]
+                self.us_ev3   = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
                 self.lock_odometry.release()
 
                 # Save LOG
