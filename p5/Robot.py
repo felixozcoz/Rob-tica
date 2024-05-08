@@ -48,15 +48,9 @@ class Robot:
         self.PORT_ULTRASONIC_NXT = self.BP.PORT_2
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_EV3, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
         self.us_ev3 = Value('d', 0)            # Latest distances ultrasonic EV3 sensor stored
-        for _ in range(3):
-            self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
-            time.sleep(self.P)
-        
+
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
         self.us_nxt = Value('d', 0)
-        for _ in range(3):
-            self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
-            time.sleep(self.P)
 
         # Configure color sensor
         self.PORT_COLOR = self.BP.PORT_3
@@ -152,6 +146,15 @@ class Robot:
     #-- Odometria --------------------------
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
+    
+        for _ in range(3):
+            self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+            time.sleep(self.P)
+
+        for _ in range(3):
+            self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
+            time.sleep(self.P)
+
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
