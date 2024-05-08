@@ -210,7 +210,8 @@ class Robot:
                 # update ultrasonic sensors value
                 self.us_ev3   = self.us_ev3[1:] + [self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)]
                 self.lock_odometry.release()
-
+                # Aquí sale bien (print correcto) pero en playTrajectory da 0
+                print(self.us_ev3, np.mean(self.us_ev3) % self.rmap.sizeCell)
                 # Save LOG
                 LOG_WRITER.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), round(self.x.value, 4), round(self.y.value, 4), round(self.th.value, 4)])
 
@@ -363,8 +364,20 @@ class Robot:
                         while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
                             x, y, th, _ = self.readOdometry()
                             rotation_transform = Transform(Vector2.zero, rotation=th)
-                            self.setSpeed(0, sense*w)
+                            self.setSpeed(0, -np.sign(th) * 0.5)
                         self.setSpeed(0, 0)
+                        # Centrar el robot en x en la celda con la distancia al muro de delante
+                        while True:
+                            # Dentro de updateOdometry se calcula bien pero aquí da 0
+                            d = np.mean(self.us_ev3) % self.rmap.sizeCell
+                            print(d)
+                            if d < 14.5:
+                                self.setSpeed(-3,0)
+                            elif d > 15.5:
+                                self.setSpeed(3,0)
+                            else:
+                                self.setSpeed(0,0)
+                                break
                         print("Odom: ", [x,y,th])
                         break
                     else:

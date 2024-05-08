@@ -36,6 +36,7 @@ def main():
         else:
             print("Mapa A")
             points          = [[0,0], [35,0], [80,-35], [160,35], [195,0], [200,0]]
+            points          = [[0,0], [35,0], [80,-35], [160,35], [200,0]]
             rmap            = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
             rmap_ref        = rmap.cell2pos([7,1], list) + [-90]
             # img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
@@ -59,7 +60,7 @@ def main():
         #points = [[0,0], [30,0], [30,10], [40,40]]
         robot.playTrajectory(points, 30, False)
         # . 2a fase. Navegacion
-        robot.playMap()
+        # robot.playMap()
         # . 3a fase. Obtencion de la salida
         #found = robot.matchObject(img_R2D2_or_BB8)
         #exit  = exit_cells[int(not found)]
