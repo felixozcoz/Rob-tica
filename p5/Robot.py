@@ -146,18 +146,15 @@ class Robot:
     #-- Odometria --------------------------
     def startOdometry(self):
         """ This starts a new process/thread that will be updating the odometry periodically """
-    
-        for _ in range(3):
-            self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
-            time.sleep(self.P)
-
-        for _ in range(3):
-            self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
-            time.sleep(self.P)
-
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
+        for _ in range(3):
+            self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+            time.sleep(self.P)
+        for _ in range(3):
+            self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
+            time.sleep(self.P)
 
     def readOdometry(self):
         """ Returns current value of odometry estimation """
