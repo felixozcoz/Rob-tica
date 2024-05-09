@@ -333,22 +333,18 @@ class Robot:
         #last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
         rotation_reached = False
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
-        us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
-
+        #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
+        # Velocidades
         v = 10
 
         while True:
             # Leer odometria
             x, y, th, _ = self.readOdometry()
-            # print("--- Odometry: ", x, y, th)
-
             forward = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
-                # print("Odometry: ", [x,y,th])
                 next_position      = Vector2(x_values[segment], y_values[segment])
                 direction          = next_position - position
-                # print("NEXT POSITION: ", next_position)
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 rotation_reached   = False
                 position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=0.5)
@@ -356,9 +352,8 @@ class Robot:
                 w      = forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
                 state = "GO"
-                # print("START_SEGMENT_ADVENTURE -> GO")
+                print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
-                #print(position_transform.dmin)
                 if not rotation_reached:
                     if rotation_transform == Transform(Vector2.zero, forward=forward):
                         rotation_reached = True
@@ -368,9 +363,6 @@ class Robot:
                         self.setSpeed(v, sense*w)
 
                 if position_transform == Transform(Vector2(x,y), 0):
-                    # if not rotation_transform == Transform(Vector2.zero, forward=forward):
-                    #     self.setSpeed(v, sense*w)
-                    #     continue
                     segment += 1
                     if segment >= segments:
                         # Orientar el robot a th 0
@@ -386,12 +378,12 @@ class Robot:
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
                         print(segment, "GO -> START_SEGMENT_ADVENTURE")
-                #elif last_transform == Transform(Vector2(x,y), 0)
-                #    self.setSpeed(0,0)
-                #    break
+
                 
     def centerRobot(self, side):
         # Centrar el robot en x en la celda con la distancia al muro de delante
+        us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
+        us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         while True:
             distance = np.mean(us_ev3_values) % self.rmap.sizeCell
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
@@ -404,7 +396,6 @@ class Robot:
             else:
                 self.setSpeed(0,0)
                 break
-        print("Odom: ", [x,y,th])
 
         # Rotar el robot hacia el muro lateral (izda o dcha)
         x, y, th, _ = self.readOdometry()
@@ -415,7 +406,6 @@ class Robot:
             self.setSpeed(0, side*0.5)
             x, y, th, _ = self.readOdometry()
             odom_rotation_transform = Transform(Vector2.zero, rotation=th)
-        print("Odom: ", [x,y,th])
 
         # Centrar el robot en y en la celda con la distancia al muro lateral
         while True:
@@ -440,7 +430,6 @@ class Robot:
             self.setSpeed(0, -side*0.5)
             x, y, th, _ = self.readOdometry()
             odom_rotation_transform = Transform(Vector2.zero, rotation=th)
-        print("Odom: ", [x,y,th])
 
         # Actualizar odometria
         pos = [self.rmap.start[1] * self.rmap.sizeCell + self.rmap.halfCell, self.rmap.start[0] * self.rmap.sizeCell + self.rmap.halfCell]
@@ -450,7 +439,6 @@ class Robot:
         self.y.value = lpos.y
         self.lock_odometry.release()
         x, y, th, _ = self.readOdometry()
-        print("Odom: ", [x,y,th])
 
     #-- Seguimiento de objetos -------------
     def initCamera(self):
@@ -820,7 +808,7 @@ class Robot:
             print("Goal Reached!", cell, self.rmap.goal)
             return
         # Variables
-        dynamic_walls           = []
+        dynamic_walls = []
         # Velocidades
         v = 10
         w = 0.75
@@ -850,9 +838,7 @@ class Robot:
                     # Obtenemos las transformaciones representativas del destino
                     rotation_transform      = Transform(pos, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    #entering_cell           = False
                     reaching_cell_transform = Transform(next_pos, forward=dir)
-                    reaching_cell           = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == transform:
                         state = "RECOGN"
@@ -954,13 +940,9 @@ class Robot:
                     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                     us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
-                    print(reaching_cell_transform, transform)
-                    if reaching_cell or reaching_cell_transform == transform:
+                    if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if not us_position_reached:
-                            reaching_cell = True
-                        else:
-                            reaching_cell = False
+                        if us_position_reached:
                             self.setSpeed(0, 0)
                             # Si ha llegado al centro y era la ultima celda, termina
                             if next_cell == self.rmap.goal:
@@ -1008,9 +990,7 @@ class Robot:
                     # Obtenemos las transformaciones representativas del destino
                     rotation_transform      = Transform(pos, forward=dir)
                     entering_cell_transform = Transform(next_pos, forward=dir)
-                    entering_cell           = False
                     reaching_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    reaching_cell           = False
                     # - Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(position=pos, forward=gfor):
                         state = "RECOGN"
@@ -1128,42 +1108,31 @@ class Robot:
                     else:
                         self.setSpeed(v, 0)
                     # Obtenemos los datos del ultrasonido
-                    # Obtenemos los datos del ultrasonido
                     us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
                     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                     us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
-                    if reaching_cell or reaching_cell_transform == transform:
+                    if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if not us_position_reached:
-                            reaching_cell = True
-                            continue
-                    # Si esta entrando en la celda. Este caso es en el posible que haya entrado
-                    # en la celda y no detecte el centro por odometria
-                    elif entering_cell or entering_cell_transform == transform:
-                        # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if not us_position_reached:
-                            entering_cell = True
-                            continue
-
-                    # Si ha llegado al centro y era la ultima celda, termina
-                    if next_cell == self.rmap.goal:
-                        print("Goal Reached!: ", next_cell, self.rmap.goal)
-                        self.setSpeed(0, 0)
-                        break
-                    # Si no, avanzamos a la siguiente celda
-                    else:
-                        # Se actualiza a la siguiente celda
-                        cell  = next_cell
-                        pos   = next_pos
-                        # Se actualiza la odometria
-                        lpos = self.wtol * pos
-                        self.lock_odometry.acquire()
-                        self.x.value = lpos.x
-                        self.y.value = lpos.y
-                        self.lock_odometry.release()
-                        # Siguiente estado
-                        state = "START_CELL_ADVENTURE"
-                        print("FORWARD -> START_CELL_ADVENTURE")
-                        self.setSpeed(0, 0)
+                        if us_position_reached:
+                            self.setSpeed(0, 0)
+                            # Si ha llegado al centro y era la ultima celda, termina
+                            if next_cell == self.rmap.goal:
+                                print("Goal Reached!: ", next_cell, self.rmap.goal)
+                                break
+                            # Si no, avanzamos a la siguiente celda
+                            else:
+                                # Se actualiza a la siguiente celda
+                                cell  = next_cell
+                                pos   = next_pos
+                                # Se actualiza la odometria
+                                lpos = self.wtol * pos
+                                self.lock_odometry.acquire()
+                                self.x.value = lpos.x
+                                self.y.value = lpos.y
+                                self.lock_odometry.release()
+                                # Siguiente estado
+                                state = "START_CELL_ADVENTURE"
+                                print("FORWARD -> START_CELL_ADVENTURE")
+                                self.setSpeed(0, 0)
 
