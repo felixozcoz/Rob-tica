@@ -47,10 +47,10 @@ class Robot:
         self.PORT_ULTRASONIC_EV3 = self.BP.PORT_1
         self.PORT_ULTRASONIC_NXT = self.BP.PORT_2
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_EV3, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
-        self.us_ev3 = Value('d', 0)            # Latest distances ultrasonic EV3 sensor stored
+        self.us_ev3 = Value('d', 0.0)            # Latest distances ultrasonic EV3 sensor stored
 
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
-        self.us_nxt = Value('d', 0)
+        self.us_nxt = Value('d', 0.0)
 
         # Configure color sensor
         self.PORT_COLOR = self.BP.PORT_3
@@ -149,11 +149,11 @@ class Robot:
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
+        # for _ in range(3):
+        #     self.us_nxt.value = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+        #     time.sleep(self.P)
         for _ in range(3):
-            self.us_nxt = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
-            time.sleep(self.P)
-        for _ in range(3):
-            self.us_ev3 = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
+            self.us_ev3.value = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
             time.sleep(self.P)
 
     def readOdometry(self):
@@ -212,11 +212,17 @@ class Robot:
                 self.sI.value = left_encoder
                 self.sC.value = basket_encoder
                 # update ultrasonic sensors value
-                self.us_ev3   = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
-                self.us_nxt   = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+                self.us_ev3.value   = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
+                try:
+                    right_sensor = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+                except Exception:
+                    print("Lateral sensor error")
+                else:
+                    self.us_nxt.value   = right_sensor
+                    
                 self.lock_odometry.release()
                 # Aquí sale bien (print correcto) pero en playTrajectory da 0
-                print(self.us_ev3)
+                # print(self.us_ev3.value)
                 # Save LOG
                 LOG_WRITER.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), round(self.x.value, 4), round(self.y.value, 4), round(self.th.value, 4)])
 
@@ -370,27 +376,12 @@ class Robot:
                         # Orientar el robot a th 0
                         rotation_transform = Transform(Vector2.zero, rotation=th)
                         while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
+                            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                             x, y, th, _ = self.readOdometry()
                             rotation_transform = Transform(Vector2.zero, rotation=th)
                             self.setSpeed(0, -np.sign(th) * 0.5)
                         self.setSpeed(0, 0)
-                        # Centrar el robot en x en la celda con la distancia al muro de delante
-                        while True:
-
-                            # Dentro de updateOdometry se calcula bien pero aquí da 0
-                            distance = np.mean(self.us_ev3) % self.rmap.sizeCell
-                            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-                            #us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
-                            print(distance)
-                            if distance < 14.5:
-                                self.setSpeed(-3,0)
-                            elif distance > 15.5:
-                                self.setSpeed(3,0)
-                            else:
-                                self.setSpeed(0,0)
-                                break
-                        print("Odom: ", [x,y,th])
-                        break
+                        
                     else:
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
@@ -399,6 +390,67 @@ class Robot:
                 #    self.setSpeed(0,0)
                 #    break
                 
+    def centerRobot(self, side):
+        # Centrar el robot en x en la celda con la distancia al muro de delante
+        while True:
+            distance = np.mean(us_ev3_values) % self.rmap.sizeCell
+            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+            us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+            print(distance)
+            if distance < 14.5:
+                self.setSpeed(-3,0)
+            elif distance > 15.5:
+                self.setSpeed(3,0)
+            else:
+                self.setSpeed(0,0)
+                break
+        print("Odom: ", [x,y,th])
+
+        # Rotar el robot hacia el muro lateral (izda o dcha)
+        x, y, th, _ = self.readOdometry()
+        odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+        rotation_transform = Transform(Vector2.zero, rotation=side*90)
+        while not rotation_transform == odom_rotation_transform:
+            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+            self.setSpeed(0, side*0.5)
+            x, y, th, _ = self.readOdometry()
+            odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+        print("Odom: ", [x,y,th])
+
+        # Centrar el robot en y en la celda con la distancia al muro lateral
+        while True:
+            distance = np.mean(us_ev3_values) % self.rmap.sizeCell
+            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+            us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+            print(distance)
+            if distance < 12.5:
+                self.setSpeed(-3,0)
+            elif distance > 13.5:
+                self.setSpeed(3,0)
+            else:
+                self.setSpeed(0,0)
+                break
+        
+        # Rotar el robot hacia su orientacion inicial
+        x, y, th, _ = self.readOdometry()
+        odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+        rotation_transform = Transform(Vector2.zero, rotation=0.0)
+        while not rotation_transform == odom_rotation_transform:
+            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+            self.setSpeed(0, -side*0.5)
+            x, y, th, _ = self.readOdometry()
+            odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+        print("Odom: ", [x,y,th])
+
+        # Actualizar odometria
+        pos = [self.rmap.start[1] * self.rmap.sizeCell + self.rmap.halfCell, self.rmap.start[0] * self.rmap.sizeCell + self.rmap.halfCell]
+        lpos = self.wtol * Vector2(pos[0], pos[1], 1)
+        self.lock_odometry.acquire()
+        self.x.value = lpos.x
+        self.y.value = lpos.y
+        self.lock_odometry.release()
+        x, y, th, _ = self.readOdometry()
+        print("Odom: ", [x,y,th])
 
     #-- Seguimiento de objetos -------------
     def initCamera(self):
@@ -899,9 +951,10 @@ class Robot:
                         self.setSpeed(v, 0)
                     # Obtenemos los datos del ultrasonido
                     us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
-                    us_ev3_values = us_ev3_values[1:] + self.us_ev3
-                    us_nxt_values = us_nxt_values[1:] + self.us_nxt
+                    us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+                    us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
+                    print(reaching_cell_transform, transform)
                     if reaching_cell or reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
                         if not us_position_reached:
@@ -1084,8 +1137,8 @@ class Robot:
                     # Obtenemos los datos del ultrasonido
                     # Obtenemos los datos del ultrasonido
                     us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
-                    us_ev3_values = us_ev3_values[1:] + self.us_ev3
-                    us_nxt_values = us_nxt_values[1:] + self.us_nxt
+                    us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+                    us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell or reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
