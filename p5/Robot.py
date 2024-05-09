@@ -849,9 +849,9 @@ class Robot:
                     dir = (next_pos - pos).normalize()
                     # Obtenemos las transformaciones representativas del destino
                     rotation_transform      = Transform(pos, forward=dir)
-                    entering_cell_transform = Transform(next_pos, forward=dir)
-                    entering_cell           = False
-                    reaching_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
+                    #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
+                    #entering_cell           = False
+                    reaching_cell_transform = Transform(next_pos, forward=dir)
                     reaching_cell           = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == transform:
@@ -959,37 +959,30 @@ class Robot:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
                         if not us_position_reached:
                             reaching_cell = True
-                            continue
-                    # Si esta entrando en la celda. Este caso es en el posible que haya entrado
-                    # en la celda y no detecte el centro por odometria
-                    elif entering_cell or entering_cell_transform == transform:
-                        # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if not us_position_reached:
-                            entering_cell = True
-                            continue
+                        else:
+                            reaching_cell = False
+                            self.setSpeed(0, 0)
+                            # Si ha llegado al centro y era la ultima celda, termina
+                            if next_cell == self.rmap.goal:
+                                print("Goal Reached!: ", next_cell, self.rmap.goal)
+                                break
+                            # Si no, avanzamos a la siguiente celda
+                            else:
+                                # Se actualiza a la siguiente celda
+                                cell  = next_cell
+                                pos   = next_pos
+                                # Se actualiza la odometria
+                                lpos = self.wtol * pos
+                                self.lock_odometry.acquire()
+                                self.x.value = lpos.x
+                                self.y.value = lpos.y
+                                self.lock_odometry.release()
+                                # Siguiente estado
+                                state = "START_CELL_ADVENTURE"
+                                print("FORWARD -> START_CELL_ADVENTURE")
+                                self.setSpeed(0, 0)
 
-                    # Si ha llegado al centro y era la ultima celda, termina
-                    if next_cell == self.rmap.goal:
-                        print("Goal Reached!: ", next_cell, self.rmap.goal)
-                        self.setSpeed(0, 0)
-                        break
-                    # Si no, avanzamos a la siguiente celda
-                    else:
-                        # Se actualiza a la siguiente celda
-                        cell  = next_cell
-                        pos   = next_pos
-                        # Se actualiza la odometria
-                        lpos = self.wtol * pos
-                        self.lock_odometry.acquire()
-                        self.x.value = lpos.x
-                        self.y.value = lpos.y
-                        self.lock_odometry.release()
-                        # Siguiente estado
-                        state = "START_CELL_ADVENTURE"
-                        print("FORWARD -> START_CELL_ADVENTURE")
-                        self.setSpeed(0, 0)
-
-        elif self.rmpa.neighborhood == 8:
+        elif self.rmap.neighborhood == 8:
             # Variables extra para la 8 vecindad
             changes            = False
             sense              = 1
