@@ -445,7 +445,7 @@ class Robot:
         print("Robot centered at", x, y, th)
 
     #-- Seguimiento de objetos -------------
-    def initCamera(self):
+    def initCamera(self, resolution):
         '''
             Initialize the camera
 
@@ -454,13 +454,18 @@ class Robot:
                 rawCapture = object to manage the camera
         '''
         # Init camera
-        self.cam = picamera.PiCamera()
-        self.cam.resolution = self.resolution # default (640, 480)
-        self.cam.framerate  = self.framerate   # default 32
-        self.rawCapture = PiRGBArray(self.cam, size=self.resolution)
+        # self.cam = picamera.PiCamera()
+        # self.cam.resolution = self.resolution # default (640, 480)
+        # self.cam.framerate  = self.framerate   # default 32
+        # self.rawCapture = PiRGBArray(self.cam, size=self.resolution)
+        cam = picamera.PiCamera()
+        cam.resolution = resolution # default (640, 480)
+        cam.framerate = self.framerate   # default 32
+        rawCapture = PiRGBArray(cam, size=resolution)
 
         # Allow the camera to warmup
         time.sleep(0.1)
+        return cam, rawCapture
 
     def initMyBlobDetector(self):
         '''
@@ -563,14 +568,15 @@ class Robot:
         targetRotationReached = False   # True if the robot is aligned with the object on the x-axis.
 
         # Initializations
+        cam, rawCapture = self.initCamera((320, 240))
         detector = self.initMyBlobDetector()
 
         # Transform constraints
-        rotation_transform      = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
-        outbound_transform_xmin = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
-        outbound_transform_xmax = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.cam_center.x)  
-        outbound_transform_y    = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
-        fixed_position_transform      = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
+        rotation_transform          = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
+        outbound_transform_xmin     = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
+        outbound_transform_xmax     = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.cam_center.x)  
+        outbound_transform_y        = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
+        fixed_position_transform    = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
         
         # Object positional information
         side = 1 # Last side the ball was seen (-1 = left, 1 = right).
@@ -579,7 +585,8 @@ class Robot:
         
         # Main loop
         while True:
-            for img in self.cam.capture_continuous(self.rawCapture, format="bgr", use_video_port=True):
+            # for img in self.cam.capture_continuous(self.rawCapture, format="bgr", use_video_port=True):
+            for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 
                 # Get robot odometry
                 x, y, _, bh = self.readOdometry()
@@ -602,8 +609,8 @@ class Robot:
                     image = cv.drawKeypoints(image, keypoints, np.array([]), (255,255,255), cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
                     cv.imshow('Captura', image)
                     if cv.waitKey(1) & 0xff == 27:
-                        self.cam.close()
-                self.rawCapture.truncate(0)  # remove img.array content
+                        cam.close()
+                rawCapture.truncate(0)  # remove img.array content
                 
                 # Decide v and w for the robot to get closer to target position
                 v  = 0
@@ -640,6 +647,7 @@ class Robot:
                         else:
                             # The basket has caught the object
                             print("Ball caught")
+                            cam.close()
                             return
 
                     # Checking y coordinate location of the blob within the catchment region
@@ -658,7 +666,7 @@ class Robot:
                         else:
                             nextToMe = False
                     # Rotate until ball found. Set max angular speed.
-                    w = side * self.fw_max
+                    w = (side * self.fw_max)
                     # If the basket has been lowered, it will be raised again.
                     wb = int(bh > 5) * -1
                     targetRotationReached = False
@@ -698,15 +706,18 @@ class Robot:
         return new_img
 
     def matchObject(self, img_ref, showMatches=False):
-
+        cam, rawCapture = self.initCamera((1312, 976))
         MIN_MATCH_COUNT = 20       # initially
         MIN_MATCH_OBJECTFOUND = 15 # after robust check, to consider object-found
         # Por eficiencia, que lo haga una sola vez.
         fst_img = cv.cvtColor(img_ref, cv.COLOR_BGR2GRAY)
 
         while True:
-            self.cam.capture(self.rawCapture, format="BGR")
-            frame = cv.flip(self.rawCapture.array, -1) 
+            # self.cam.capture(self.rawCapture, format="bgr")
+            cam.capture(rawCapture, format="bgr")
+            # frame = cv.flip(rawCapture.array, -1)
+            frame = rawCapture.array
+            cv.imwrite("frame.jpg", frame)
             # Feature extractor uses grayscale images
             snd_img = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
             # Create a detector with the parameters
@@ -726,10 +737,12 @@ class Robot:
             snd_kp, snd_des = detector.detectAndCompute(snd_img, None)
             if fst_des is None or snd_des is None:
                 print("WARNING -- Empty detection?")
+                cam.close()
                 return False
             if len(fst_des) < MIN_MATCH_COUNT or len(snd_des) < MIN_MATCH_COUNT:
                 print("WARNING -- Not enough features (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
                 return False
+                cam.close()
             print (" FEATURES extracted (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
 
             # Matching
@@ -757,9 +770,9 @@ class Robot:
                 H_21, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 3.0)
                 matches_mask = mask.ravel().tolist()
                 num_robuts_matches = np.sum(matches_mask)
-                if num_robuts_matches < MIN_MATCH_OBJECTFOUND:
-                    print(" NOT enough ROBUST matches - %d (required %d)" % (num_robuts_matches, MIN_MATCH_OBJECTFOUND))
-                    return False
+                # if num_robuts_matches < MIN_MATCH_OBJECTFOUND:
+                #     print(" NOT enough ROBUST matches - %d (required %d)" % (num_robuts_matches, MIN_MATCH_OBJECTFOUND))
+                #     return False
                 h,w = fst_img.shape
                 pts = np.float32([[0,0], [0,h-1], [w-1,h-1], [w-1,0]]).reshape(-1,1,2)
                 dst = cv.perspectiveTransform(pts, H_21)
@@ -779,11 +792,17 @@ class Robot:
                         res = cv.resize(res, (int(res.shape[1]/2.5), int(res.shape[0]/2.5)), interpolation=cv.INTER_LINEAR)
                     cv.imshow("INLIERS", res)
                     cv.waitKey(0)
+                if num_robuts_matches < MIN_MATCH_OBJECTFOUND:
+                    print(" NOT enough ROBUST matches - %d (required %d)" % (num_robuts_matches, MIN_MATCH_OBJECTFOUND))
+                    cam.close()
+                    return False
         
                 print(" ROBUST matches found - %d (out of %d) --> OBJECT FOUND!" % (np.sum(matches_mask), len(good)))
+                cam.close()
                 return True
             else:
                 print(" Not enough initial matches are found - %d (required %d)" % (len(good), MIN_MATCH_COUNT))
+                cam.close()
                 return False
 
 

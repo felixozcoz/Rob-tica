@@ -67,20 +67,21 @@ def main():
         # . 2a fase. Navegacion
         robot.playMap()
         # . 3a fase. Obtencion de la salida
-        robot.initCamera()
-        found = robot.matchObject(img_R2D2_or_BB8)
+        # robot.initCamera()
+        found = robot.matchObject(img_R2D2_or_BB8, showMatches=False)
         print("Found: ", found)
         exit  = exit_cells[int(not found)]
         # . 4a fase. Tracking (mascara con colores negativos)
-        #robot.trackObject((80, 70, 50), (100, 255, 255))
+        robot.trackObject((80, 70, 50), (100, 255, 255))
         # . 5a fase. Salida
-        #x, y, _, _ = robot.readOdometry()
-        #rmap.replanPath_8N(rmap.pos2cell(pos.x, pos.y), exit)
-        #points = reversed(rmap.path)
-        #for point in points:
-        #   point = cell2pos(point)
-        #   point = list(robot.wtol * point)[:2]
-        #robot.playTrayectory(points)
+        x, y, _, _ = robot.readOdometry()
+        pos = robot.ltow * Vector2(x, y, 1)
+        rmap.setPath_8N(rmap.pos2cell(pos.x, pos.y), exit)
+        points = reversed(rmap.path)
+        for point in points:
+          point = rmap.cell2pos(point)
+          point = list(robot.wtol * point)[:2]
+        robot.playTrayectory(points)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

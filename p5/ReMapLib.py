@@ -283,7 +283,7 @@ class Map:
                     neighbor = [cell[0]+dx, cell[1]+dy]
                     neighbor_conn = [conn[0]+dx, conn[1]+dy]
                     # Si esta libre la conexion y no pertenece a ninguna frontera, es candidato a ser expandido
-                    if not (dx==0 and dy==0) and self.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]] and neighbor not in expand:
+                    if not (dx==0 and dy==0) and self.connectionMatrix[int(neighbor_conn[0])][int(neighbor_conn[1])] and neighbor not in expand:
                         border = self.insert(border, {"parent": node, "coords": neighbor})
 
     def replanPath_8N(self, cell):
