@@ -59,7 +59,6 @@ class Robot:
         for _ in range(3):
             # self.light = self.BP.get_sensor(self.PORT_COLOR)
             self.light = 0.0
-        #self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
         # Configure gyroscope
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
@@ -172,14 +171,17 @@ class Robot:
             while not self.finished.value:
                 # current processor time in a floating point value, in seconds
                 tIni = time.clock()
-                
+
+                #Theta with Gyros
+                try:
+                    th, _ = self.BP.get_sensor(self.PORT_GYROSCOPE)
+                except Exception:
+                    print("Gyroscope error")
+                    continue
                 # Update odometry uses values that require mutex, they are declared as value, so lock
                 # is implicitly done for atomic operations (BUT =+ is NOT atomic)
                 # Calculate the arc of circumfrence traveled by each wheel
                 left_encoder, right_encoder, basket_encoder, _, _, _, v, w = self.readSpeed()
-                
-                #Theta with Gyros
-                th, _ = self.BP.get_sensor(self.PORT_GYROSCOPE)
 
                 #th_rad = np.deg2rad(th)
                 #delta_th = np.deg2rad(th - self.th.value)
@@ -373,6 +375,7 @@ class Robot:
                             rotation_transform = Transform(Vector2.zero, rotation=th)
                             self.setSpeed(0, -np.sign(th) * 0.5)
                         self.setSpeed(0, 0)
+                        break
                         
                     else:
                         position = next_position
@@ -388,23 +391,23 @@ class Robot:
             distance = np.mean(us_ev3_values) % self.rmap.sizeCell
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
             us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
-            print(distance)
-            if distance < 14.5:
+            # print(distance)
+            if distance < 13.5:
                 self.setSpeed(-3,0)
-            elif distance > 15.5:
+            elif distance > 14.5:
                 self.setSpeed(3,0)
             else:
                 self.setSpeed(0,0)
                 break
 
         # Rotar el robot hacia el muro lateral (izda o dcha)
-        x, y, th, _ = self.readOdometry()
+        _, _, th, _ = self.readOdometry()
         odom_rotation_transform = Transform(Vector2.zero, rotation=th)
         rotation_transform = Transform(Vector2.zero, rotation=side*90)
         while not rotation_transform == odom_rotation_transform:
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
             self.setSpeed(0, side*0.5)
-            x, y, th, _ = self.readOdometry()
+            _, _, th, _ = self.readOdometry()
             odom_rotation_transform = Transform(Vector2.zero, rotation=th)
 
         # Centrar el robot en y en la celda con la distancia al muro lateral
@@ -412,23 +415,23 @@ class Robot:
             distance = np.mean(us_ev3_values) % self.rmap.sizeCell
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
             us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
-            print(distance)
-            if distance < 12.5:
+            # print(distance)
+            if distance < 14.5:
                 self.setSpeed(-3,0)
-            elif distance > 13.5:
+            elif distance > 15.5:
                 self.setSpeed(3,0)
             else:
                 self.setSpeed(0,0)
                 break
         
         # Rotar el robot hacia su orientacion inicial
-        x, y, th, _ = self.readOdometry()
+        _, _, th, _ = self.readOdometry()
         odom_rotation_transform = Transform(Vector2.zero, rotation=th)
         rotation_transform = Transform(Vector2.zero, rotation=0.0)
         while not rotation_transform == odom_rotation_transform:
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
             self.setSpeed(0, -side*0.5)
-            x, y, th, _ = self.readOdometry()
+            _, _, th, _ = self.readOdometry()
             odom_rotation_transform = Transform(Vector2.zero, rotation=th)
 
         # Actualizar odometria
@@ -439,6 +442,7 @@ class Robot:
         self.y.value = lpos.y
         self.lock_odometry.release()
         x, y, th, _ = self.readOdometry()
+        print("Robot centered at", x, y, th)
 
     #-- Seguimiento de objetos -------------
     def initCamera(self):
@@ -853,6 +857,7 @@ class Robot:
                     if rotation_transform == transform:
                         state = "RECOGN"
                         print("ROTATION -> RECOGN")
+                        print("Odometry:", x, y, th)
                         self.setSpeed(0, 0)
 
                 # C. Estado de reconomiento del entorno
@@ -945,6 +950,7 @@ class Robot:
                         if us_position_reached:
                             self.setSpeed(0, 0)
                             # Si ha llegado al centro y era la ultima celda, termina
+                            print("next_cell", next_cell, " goal", self.rmap.goal)
                             if next_cell == self.rmap.goal:
                                 print("Goal Reached!: ", next_cell, self.rmap.goal)
                                 break
