@@ -246,6 +246,7 @@ def main():
             print("test image %s does not exist" % args.image)
             return
         im = cv2.imread(args.image, cv2.IMREAD_COLOR)
+        im = cv2.convertScaleAbs(im, alpha=1.5, beta=10)
         mirror=False
         
     if not os.path.isfile(args.robot):
