@@ -590,10 +590,7 @@ class Matrix3:
             row_str.append("\n  [ " + str(round(self.A[i][0], 7)) + "," + str(round(self.A[i][1], 7)) + "," + str(round(self.A[i][2], 7)) + "," + str(round(self.A[i][3], 7)) + " ]")
         return "(" + row_str[0] + row_str[1] + row_str[2] + row_str[3] + "\n)" 
 
-
-###########################################################
-# TRANSFORM
-###########################################################
+# Transform
 class Transform:
     # Constructor
     def __init__(self, position: Vector2 = Vector2.zero, rotation: float = None, forward: Vector2 = None, CUSTOM_POSITION_ERROR = None, CUSTOM_ROTATION_ERROR = None):
@@ -728,6 +725,68 @@ class Transform:
             Representacion de un transform en pantalla
         """
         return "Transform { pos: " + str(self.position) + ", rot: " + str(round(self.rotation, 7)) + ", fwr: " + str(self.forward) + " }"
+
+
+# Transform
+class Pixel:
+    # Constructor
+    def __init__(self, coords, CUSTOM_COORDS_ERROR =None):
+        """
+            Transform class constructor
+        """
+        # Position
+        self.coords = coords
+        self.COORDS_ERROR = POSITION_ERROR
+        if not CUSTOM_COORDS_ERROR is None:
+            self.COORDS_ERROR = CUSTOM_COORDS_ERROR
+        # Rotation and orientation
+        self.rotation = 0
+        self.right    = Vector2(0,1)
+        self.ROTATION_ERROR = ROTATION_ERROR
+        # Area error
+        coords_shift = Vector2.error
+        self.coords_inf = coords - coords_shift
+        self.coords_sup = coords + coords_shift
+        # Distance error
+        self.lmin         = {
+            "pass": False,
+            "last": np.inf
+        }
+        # Orientation error
+        #self.rotation_inf = rotation - ROTATION_ERROR
+        #self.rotation_sup = rotation + ROTATION_ERROR
+
+    # Equivalencia
+    def __eq__(self, pixel):
+        """
+            Transform equality check within an error margin
+        """
+        # COORDS CHECK
+        # 1. Area check
+        COORDS = (self.coords_inf.x <= pixel.coords.x and pixel.coords.x < self.coords_sup.x) and \
+            (self.coords_inf.y <= pixel.coords.y and pixel.coords.y < self.coords_sup.y)
+        # 2. Distance check
+        dist = (self.coords - pixel.coords).magnitude()
+        COORDS |= self.COORDS_ERROR > dist
+        # 3. Local minimum check
+        COORDS |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
+        self.distance = {
+            "pass": (self.lmin["last"] >= dist),
+            "last": dist
+        }
+        # ROTATION CHECK
+        ROTATION = self.ROTATION_ERROR > abs(self.rotation - pixel.rotation)
+        #ROTATION = ROTATION_ERROR > forward.angle(pixel.forward)
+
+        # BOTH CHECK
+        return COORDS and ROTATION
+
+    # ToString
+    def __repr__(self) -> str:
+        """
+            Representacion de un pixel en pantalla
+        """
+        return "Transform { coords: " + str(self.coords) + " }"
 
 
 # Funciones extra

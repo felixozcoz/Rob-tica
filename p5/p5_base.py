@@ -21,8 +21,8 @@ def main():
         # print("Light: ", light)
         # robot.BP.set_sensor_type(robot.PORT_COLOR, robot.BP.SENSOR_TYPE.NONE)
         # light = light[-1]
-        rmap = None
-        rmap_ref = None
+        #rmap = None
+        #rmap_ref = None
 #
 #
         ## 2a. Inicializar parametros en base al sensor
@@ -46,12 +46,12 @@ def main():
         #     exit_cells      = [[6,3], [6,6]]
         #     side = -1
 
-        rmap            = Map("mapaB_CARRERA.txt", [2,5], [3,3], neighborhood=4)
-        rmap_ref        = rmap.cell2pos([7,5], list) + [-90]
-        exit_cells      = [[6,3], [6,0]] 
-        side = 1
+        #rmap            = Map("mapaB_CARRERA.txt", [2,5], [3,3], neighborhood=4)
+        #rmap_ref        = rmap.cell2pos([7,5], list) + [-90]
+        #exit_cells      = [[6,3], [6,0]] 
+        #side = 1
         ## 2b. Iniciar la odometria
-        robot.loadMap(rmap, rmap_ref)
+        #robot.loadMap(rmap, rmap_ref)
         robot.startOdometry()
 
 
@@ -72,28 +72,27 @@ def main():
         # . 2a fase. Navegacion
         # robot.playMap()
         # . 3a fase. Obtencion de la salida
-        # robot.initCamera()
         # print("Searching ...")
         # found = robot.matchObject(img_R2D2_or_BB8, showMatches=True)
         # print("Found: ", found)
-        exit_cell = exit_cells[0] #exit_cells[int(not found)]
+        #exit_cell = exit_cells[0] #exit_cells[int(not found)]
         # . 4a fase. Tracking (mascara con colores negativos)
-        # robot.trackObject((80, 70, 50), (100, 255, 255))
+        robot.trackObject((80, 70, 50), (100, 255, 255))
         # . 5a fase. Salida
-        # x, y, _, _ = robot.readOdometry()
-        robot.lock_odometry.acquire()
-        robot.x.value = 120.0
-        robot.y.value = -120.0
-        robot.lock_odometry.release()
-        x = 120.0
-        y = -120.0
-        pos = robot.ltow * Vector2(x, y, 1)
-        rmap.setPath_8N(rmap.pos2cell(pos.x, pos.y), exit_cell)
-        points = list(reversed(rmap.path))
-        for point in points:
-            point = rmap.cell2pos(point)
-            point = list(robot.wtol * point)[:2]
-        robot.playTrajectory(points, 5, True)
+        ## x, y, _, _ = robot.readOdometry()
+        #robot.lock_odometry.acquire()
+        #robot.x.value = 120.0
+        #robot.y.value = -120.0
+        #robot.lock_odometry.release()
+        #x = 120.0
+        #y = -120.0
+        #pos = robot.ltow * Vector2(x, y, 1)
+        #rmap.setPath_8N(rmap.pos2cell(pos.x, pos.y), exit_cell)
+        #points = list(reversed(rmap.path))
+        #for point in points:
+        #    point = rmap.cell2pos(point)
+        #    point = list(robot.wtol * point)[:2]
+        #robot.playTrajectory(points, 5, True)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

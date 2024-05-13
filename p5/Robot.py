@@ -13,7 +13,7 @@ import sys          #
 import time         # Sleep function
 from decimal import Decimal
                     # For module operations with decimals
-from geometry import Vector2, Matrix2, Transform
+from geometry import Vector2, Matrix2, Transform, Pixel
                     # For geometrical operations
 from matplotlib import pyplot as plt
                     # To plot a graph
@@ -55,10 +55,10 @@ class Robot:
         # Configure color sensor
         self.PORT_COLOR = self.BP.PORT_3
         # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
-        self.light = 0
-        for _ in range(3):
-            # self.light = self.BP.get_sensor(self.PORT_COLOR)
-            self.light = 0.0
+        #self.light = 0
+        #for _ in range(3):
+        #    # self.light = self.BP.get_sensor(self.PORT_COLOR)
+        #    self.light = 0.0
         # Configure gyroscope
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
@@ -113,7 +113,7 @@ class Robot:
             "filterByConvexity": False,
             "filterByInertia": False
         }
-        self.blob_detector_ymin = 3/4*self.cam_center.y
+        self.blob_detector_ymin = 0 #1/4*self.cam_center.y
                                                # Minimum distance in y to detect a good blob.
         # - Robot control
         self.backwards_dist = 10               # Distance that the robot will retreat (cm) in case of losing the ball nearby.
@@ -127,10 +127,10 @@ class Robot:
                                                # area 'x' has a speed 'v'. It is born from the idea that 1/sqrt(x)
                                                # causes speeds to be small and decrease too much
                                                # fast.
-        self.fv = lambda y : -0.14*y + 25      # Function for tangential speed.
+        self.fv = lambda y : -2.25*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop)) #-0.14*y + 25
                                                # - y is the difference between the component and the best blob
                                                # and the center point of the image 
-        self.fw = lambda x : -2*x/self.cam_center.x
+        self.fw = lambda x : -1.5*x/self.cam_center.x
                                                # Function for angular velocity.
         self.fw_max = self.fw(self.cam_center.x)
                                                # Maximum angular speed.
@@ -215,12 +215,12 @@ class Robot:
                 self.sC.value = basket_encoder
                 # update ultrasonic sensors value
                 self.us_ev3.value   = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
-                try:
-                    right_sensor = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
-                except Exception:
-                    print("Lateral sensor error")
-                else:
-                    self.us_nxt.value   = right_sensor
+                #try:
+                #    right_sensor = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+                #except Exception:
+                #    print("Lateral sensor error")
+                #else:
+                #    self.us_nxt.value   = right_sensor
                     
                 self.lock_odometry.release()
                 # Aquí sale bien (print correcto) pero en playTrajectory da 0
@@ -406,10 +406,7 @@ class Robot:
                         us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                     self.setSpeed(v, sense*w)
 
-            
-            
 
-                
     def centerRobot(self, side):
         # Centrar el robot en x en la celda con la distancia al muro de delante
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
@@ -550,6 +547,7 @@ class Robot:
         '''
         # If there are no blobs, there is no better blob
         if not blobs:
+            print("No hay blobs")
             return None
             
         # Criterion: largest and most centered if equal, if not largest
@@ -570,16 +568,12 @@ class Robot:
                     # If new blob is equal in size but more centered
                     elif (best_blob.size == blob.size) and (abs(best_blob.pt[0] - self.cam_center.x) > abs(blob.pt[0] - self.cam_center.x)):
                         best_blob = blob
-        
-        # Center blob
-        if best_blob:
-            best_blob.pt = (best_blob.pt[0] - self.cam_center.x, best_blob.pt[1] - self.cam_center.y)
-            #print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
-            
-        return best_blob
     
+        return best_blob
+
 
     def trackObject(self, colorRangeMin, colorRangeMax, showFrame=False):
+        # targetSize=??, target=??, catch=??, ...)
         '''
             Track the object
 
@@ -591,16 +585,30 @@ class Robot:
             Returns:
                 finished = True if the tracking is finished
         '''
+        # Flags
+        targetRotationReached = False   # True if the robot is aligned with the object on the x-axis.
 
         # Initializations
         cam, rawCapture = self.initCamera((320, 240))
         detector = self.initMyBlobDetector()
 
+        # Pixel constraits
+        rotation_transform      = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=15)
+        outbound_transform_xmin = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=self.xmin_to_rotate) 
+        outbound_transform_xmax = Pixel(Vector2.zero,  CUSTOM_COORDS_ERROR=self.cam_center.x)  
+        outbound_transform_y    = Pixel(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_COORDS_ERROR=10)
+        position_transform      = Pixel(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_COORDS_ERROR=10)
+        
+        # Object positional information
+        side = 1     # Last side the ball was seen (-1 = left, 1 = right).
+        
         # Main loop
         while True:
             for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+
                 # Get robot odometry
-                x, y, _, bh = self.readOdometry()
+                _, _, _, bh = self.readOdometry()
+
                 # Get a new frame
                 # https://stackoverflow.com/questions/32522989/opencv-better-detection-of-red-color
                 # Negative image + Blue mask
@@ -623,12 +631,62 @@ class Robot:
                         cam.close()
                 rawCapture.truncate(0)  # remove img.array content
 
-            if best_blob:
-                self.setSpeed(0, 0)
-                break;
-            else:
-                self.setSpeed(0, self.fw_max)
-            
+
+                # Decide v and w for the robot to get closer to target position
+                v = 0; w = 0; wb = 0
+                if best_blob:
+                    # Center blob. Define transforms (catchment regions)
+                    best_blob.pt = (best_blob.pt[0] - self.cam_center.x, best_blob.pt[1] - self.cam_center.y)
+                    blob_rotation = Pixel( Vector2(x=best_blob.pt[0], y=0) )  # Location to rotate to
+                    blob_position = Pixel( Vector2(x=0, y=best_blob.pt[1]) )  # Location to go to
+
+                    if not targetRotationReached:
+                        # Target rotation
+                        if not rotation_transform == blob_rotation:
+                            # Last side detected. If sign < 0, the ball is to the left, if sign > 0, to the right
+                            side = np.sign(blob_rotation.coords.x)
+                            # Speeds. If sign < 0 -> w > 0 (-1*sign*w = -1*-1*w), if sign > 0 -> w < 0 (-1*sign*w = -1*1*w)
+                            w = self.fw(blob_rotation.coords.x)
+                        else:
+                            targetRotationReached = True
+
+                    # Target position
+                    if not position_transform == blob_position:
+                        print(blob_position.coords.y)
+                        v = self.fv(blob_position.coords.y)
+                        # Raise the basket till intial position (0º)
+                        if bh > 5:
+                            wb = -1
+                    else:
+                        # Object found. Lower the basket 90º
+                        if bh < 90:
+                            wb = 1
+                        else:
+                            # The basket has caught the object
+                            print("Ball caught")
+                            return
+
+                    # Checking y coordinate location of the blob within the catchment region
+                    if not outbound_transform_y == blob_position:
+                        # Checking location in x coordinate location of the blob within the min catchment region
+                        if not outbound_transform_xmin == blob_rotation:
+                            targetRotationReached = False
+                    else:
+                        # If y coordinate is within the catchement region.
+                        # Check if x coordinate is within the max catchment region.
+                        if not outbound_transform_xmax == blob_rotation:
+                            targetRotationReached = False
+                            
+                else:
+                    # Rotate until ball found. Set max angular speed.
+                    w = side * self.fw_max
+                    # If the basket has been lowered, it will be raised again.
+                    if bh > 5:
+                        wb = -1
+                    targetRotationReached = False
+    
+                # Robot speed
+                self.setSpeed(v, w, wb)
 
     def trackObject2(self, colorRangeMin, colorRangeMax, showFrame=False):
         # targetSize=??, target=??, catch=??, ...)
@@ -650,12 +708,12 @@ class Robot:
         cam, rawCapture = self.initCamera((320, 240))
         detector = self.initMyBlobDetector()
 
-        # Transform constraints
-        rotation_transform          = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=15)
-        outbound_transform_xmin     = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.xmin_to_rotate) 
-        outbound_transform_xmax     = Transform(Vector2.zero, CUSTOM_POSITION_ERROR=self.cam_center.x)  
-        outbound_transform_y        = Transform(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_POSITION_ERROR=10)
-        fixed_position_transform    = Transform(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_POSITION_ERROR=10)
+        # Pixel constraints
+        rotation_pixel      = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=15)
+        outbound_pixel_xmin = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=self.xmin_to_rotate) 
+        outbound_pixel_xmax = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=self.cam_center.x)  
+        outbound_pixel_y    = Pixel(Vector2(x=0, y=self.cam_center.y//4), CUSTOM_COORDS_ERROR=10)
+        position_pixel      = Pixel(Vector2(x=0, y=self.ymin_to_stop), CUSTOM_COORDS_ERROR=10)
         
         # Object positional information
         side = 1 # Last side the ball was seen (-1 = left, 1 = right).
@@ -669,6 +727,7 @@ class Robot:
 
                 # Get robot odometry
                 x, y, _, bh = self.readOdometry()
+                v, w, wb    = 0, 0, 0
                 # Get a new frame
                 # https://stackoverflow.com/questions/32522989/opencv-better-detection-of-red-color
                 # Negative image + Blue mask
@@ -691,35 +750,31 @@ class Robot:
                         cam.close()
                 rawCapture.truncate(0)  # remove img.array content
                 
-                # Decide v and w for the robot to get closer to target position
-                v  = 0
-                w  = 0
-                wb = 0
-                
                 if best_blob:
-                    # Define transforms (catchment regions)
-                    blob_rotation = Transform( Vector2(x=best_blob.pt[0], y=0) )  # Location to rotate to
-                    blob_position = Transform( Vector2(x=0, y=best_blob.pt[1]) )  # Location to go to
+                    # Center blob. Define pixels (catchment regions)
+                    best_blob.pt = (best_blob.pt[0] - self.cam_center.x, best_blob.pt[1] - self.cam_center.y)
+                    blob_rotation = Pixel(Vector2(x=best_blob.pt[0], y=0))  # Location to rotate to
+                    blob_position = Pixel(Vector2(x=0, y=best_blob.pt[1]))  # Location to go to
                     nextToMe = False
                     backwards_refpos = None
 
                     if not targetRotationReached:
                         # Target rotation
-                        if not rotation_transform == blob_rotation:
+                        if not rotation_pixel == blob_rotation:
                             # Last side detected. If sign < 0, the ball is to the left, if sign > 0, to the right
-                            side = np.sign(blob_rotation.position.x)
+                            side = np.sign(blob_rotation.coords.x)
                             # Speeds. If sign < 0 -> w > 0 (-1*sign*w = -1*-1*w), if sign > 0 -> w < 0 (-1*sign*w = -1*1*w)
-                            w = self.fw(blob_rotation.position.x)
+                            w = self.fw(blob_rotation.coords.x)
                         else:
                             targetRotationReached = True
 
                     # Target position
-                    if not fixed_position_transform == blob_position:
-                        v = self.fv(blob_position.position.y)
+                    if not position_pixel == blob_position:
+                        v = self.fv(blob_position.coords.y)
                         # Raise the basket till intial position (0º)
                         wb = int(bh > 5) * -1
                     else:
-                        nextToMe = not outbound_transform_xmin == blob_rotation
+                        nextToMe = not outbound_pixel_xmin == blob_rotation
                         # Object found. Lower the basket 90º
                         if bh < 90:
                             wb = 1
@@ -733,7 +788,7 @@ class Robot:
                     # El objetivo estará alineado con el robot cuando:
                     # 1. Este en el centro de la imagen en x y la zona inferior en y
                     # 2. Este a lo largo de toda la imagen en x y en la ultima franja en y
-                    targetRotationReached = (not outbound_transform_y == blob_position and outbound_transform_xmin == blob_rotation) or outbound_transform_xmax == blob_rotation
+                    targetRotationReached = (not outbound_pixel_y == blob_position and outbound_pixel_xmin == blob_rotation) or outbound_pixel_xmax == blob_rotation
 
                 else: 
                     # Retrocede un par de cm si la pelota estaba al lado de la camara la ultima vez que se vio
