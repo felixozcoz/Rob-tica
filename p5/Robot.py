@@ -36,45 +36,57 @@ class Robot:
         Initialize Motors and Sensors according to the set up in your robot
         """
         # Robot construction parameters
-        self.R             = 2.8               # Wheels' radius (cm)
-        self.L             = 15.25             # Wheels' axis length (cm)
+        self.R             = 2.8           # Wheels' radius (cm)
+        self.L             = 15.25         # Wheels' axis length (cm)
         ##################################################
         # Motors and sensors setup
         # Create an instance of the BrickPi3 class. BP will be the BrickPi3 object.
         self.BP = brickpi3.BrickPi3()
-        # Configure sensors, for example a touch sensor.
-        #self.BP.set_sensor_type(self.BP.PORT_1, self.BP.SENSOR_TYPE.TOUCH)
-        # Configure utltrasonic sensors
+        # . Ultrasonido EV3
         self.PORT_ULTRASONIC_EV3 = self.BP.PORT_1
-        self.PORT_ULTRASONIC_NXT = self.BP.PORT_2
         self.BP.set_sensor_type(self.PORT_ULTRASONIC_EV3, self.BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
-        self.us_ev3 = Value('d', 0.0)            # Latest distances ultrasonic EV3 sensor stored
-
-        self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
-        self.us_nxt = Value('d', 0.0)
-
-        # Configure color sensor
+        # . Ultrasonido NXT
+        #self.PORT_ULTRASONIC_NXT = self.BP.PORT_2
+        #self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
+        # . Sensor de luz
         self.PORT_COLOR = self.BP.PORT_3
         # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
-        #self.light = 0
-        #for _ in range(3):
-        #    # self.light = self.BP.get_sensor(self.PORT_COLOR)
-        #    self.light = 0.0
-        # Configure gyroscope
+        # . Giroscopio
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
-        # Configure motors
+        # . Motores
         self.PORT_LEFT_MOTOR  = self.BP.PORT_D
         self.PORT_RIGHT_MOTOR = self.BP.PORT_A
         self.PORT_BASKET_MOTOR = self.BP.PORT_B
-        # Reset encoder B and C (or all the motors you are using)
+        # . Encoders
         self.BP.offset_motor_encoder(self.PORT_RIGHT_MOTOR, self.BP.get_motor_encoder(self.PORT_RIGHT_MOTOR))
         self.BP.offset_motor_encoder(self.PORT_LEFT_MOTOR, self.BP.get_motor_encoder(self.PORT_LEFT_MOTOR))
         self.BP.offset_motor_encoder(self.PORT_BASKET_MOTOR, self.BP.get_motor_encoder(self.PORT_BASKET_MOTOR))
+        # . Tiempo para inicializar los componentes
+        time.sleep(5)
+        # . Cold start de los componentes. Al iniciar los componentes dan valores basura iniciales que son descartados
+        self.us_ev3 = Value('d', 0.0)      # Ultima distancia detectada por el ultrasonido EV3
+        for _ in range(3):
+            self.us_ev3.value = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
+            time.sleep(self.P)
+
+        # self.us_nxt = Value('d', 0.0)    # Ultima distancia detectada por el ultrasonido NXT
+        #  for _ in range(3):
+        #      self.us_nxt.value = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
+        #      time.sleep(self.P)
+
+        # [TODO] Descomentar cuando se use
+        self.light_intensity = 2500
+        # self.light_intensity = 0         # Ultimo nivel de luz detectado por el sensor de luz
+        # for _ in range(3):
+        #     self.light_intensity = self.BP.get_sensor(self.PORT_COLOR)
+        #     time.sleep(self.P)
+        # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
+        
         ##################################################
         # Odometria
         self.lock_odometry = Lock()        # Mutex
-        self.P = 0.01                      # Update period (in seconds)
+        self.P  = 0.01                     # Update period (in seconds)
         self.finished = Value('b', 1)      # Boolean to show if odometry updates are finished
         self.x  = Value('d', local_ref[0]) # Robot X coordinate.
         self.y  = Value('d', local_ref[1]) # Robot Y coordinate.
@@ -83,35 +95,34 @@ class Robot:
         self.sD = Value('i', 0)            # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)            # Latest stored LEFT encoder value.
         self.sC = Value('i', 0)            # Latest stored BASKET encoder value.
-        # self.v = Value('d', 0.0)           # Robot linear theorical speed (or tangential if rotating).
-        # self.w = Value('d', 0.0)           # Robot angular theorical speed.
-        # self.wi = Value('d', 0.0)          # Robot left wheel theorical speed.
+        # self.v = Value('d', 0.0)         # Robot linear theorical speed (or tangential if rotating).
+        # self.w = Value('d', 0.0)         # Robot angular theorical speed.
+        # self.wi = Value('d', 0.0)        # Robot left wheel theorical speed.
         self.wd = Value('d', 0.0)          # Robot right wheel theorical speed.
         self.wb = Value('d', 0.0)          # Robot basket theorical angular speed.
 
 
     def getLight(self):
-        """
-        Get the light value from the color sensor.
-        """
+        '''
+            Get the light value from the color sensor.
+        '''
         return self.BP.get_sensor(self.PORT_COLOR)
 
     #-- Odometria --------------------------
     def startOdometry(self):
-        """ This starts a new process/thread that will be updating the odometry periodically """
+        '''
+            This starts a new process/thread that will be updating the odometry periodically
+        '''
         self.finished.value = False
         self.p = Process(target=self.updateOdometry, args=())
         self.p.start()
-        # for _ in range(3):
-        #     self.us_nxt.value = self.BP.get_sensor(self.PORT_ULTRASONIC_NXT)
-        #     time.sleep(self.P)
-        for _ in range(3):
-            self.us_ev3.value = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
-            time.sleep(self.P)
+
+
 
     def readOdometry(self):
-        """ Returns current value of odometry estimation """
-
+        '''
+            Returns current value of odometry estimation
+        '''
         return self.x.value, self.y.value, self.th.value, self.bh.value
 
     def updateOdometry(self): 

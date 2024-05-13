@@ -13,7 +13,7 @@ import re
 
 class Map:
     # Constructor
-    def __init__(self, filename, start, goal, neighborhood=8):
+    def __init__(self, filename, start, goal, neighborhood=4):
         """
             Load and initialize map from file.
 
