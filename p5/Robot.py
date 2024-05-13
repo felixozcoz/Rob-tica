@@ -577,8 +577,60 @@ class Robot:
             #print("\nBest blob found: ", best_blob.pt[0], best_blob.pt[1], best_blob.size)
             
         return best_blob
+    
 
     def trackObject(self, colorRangeMin, colorRangeMax, showFrame=False):
+        '''
+            Track the object
+
+            Parameters:
+                colorRangeMin = minimum color range
+                colorRangeMax = maximum color range
+                showFrame     = show captured frame
+
+            Returns:
+                finished = True if the tracking is finished
+        '''
+
+        # Initializations
+        cam, rawCapture = self.initCamera((320, 240))
+        detector = self.initMyBlobDetector()
+
+        # Main loop
+        while True:
+            for img in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+                # Get robot odometry
+                x, y, _, bh = self.readOdometry()
+                # Get a new frame
+                # https://stackoverflow.com/questions/32522989/opencv-better-detection-of-red-color
+                # Negative image + Blue mask
+                frame = cv.bitwise_not(img.array)  # invertir imagen a negativo
+                frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV) 
+                mask  = cv.inRange(frame, colorRangeMin, colorRangeMax) 
+
+                # Detect all blobs
+                keypoints = detector.detect(mask)
+
+                # Search for the most promising blob...
+                best_blob = self.getBestBlob(keypoints)
+                
+                # Show camera frame if asked
+                if showFrame:
+                    image = cv.bitwise_and(frame, frame, mask=mask)
+                    image = cv.drawKeypoints(image, keypoints, np.array([]), (255,255,255), cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                    cv.imshow('Captura', image)
+                    if cv.waitKey(1) & 0xff == 27:
+                        cam.close()
+                rawCapture.truncate(0)  # remove img.array content
+
+            if best_blob:
+                self.setSpeed(0, 0)
+                break;
+            else:
+                self.setSpeed(0, self.fw_max)
+            
+
+    def trackObject2(self, colorRangeMin, colorRangeMax, showFrame=False):
         # targetSize=??, target=??, catch=??, ...)
         '''
             Track the object
@@ -682,7 +734,7 @@ class Robot:
                     # 1. Este en el centro de la imagen en x y la zona inferior en y
                     # 2. Este a lo largo de toda la imagen en x y en la ultima franja en y
                     targetRotationReached = (not outbound_transform_y == blob_position and outbound_transform_xmin == blob_rotation) or outbound_transform_xmax == blob_rotation
-          
+
                 else: 
                     # Retrocede un par de cm si la pelota estaba al lado de la camara la ultima vez que se vio
                     if nextToMe:
@@ -1187,4 +1239,3 @@ class Robot:
                                 state = "START_CELL_ADVENTURE"
                                 print("FORWARD -> START_CELL_ADVENTURE")
                                 self.setSpeed(0, 0)
-
