@@ -291,68 +291,6 @@ class Transform:
         """
         return "Transform { pos: " + str(self.position) + ", rot: " + str(round(self.rotation, 7)) + ", fwr: " + str(self.forward) + " }"
 
-
-# Transform
-class Pixel:
-    # Constructor
-    def __init__(self, coords, CUSTOM_COORDS_ERROR =None):
-        """
-            Transform class constructor
-        """
-        # Position
-        self.coords = coords
-        self.COORDS_ERROR = POSITION_ERROR
-        if not CUSTOM_COORDS_ERROR is None:
-            self.COORDS_ERROR = CUSTOM_COORDS_ERROR
-        # Rotation and orientation
-        self.rotation = 0
-        self.right    = Vector2(0,1)
-        self.ROTATION_ERROR = ROTATION_ERROR
-        # Area error
-        coords_shift = Vector2.error
-        self.coords_inf = coords - coords_shift
-        self.coords_sup = coords + coords_shift
-        # Distance error
-        self.lmin         = {
-            "pass": False,
-            "last": math.inf
-        }
-        # Orientation error
-        #self.rotation_inf = rotation - ROTATION_ERROR
-        #self.rotation_sup = rotation + ROTATION_ERROR
-
-    # Equivalencia
-    def __eq__(self, pixel):
-        """
-            Transform equality check within an error margin
-        """
-        # COORDS CHECK
-        # 1. Area check
-        COORDS = (self.coords_inf.x <= pixel.coords.x and pixel.coords.x < self.coords_sup.x) and \
-            (self.coords_inf.y <= pixel.coords.y and pixel.coords.y < self.coords_sup.y)
-        # 2. Distance check
-        dist = (self.coords - pixel.coords).magnitude()
-        COORDS |= self.COORDS_ERROR > dist
-        # 3. Local minimum check
-        COORDS |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
-        self.distance = {
-            "pass": (self.lmin["last"] >= dist),
-            "last": dist
-        }
-        # ROTATION CHECK
-        ROTATION = self.ROTATION_ERROR > abs(self.rotation - pixel.rotation)
-        #ROTATION = ROTATION_ERROR > forward.angle(pixel.forward)
-
-        # BOTH CHECK
-        return COORDS and ROTATION
-
-    # ToString
-    def __repr__(self) -> str:
-        """
-            Representacion de un pixel en pantalla
-        """
-        return "Transform { coords: " + str(self.coords) + " }"
-
 # Funciones extra
 def circunferences_secant_points(fst_radius, snd_radius, axis_dist, plot=False):
     """

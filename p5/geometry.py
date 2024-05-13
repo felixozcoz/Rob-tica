@@ -727,18 +727,18 @@ class Transform:
         return "Transform { pos: " + str(self.position) + ", rot: " + str(round(self.rotation, 7)) + ", fwr: " + str(self.forward) + " }"
 
 
-# Transform
+# Pixel
 class Pixel:
     # Constructor
-    def __init__(self, coords, CUSTOM_COORDS_ERROR =None):
+    def __init__(self, coords, CUSTOM_COORDS_RANGE=None):
         """
             Transform class constructor
         """
         # Position
         self.coords = coords
         self.COORDS_ERROR = POSITION_ERROR
-        if not CUSTOM_COORDS_ERROR is None:
-            self.COORDS_ERROR = CUSTOM_COORDS_ERROR
+        if CUSTOM_COORDS_RANGE is not None:
+            self.COORDS_ERROR = CUSTOM_COORDS_RANGE
         # Rotation and orientation
         self.rotation = 0
         self.right    = Vector2(0,1)
@@ -748,10 +748,10 @@ class Pixel:
         self.coords_inf = coords - coords_shift
         self.coords_sup = coords + coords_shift
         # Distance error
-        self.lmin         = {
-            "pass": False,
-            "last": np.inf
-        }
+        #self.lmin         = {
+        #    "pass": False,
+        #    "last": np.inf
+        #}
         # Orientation error
         #self.rotation_inf = rotation - ROTATION_ERROR
         #self.rotation_sup = rotation + ROTATION_ERROR
@@ -769,11 +769,11 @@ class Pixel:
         dist = (self.coords - pixel.coords).magnitude()
         COORDS |= self.COORDS_ERROR > dist
         # 3. Local minimum check
-        COORDS |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
-        self.distance = {
-            "pass": (self.lmin["last"] >= dist),
-            "last": dist
-        }
+        #COORDS |= (self.lmin["last"] <  dist) and not self.lmin["pass"]
+        #self.distance = {
+        #    "pass": (self.lmin["last"] >= dist),
+        #    "last": dist
+        #}
         # ROTATION CHECK
         ROTATION = self.ROTATION_ERROR > abs(self.rotation - pixel.rotation)
         #ROTATION = ROTATION_ERROR > forward.angle(pixel.forward)
