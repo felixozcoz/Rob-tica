@@ -14,37 +14,42 @@ def main():
         robot = Robot()
         time.sleep(5)
         
-        light = []
-        for i in range(3):
-           light.append(robot.getLight())
-           time.sleep(0.5) 
-        print("Light: ", light)
-        robot.BP.set_sensor_type(robot.PORT_COLOR, robot.BP.SENSOR_TYPE.NONE)
-        light = light[-1]
+        # light = []
+        # for i in range(3):
+        #    light.append(robot.getLight())
+        #    time.sleep(0.5) 
+        # print("Light: ", light)
+        # robot.BP.set_sensor_type(robot.PORT_COLOR, robot.BP.SENSOR_TYPE.NONE)
+        # light = light[-1]
         rmap = None
         rmap_ref = None
 #
 #
         ## 2a. Inicializar parametros en base al sensor
-        if 2600 < light:  
-            print("Mapa B")
-            # points          = [[0,0], [35,0], [80,35], [160,-35], [195,0], [200,0]]
-            points          = [[0,0], [35,0], [80,35], [160,-35], [200,0]]
-            rmap            = Map("mapaB_CARRERA.txt", [2,5], [3,3], neighborhood=4)
-            rmap_ref        = rmap.cell2pos([7,5], list) + [-90]
-            img_R2D2_or_BB8 = cv.imread("images/BB8_s.png", cv.IMREAD_COLOR)
-            exit_cells      = [[6,4], [6,1]] 
-            side = 1
-        else:
-            print("Mapa A")
-            # points          = [[0,0], [35,0], [80,-35], [160,35], [195,0], [200,0]]
-            points          = [[0,0], [35,0], [80,-35], [160,35], [200,0]]
-            points          = [[0,0], [35,0], [75,-30], [85,-30], [155,30], [165,30], [200,0]]
-            rmap            = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
-            rmap_ref        = rmap.cell2pos([7,1], list) + [-90]
-            img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
-            exit_cells      = [[6,3], [6,6]]
-            side = -1
+        # if 2600 < light:  
+        #     print("Mapa B")
+        #     # points          = [[0,0], [35,0], [80,35], [160,-35], [195,0], [200,0]]
+        #     points          = [[0,0], [35,0], [80,35], [160,-35], [200,0]]
+        #     rmap            = Map("mapaB_CARRERA.txt", [2,5], [3,3], neighborhood=4)
+        #     rmap_ref        = rmap.cell2pos([7,5], list) + [-90]
+        #     img_R2D2_or_BB8 = cv.imread("images/BB8_s.png", cv.IMREAD_COLOR)
+        #     exit_cells      = [[6,4], [6,1]] 
+        #     side = 1
+        # else:
+        #     print("Mapa A")
+        #     # points          = [[0,0], [35,0], [80,-35], [160,35], [195,0], [200,0]]
+        #     points          = [[0,0], [35,0], [80,-35], [160,35], [200,0]]
+        #     points          = [[0,0], [35,0], [75,-30], [85,-30], [155,30], [165,30], [200,0]]
+        #     rmap            = Map("mapaA_CARRERA.txt", [2,1], [3,3], neighborhood=4)
+        #     rmap_ref        = rmap.cell2pos([7,1], list) + [-90]
+        #     img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
+        #     exit_cells      = [[6,3], [6,6]]
+        #     side = -1
+
+        rmap            = Map("mapaB_CARRERA.txt", [2,5], [3,3], neighborhood=4)
+        rmap_ref        = rmap.cell2pos([7,5], list) + [-90]
+        exit_cells      = [[6,3], [6,0]] 
+        side = 1
         ## 2b. Iniciar la odometria
         robot.loadMap(rmap, rmap_ref)
         robot.startOdometry()
@@ -61,27 +66,34 @@ def main():
                 
         # 3. Ejecutar recorrido
         # . 1a fase. Ejecucion de trayectoria
-        robot.playTrajectory(points, 30, False)
+        # robot.playTrajectory(points, 30, False)
         # Centramos robot en su celda
-        robot.centerRobot(side)
+        # robot.centerRobot(side)
         # . 2a fase. Navegacion
-        robot.playMap()
+        # robot.playMap()
         # . 3a fase. Obtencion de la salida
         # robot.initCamera()
-        found = robot.matchObject(img_R2D2_or_BB8, showMatches=False)
-        print("Found: ", found)
-        exit  = exit_cells[int(not found)]
+        # print("Searching ...")
+        # found = robot.matchObject(img_R2D2_or_BB8, showMatches=True)
+        # print("Found: ", found)
+        # exit  = exit_cells[int(not found)]
         # . 4a fase. Tracking (mascara con colores negativos)
-        robot.trackObject((80, 70, 50), (100, 255, 255))
+        # robot.trackObject((80, 70, 50), (100, 255, 255))
         # . 5a fase. Salida
-        x, y, _, _ = robot.readOdometry()
+        # x, y, _, _ = robot.readOdometry()
+        robot.lock_odometry.acquire()
+        robot.x.value = 120.0
+        robot.y.value = -120.0
+        robot.lock_odometry.release()
+        x = 120.0
+        y = -120.0
         pos = robot.ltow * Vector2(x, y, 1)
-        rmap.setPath_8N(rmap.pos2cell(pos.x, pos.y), exit)
-        points = reversed(rmap.path)
+        rmap.setPath_8N(rmap.pos2cell(pos.x, pos.y), exit_cells[int(False)])
+        points = list(reversed(rmap.path))
         for point in points:
-          point = rmap.cell2pos(point)
-          point = list(robot.wtol * point)[:2]
-        robot.playTrayectory(points)
+            point = rmap.cell2pos(point)
+            point = list(robot.wtol * point)[:2]
+        robot.playTrajectory(points, 5, False)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

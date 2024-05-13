@@ -54,7 +54,7 @@ class Robot:
 
         # Configure color sensor
         self.PORT_COLOR = self.BP.PORT_3
-        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
+        # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
         self.light = 0
         for _ in range(3):
             # self.light = self.BP.get_sensor(self.PORT_COLOR)
@@ -231,15 +231,16 @@ class Robot:
                 ######## UPDATE UNTIL HERE with your code ########
                 tEnd = time.clock()
                 time.sleep(self.P - (tEnd-tIni))
+            LOG.close()
 
         #print("Stopping odometry ... X= %d" %(self.x.value))
         sys.stdout.write("Stopping odometry ... X=  %.2f, \
                 Y=  %.2f, th=  %.2f \n" %(self.x.value, self.y.value, self.th.value))
+        self.BP.reset_all()
 
     def stopOdometry(self):
         """ Stop the odometry thread """
         self.finished.value = True
-        self.BP.reset_all()
 
 
     # -- Velocidad -------------------------

@@ -506,7 +506,7 @@ class Map:
         elif len(a_list) == 1:
             a_value = a_node["coords"]
             e_value = a_list[0]["coords"]
-            if self.costMatrix[a_value[0]][a_value[1]] <= self.costMatrix[e_value[0]][e_value[1]]:
+            if self.costMatrix[int(a_value[0])][int(a_value[1])] <= self.costMatrix[int(e_value[0])][int(e_value[1])]:
                 return [a_node, a_list[0]]
             else:
                 return [a_list[0], a_node]
@@ -516,7 +516,7 @@ class Map:
             for i, e_node in enumerate(a_list):
                 e_value = e_node["coords"]
                 # Si el valor del coste del nuevo nodo es menor, terminamos
-                if self.costMatrix[a_value[0]][a_value[1]] <= self.costMatrix[e_value[0]][e_value[1]]:
+                if self.costMatrix[int(a_value[0])][int(a_value[1])] <= self.costMatrix[int(e_value[0])][int(e_value[1])]:
                     break
             # Devolvemos la lista con el nuevo elemento
             return a_list[:i] + [a_node] + a_list[i:]
