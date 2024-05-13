@@ -29,7 +29,7 @@ from scipy.interpolate import PchipInterpolator
 
 # Robot class
 class Robot:
-    def __init__(self, local_ref=[0.0, 0.0, 0.0]):
+    def __init__(self, localRef=[0.0, 0.0, 0.0]):
         """
         Initialize basic robot params. \
 
@@ -88,9 +88,9 @@ class Robot:
         self.lock_odometry = Lock()        # Mutex
         self.P  = 0.01                     # Update period (in seconds)
         self.finished = Value('b', 1)      # Boolean to show if odometry updates are finished
-        self.x  = Value('d', local_ref[0]) # Robot X coordinate.
-        self.y  = Value('d', local_ref[1]) # Robot Y coordinate.
-        self.th = Value('d', local_ref[2]) # Robot orientation.
+        self.x  = Value('d', localRef[0])  # Robot X coordinate.
+        self.y  = Value('d', localRef[1])  # Robot Y coordinate.
+        self.th = Value('d', localRef[2])  # Robot orientation.
         self.bh = Value('d', 0)            # Robot basket angle [0 to ~90º].
         self.sD = Value('i', 0)            # Latest stored RIGHT encoder value.
         self.sI = Value('i', 0)            # Latest stored LEFT encoder value.
@@ -186,10 +186,7 @@ class Robot:
                 #    print("Lateral sensor error")
                 #else:
                 #    self.us_nxt.value   = right_sensor
-                    
                 self.lock_odometry.release()
-                # Aquí sale bien (print correcto) pero en playTrajectory da 0
-                # print(self.us_ev3.value)
                 # Save LOG
                 LOG_WRITER.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), round(self.x.value, 4), round(self.y.value, 4), round(self.th.value, 4)])
 
@@ -263,10 +260,10 @@ class Robot:
 
 
     #-- Generacion de trayectorias ---------
-    def playTrajectory(self, trajectory_points, segments, ultrasoundStop=False, showPlot=False):
+    def playTrajectory(self, trajectoryPoints, segments, reversedTrayectory=False, ultrasoundStop=False, showPlot=False):
         # . Separar coordenadas de la trayectoria
-        x = [point[0] for point in trajectory_points]
-        y = [point[1] for point in trajectory_points]
+        x = [point[0] for point in trajectoryPoints]
+        y = [point[1] for point in trajectoryPoints]
         # . (DEPRECATED) Funcion interpolada respecto de los
         #  puntos dados mediante interpolacion polinomica
         # deg          = len(x)-1
@@ -278,6 +275,10 @@ class Robot:
         trajectory = PchipInterpolator(x, y)
         x_values = np.linspace(min(x), max(x), segments)
         y_values = trajectory(x_values)
+        if reversedTrayectory:
+            x_values = reversed(x_values)
+            y_values = reversed(y_values)
+
         if showPlot:
             plt.figure(figsize=(8,6))
             plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
@@ -368,7 +369,7 @@ class Robot:
                         us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                     self.setSpeed(v, sense*w)
 
-    def centerRobot(self, side):
+    def centerRobot(self, sense):
         # Centrar el robot en x en la celda con la distancia al muro de delante
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -388,10 +389,10 @@ class Robot:
         # Rotar el robot hacia el muro lateral (izda o dcha)
         _, _, th, _ = self.readOdometry()
         odom_rotation_transform = Transform(Vector2.zero, rotation=th)
-        rotation_transform = Transform(Vector2.zero, rotation=side*90)
+        rotation_transform = Transform(Vector2.zero, rotation=sense*90)
         while not rotation_transform == odom_rotation_transform:
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-            self.setSpeed(0, side*0.5)
+            self.setSpeed(0, sense*0.5)
             _, _, th, _ = self.readOdometry()
             odom_rotation_transform = Transform(Vector2.zero, rotation=th)
 
@@ -415,7 +416,7 @@ class Robot:
         rotation_transform = Transform(Vector2.zero, rotation=0.0)
         while not rotation_transform == odom_rotation_transform:
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-            self.setSpeed(0, -side*0.5)
+            self.setSpeed(0, -sense*0.5)
             _, _, th, _ = self.readOdometry()
             odom_rotation_transform = Transform(Vector2.zero, rotation=th)
 
@@ -706,12 +707,12 @@ class Robot:
                 cv.line(new_img, p1, p2, c, thickness)
         return new_img
 
-    def matchObject(self, img_ref, showMatches=False):
+    def matchObject(self, imgRef, showMatches=False):
         cam, rawCapture = self.initCamera((1312, 976))
         MIN_MATCH_COUNT = 20       # initially
         MIN_MATCH_OBJECTFOUND = 15 # after robust check, to consider object-found
         # Por eficiencia, que lo haga una sola vez.
-        fst_img = cv.cvtColor(img_ref, cv.COLOR_BGR2GRAY)
+        fst_img = cv.cvtColor(imgRef, cv.COLOR_BGR2GRAY)
 
         while True:
             # self.cam.capture(self.rawCapture, format="bgr")
@@ -780,7 +781,7 @@ class Robot:
                 cv.polylines(frame, [np.int32(dst)], True, color=(255,255,255), thickness=3)
                 if (showMatches):
                     if int(ver[0]) < 3:
-                        res = self.drawMatches(img_ref, fst_kp, frame, snd_kp, good, color=(0,255,0), mask=matches_mask)
+                        res = self.drawMatches(imgRef, fst_kp, frame, snd_kp, good, color=(0,255,0), mask=matches_mask)
                     else:
                         draw_params = {
                             "matchColor": (0,255,0),
@@ -788,7 +789,7 @@ class Robot:
                             "matchesMask": matches_mask,
                             "flags": 2
                         }
-                        res = cv.drawMatches(img_ref, fst_kp, frame, snd_kp, good, None, **draw_params)
+                        res = cv.drawMatches(imgRef, fst_kp, frame, snd_kp, good, None, **draw_params)
                     if res.shape[1] > 1920 or res.shape[0] > 1080:
                         res = cv.resize(res, (int(res.shape[1]/2.5), int(res.shape[0]/2.5)), interpolation=cv.INTER_LINEAR)
                     cv.imshow("INLIERS", res)
@@ -808,14 +809,14 @@ class Robot:
 
 
     #-- Navegacion -------------------------
-    def loadMap(self, rmap, rmap_ref):
+    def loadMap(self, rmap, rmapRef):
         '''
             Cargar un mapa en el robot
         '''
         self.rmap = rmap
-        self.gx   = rmap_ref[0]
-        self.gy   = rmap_ref[1]
-        self.gth  = rmap_ref[2]
+        self.gx   = rmapRef[0]
+        self.gy   = rmapRef[1]
+        self.gth  = rmapRef[2]
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
         self.wtol = self.ltow.invert()
 
@@ -839,7 +840,7 @@ class Robot:
         # Valores de los ultrasonidos
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
-        
+        # 4 vecindad
         if self.rmap.neighborhood == 4:
             # Recorrido del camino encontrado
             while True:
@@ -989,7 +990,7 @@ class Robot:
                                 state = "START_CELL_ADVENTURE"
                                 print("FORWARD -> START_CELL_ADVENTURE")
                                 self.setSpeed(0, 0)
-
+        # 8 vecindad
         elif self.rmap.neighborhood == 8:
             # Variables extra para la 8 vecindad
             changes            = False
@@ -1015,7 +1016,7 @@ class Robot:
                     dir = (next_pos - pos).normalize()
                     # Obtenemos las transformaciones representativas del destino
                     rotation_transform      = Transform(pos, forward=dir)
-                    entering_cell_transform = Transform(next_pos, forward=dir)
+                    # entering_cell_transform = Transform(next_pos, forward=dir)
                     reaching_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
                     # - Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(position=pos, forward=gfor):

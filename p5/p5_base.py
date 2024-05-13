@@ -25,6 +25,7 @@ def main():
             # robot.loadMap(rmap, rmap_ref)
             # img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
             exit_cells = [[6,3], [6,6]]
+            end_cells  = [[7,3], [7,6]]
             # sense = -1
         else:
             print("Cargando parametros para la salida desde B")
@@ -35,6 +36,7 @@ def main():
             rmap_ref = rmap.cell2pos([7,5], list) + [-90]
             img_R2D2_or_BB8 = cv.imread("images/BB8_s.png", cv.IMREAD_COLOR)
             exit_cells = [[6,3], [6,0]]
+            end_cells  = [[7,3], [7,0]]
             sense =  1 
         ## 2b. Iniciar la odometria
         robot.startOdometry()
@@ -55,6 +57,7 @@ def main():
         print("Encontrando robot para determinar la salida. . .")
         #found = robot.matchObject(img_R2D2_or_BB8, showMatches=True)
         exit_cell = exit_cells[0] #exit_cells[int(not found)]
+        end_cell  = end_cells[0] #end_cells[int(not found)]
         # . 4a fase. Tracking (mascara con colores negativos)
         print("Realizando seguimiento de la pelota para capturarla. . .")
         robot.trackObject((80, 70, 50), (100, 255, 255), sense)
@@ -73,8 +76,9 @@ def main():
         for point in points:
             point = rmap.cell2pos(point)
             point = list(robot.wtol * point)[:2]
+        points.append(rmap.cell2pos(end_cell, list))
         print(points)
-        robot.playTrajectory(points, 30, True)
+        robot.playTrajectory(points, 30, True, True)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
