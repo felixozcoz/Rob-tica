@@ -87,25 +87,13 @@ def main():
         robot.lock_odometry.release()
         x = 120.0
         y = -120.0
-        _, _, th = robot.readOdometry()
         pos = robot.ltow * Vector2(x, y, 1)
         rmap.setPath_8N(rmap.pos2cell(pos.x, pos.y), exit_cell)
-
-        direction = (robot.wtol * rmap.cell2pos(exit_cell)) - pos
-        rotation_transform = Transform(pos, forward=direction)
-        robot.setSpeed(0, direction.sense(Vector2.right.rotate(th)))
-        while True:
-            x, y, th = robot.readOdometry()
-            forward  = Vector2.right.rotate(th)
-            if rotation_transform == Transform(Vector2(x, y, 1), forward=th):
-                robot.setSpeed(0,0)
-                break
-
         points = list(reversed(rmap.path))
         for point in points:
             point = rmap.cell2pos(point)
             point = list(robot.wtol * point)[:2]
-        robot.playTrajectory(points, 5, False)
+        robot.playTrajectory(points, 5, True)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

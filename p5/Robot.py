@@ -301,7 +301,7 @@ class Robot:
 
 
     #-- Generacion de trayectorias ---------
-    def playTrajectory(self, trajectory_points, segments, showPlot=False):
+    def playTrajectory(self, trajectory_points, segments, ultrasoundStop=False, showPlot=False):
         # . Separar coordenadas de la trayectoria
         x = [point[0] for point in trajectory_points]
         y = [point[1] for point in trajectory_points]
@@ -340,6 +340,26 @@ class Robot:
         # Velocidades
         v = 10
 
+        # Rotacion inicial si la orientacion del robot no coincide con el inicio
+        while True:
+            # Leer odometria
+            x, y, th, _    = self.readOdometry()
+            robot_position = Vector2(x, y, 1)
+            forward        = Vector2.right.rotate(th)
+            # Estados
+            if state == "START_SEGMENT_ADVENTURE":
+                direction          = position - robot_position
+                rotation_transform = Transform(robot_position, forward=direction)
+                self.setSpeed(0, direction.sense(forward) * 1)
+                state = "ROTATE"
+                print("START_SEGMENT_ADVENTURE -> ROTATE")
+            elif state == "ROTATE":
+                if rotation_transform == Transform(robot_position, forward=forward):
+                    self.setSpeed(0, 0)
+                    state = "START_SEGMENT_ADVENTURE"
+                    break
+
+        # Recorrer trayectoria
         while True:
             # Leer odometria
             x, y, th, _ = self.readOdometry()
@@ -371,17 +391,23 @@ class Robot:
                         # Orientar el robot a th 0
                         rotation_transform = Transform(Vector2.zero, rotation=th)
                         while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
-                            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                             x, y, th, _ = self.readOdometry()
                             rotation_transform = Transform(Vector2.zero, rotation=th)
                             self.setSpeed(0, -np.sign(th) * 0.5)
                         self.setSpeed(0, 0)
                         break
-                        
                     else:
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
                         print(segment, "GO -> START_SEGMENT_ADVENTURE")
+                elif ultrasoundStop and np.mean(us_ev3_values) < 3:
+                    self.setSpeed(0,0)
+                    while np.mean(us_ev3_values) < 3:
+                        us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+                    self.setSpeed(v, sense*w)
+
+            
+            
 
                 
     def centerRobot(self, side):
