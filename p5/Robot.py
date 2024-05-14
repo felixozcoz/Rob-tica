@@ -65,6 +65,7 @@ class Robot:
         # . Tiempo para inicializar los componentes
         time.sleep(5)
         # . Cold start de los componentes. Al iniciar los componentes dan valores basura iniciales que son descartados
+        self.P  = 0.01                     # Update period (in seconds)
         self.us_ev3 = Value('d', 0.0)      # Ultima distancia detectada por el ultrasonido EV3
         for _ in range(3):
             self.us_ev3.value = self.BP.get_sensor(self.PORT_ULTRASONIC_EV3)
@@ -76,7 +77,7 @@ class Robot:
         #      time.sleep(self.P)
 
         # [TODO] Descomentar cuando se use
-        self.light_intensity = 2500
+        self.light_intensity = 2700
         # self.light_intensity = 0         # Ultimo nivel de luz detectado por el sensor de luz
         # for _ in range(3):
         #     self.light_intensity = self.BP.get_sensor(self.PORT_COLOR)
@@ -86,7 +87,6 @@ class Robot:
         ##################################################
         # Odometria
         self.lock_odometry = Lock()        # Mutex
-        self.P  = 0.01                     # Update period (in seconds)
         self.finished = Value('b', 1)      # Boolean to show if odometry updates are finished
         self.x  = Value('d', localRef[0])  # Robot X coordinate.
         self.y  = Value('d', localRef[1])  # Robot Y coordinate.
@@ -262,6 +262,7 @@ class Robot:
     #-- Generacion de trayectorias ---------
     def playTrajectory(self, trajectoryPoints, segments, reversedX=False, reversedY=False, ultrasoundStop=False, showPlot=False):
         # . Separar coordenadas de la trayectoria
+        
         x = [point[0] for point in trajectoryPoints]
         y = [point[1] for point in trajectoryPoints]
         # . (DEPRECATED) Funcion interpolada respecto de los
@@ -276,9 +277,9 @@ class Robot:
         x_values = np.linspace(min(x), max(x), segments)
         y_values = trajectory(x_values)
         if reversedX:
-            x_values = reversed(x_values)
+            x_values = list(reversed(x_values))
         if reversedY:
-            y_values = reversed(y_values)
+            y_values = list(reversed(y_values))
 
         if showPlot:
             plt.figure(figsize=(8,6))
@@ -296,6 +297,7 @@ class Robot:
         segment  = 1
         state    = "START_SEGMENT_ADVENTURE"
         position = Vector2(x_values[0], y_values[0], 1)
+        next_position = Vector2(x_values[1], y_values[1], 1)
         position_transform = Transform(Vector2.zero)
         #last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
         rotation_reached = False
@@ -312,13 +314,13 @@ class Robot:
             forward        = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
-                direction          = Vector2(x_values[1], y_values[1], 1) - position
-                rotation_transform = Transform(forward=direction)
+                direction          = next_position - position
+                rotation_transform = Transform(position, forward=direction)
                 self.setSpeed(0, direction.sense(forward) * 1)
                 state = "ROTATE"
                 print("START_SEGMENT_ADVENTURE -> ROTATE")
             elif state == "ROTATE":
-                if rotation_transform == Transform(forward=forward):
+                if rotation_transform == Transform(position, forward=forward):
                     self.setSpeed(0, 0)
                     state = "START_SEGMENT_ADVENTURE"
                     break
