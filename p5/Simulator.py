@@ -46,45 +46,40 @@ def simulate_robot(key):
     print(f"LOCAL: {lpos} - {round_list(new_lfor)}, GLOBAL: {np.matmul(ltow, lpos[:2] + [1])} - {round_list(list(np.matmul(ltow, new_lfor + [0])[:2]))}")
 
 # Test 1
-x = [0,20,40,80,99,100]#[0,20,40,60,80,100]
-y = [0,0,-20,20,0,0]#[0,0,20,0,-20,0]
+# x = [0,20,40,80,99,100]#[0,20,40,60,80,100]
+# y = [0,0,-20,20,0,0]#[0,0,20,0,-20,0]
 
+#deg = len(x)-1
+#coefficients = np.polyfit(x,y,deg)
+#polynomial = np.poly1d(coefficients)
+#x_values = np.linspace(min(x), max(x), 100)
+#y_values = polynomial(x_values)
+#
+#hermite_interpolator = PchipInterpolator(x, y)
+#x_values = np.linspace(min(x), max(x), 100)
+#y_values = hermite_interpolator(x_values)
+#
+#angle    = 0
+#pos      = Vector2(x_values[0], y_values[0])
+#a_values = [0, 0, 0]
+#for i in range(1,99):
+#    next_pos = Vector2(x_values[i], y_values[i])
+#    next_next_pos = Vector2(x_values[i+1], y_values[i+1])
+#    next_dir = next_pos - pos
+#    next_next_dir = next_next_pos - next_pos
+#    print(next_pos, "--", a_values)
+#    a_values = a_values[1:] + [next_dir.sense(next_next_dir) * next_dir.angle(next_next_dir, "RAD")]
 
-
-deg = len(x)-1
-coefficients = np.polyfit(x,y,deg)
-polynomial = np.poly1d(coefficients)
-x_values = np.linspace(min(x), max(x), 100)
-y_values = polynomial(x_values)
-
-hermite_interpolator = PchipInterpolator(x, y)
-x_values = np.linspace(min(x), max(x), 100)
-y_values = hermite_interpolator(x_values)
-
-angle    = 0
-pos      = Vector2(x_values[0], y_values[0])
-a_values = [0, 0, 0]
-for i in range(1,99):
-    next_pos = Vector2(x_values[i], y_values[i])
-    next_next_pos = Vector2(x_values[i+1], y_values[i+1])
-    next_dir = next_pos - pos
-    next_next_dir = next_next_pos - next_pos
-    print(next_pos, "--", a_values)
-    a_values = a_values[1:] + [next_dir.sense(next_next_dir) * next_dir.angle(next_next_dir, "RAD")]
-
-
-
-
-plt.figure(figsize=(8,6))
-plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
-plt.scatter(x, y, label="Puntos conocidos", color="red")
-plt.xlabel("x")
-plt.ylabel("y")
-plt.title("Interpolacion polinomica")
-plt.legend()
-plt.axis("equal")
-plt.grid(True)
-plt.show()
+#plt.figure(figsize=(8,6))
+#plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
+#plt.scatter(x, y, label="Puntos conocidos", color="red")
+#plt.xlabel("x")
+#plt.ylabel("y")
+#plt.title("Interpolacion polinomica")
+#plt.legend()
+#plt.axis("equal")
+#plt.grid(True)
+#plt.show()
 
 # Test 2
 #x_lineal = [1,2]
@@ -131,26 +126,18 @@ plt.show()
 #    elif STATE == "MOVE":
 #   
 #    position      = next_position
-
-exit(0)
-
-gx = 20
-gy = 20
-gth = 90
-x = 0
-y = 0
-th = 0
-
-ltow = Matrix2.transform(Vector2(gx, gy, 0), gth)
+#x, y, th =  0, 0, 0
+#gx, gy, gth = 20, 20, 90
+#ltow = Matrix2.transform(Vector2(gx, gy, 0), gth)
 
 # Extraemos la matriz de rotación R y el vector de traslación p
-print(ltow)
-
-print(ltow.invert())
-
-print(ltow*Vector2(x, y, 1))
-
-print(ltow.invert()*Vector2(gx, gy, 1))
+#print(ltow)
+#
+#print(ltow.invert())
+#
+#print(ltow*Vector2(x, y, 1))
+#
+#print(ltow.invert()*Vector2(gx, gy, 1))
 
 #lpos = [0,0,0]
 #gref = [20,20,90]
@@ -185,6 +172,15 @@ print(ltow.invert()*Vector2(gx, gy, 1))
 
 #print("---------------------------------------------------")
 rMap = Map("maps/mapa3.txt", [4,2], [0,7], neighborhood=4)
+
+for i in range(201):
+    for j in range(201):
+        print(rMap.pos2cell(i, j))
+
+print()
+for i in range(10):
+    for j in range(10):
+        print(rMap.cell2pos(i, j))
 
 #print("---------------------------------------------------")
 #rMap = Map("maps/mapa4.txt", [0,0], [0,1], neighborhood=4)

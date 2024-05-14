@@ -260,7 +260,7 @@ class Robot:
 
 
     #-- Generacion de trayectorias ---------
-    def playTrajectory(self, trajectoryPoints, segments, reversedTrayectory=False, ultrasoundStop=False, showPlot=False):
+    def playTrajectory(self, trajectoryPoints, segments, reversedX=False, reversedY=False, ultrasoundStop=False, showPlot=False):
         # . Separar coordenadas de la trayectoria
         x = [point[0] for point in trajectoryPoints]
         y = [point[1] for point in trajectoryPoints]
@@ -275,8 +275,9 @@ class Robot:
         trajectory = PchipInterpolator(x, y)
         x_values = np.linspace(min(x), max(x), segments)
         y_values = trajectory(x_values)
-        if reversedTrayectory:
+        if reversedX:
             x_values = reversed(x_values)
+        if reversedY:
             y_values = reversed(y_values)
 
         if showPlot:
