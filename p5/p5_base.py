@@ -72,8 +72,8 @@ def main():
         robot.y.value = y
         robot.lock_odometry.release()
         gpos = robot.ltow * Vector2(x, y, 1)
-        rmap.setPath_4N(rmap.cell2pos(gpos.x, gpos.y), exit_cell)
-        rmap.path.append(end_cell)
+        robot.rmap.setPath_4N(rmap.cell2pos(gpos.x, gpos.y), exit_cell)
+        robot.rmap.path.append(end_cell)
         robot.playMap()
         #rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
