@@ -72,18 +72,21 @@ def main():
         robot.y.value = y
         robot.lock_odometry.release()
         gpos = robot.ltow * Vector2(x, y, 1)
-        rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
+        rmap.setPath_4N(rmap.cell2pos(gpos.x, gpos.y), exit_cell)
+        rmap.path.append(end_cell)
+        robot.playMap()
+        #rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
-        points = rmap.path
-        for i in range(len(points)):
-            points[i] = rmap.cell2pos(points[i])
-            points[i] = list(robot.wtol * points[i])[:2]
-        # Se actualizan los puntos ya que:
-        # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
-        # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
-        points = [list(robot.wtol * rmap.cell2pos(end_cell))[:2]] + points[:-1] + [[x,y]]      
-        print(points)
-        robot.playTrajectory(points, 30, True, True, showPlot=True)
+        #points = rmap.path
+        #for i in range(len(points)):
+        #    points[i] = rmap.cell2pos(points[i])
+        #    points[i] = list(robot.wtol * points[i])[:2]
+        ## Se actualizan los puntos ya que:
+        ## 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
+        ## 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
+        #points = [list(robot.wtol * rmap.cell2pos(end_cell))[:2]] + points[:-1] + [[x,y]]      
+        #print(points)
+        #robot.playTrajectory(points, 30, True, True, showPlot=True)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 
