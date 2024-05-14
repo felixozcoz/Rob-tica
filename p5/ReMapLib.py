@@ -479,7 +479,7 @@ class Map:
         return pos
 
     def pos2cell(self, x, y):
-        return [int(np.floor(x/self.sizeCell)), int(np.floor(y/self.sizeCell))]
+        return [int(np.floor(y/self.sizeCell)), int(np.floor(x/self.sizeCell))]
 
     # Obtiene el siguiente destino del robot
     def travel(self):
