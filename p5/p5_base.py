@@ -75,10 +75,10 @@ def main():
         # Eliminar hasta aqui 
 
         gpos = robot.ltow * Vector2(x, y, 1)
-        rmap.setPath_4N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
-        rmap.path = [end_cell] + rmap.path
-        print(rmap)
-        rmap.goal = end_cell
+        robot.rmap.setPath_4N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
+        robot.rmap.path = [end_cell] + robot.rmap.path
+        print(robot.rmap)
+        robot.rmap.goal = end_cell
         robot.playMap(recogn=False)
         #rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
