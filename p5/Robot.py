@@ -296,7 +296,6 @@ class Robot:
         segment  = 1
         state    = "START_SEGMENT_ADVENTURE"
         position = Vector2(x_values[0], y_values[0], 1)
-        next_position = Vector2(x_values[1], y_values[1], 1)
         position_transform = Transform(Vector2.zero)
         #last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
         rotation_reached = False
@@ -308,17 +307,18 @@ class Robot:
         # Rotacion inicial si la orientacion del robot no coincide con el inicio
         while True:
             # Leer odometria
-            _, _, th, _    = self.readOdometry()
+            _, _, th, _    = self.readOdometry()
+
             forward        = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
-                direction          = next_position - position
-                rotation_transform = Transform(robot_position, forward=direction)
+                direction          = Vector2(x_values[1], y_values[1], 1) - position
+                rotation_transform = Transform(forward=direction)
                 self.setSpeed(0, direction.sense(forward) * 1)
                 state = "ROTATE"
                 print("START_SEGMENT_ADVENTURE -> ROTATE")
             elif state == "ROTATE":
-                if rotation_transform == Transform(robot_position, forward=forward):
+                if rotation_transform == Transform(forward=forward):
                     self.setSpeed(0, 0)
                     state = "START_SEGMENT_ADVENTURE"
                     break
