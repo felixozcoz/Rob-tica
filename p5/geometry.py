@@ -667,6 +667,11 @@ class Transform:
         if not self.dmin[-1] == distance:
             self.dmin = self.dmin[1:] + [distance]
 
+        # if self.dmin[1] < self.dmin[2]:
+        #     self.dmin_counter += 1
+
+        # self.POSITION |= self.dmin_counter > 5 and distance > self.POSITION_ERROR
+
         # VERIFICAR ROTACION
         # A. Area
         #self.ROTATION |= (transform.rotation - self.rotation_inf) % 360 <= (self.rotation_sup - self.rotation_inf) % 360

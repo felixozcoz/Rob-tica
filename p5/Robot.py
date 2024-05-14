@@ -336,11 +336,12 @@ class Robot:
                 direction          = next_position - position
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 rotation_reached   = False
-                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=0.5)
+                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=2)
                 sense  = forward.sense(direction)
                 w      = forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
                 state = "GO"
+                print("Position:", position, "Next position:", next_position)
                 print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 if not rotation_reached:
@@ -352,6 +353,7 @@ class Robot:
                         self.setSpeed(v, sense*w)
 
                 if position_transform == Transform(Vector2(x,y), 0):
+                    print("Position transform:", position_transform, "robot position:", Vector2(x,y))
                     segment += 1
                     if segment >= segments:
                         # Orientar el robot a th 0
@@ -375,11 +377,11 @@ class Robot:
     def centerRobot(self, sense):
         # Centrar el robot en x en la celda con la distancia al muro de delante
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
-        us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
+        # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         while True:
             distance = np.mean(us_ev3_values) % self.rmap.sizeCell
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-            us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+            # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
             # print(distance)
             if distance < 13.5:
                 self.setSpeed(-3,0)
@@ -403,7 +405,7 @@ class Robot:
         while True:
             distance = np.mean(us_ev3_values) % self.rmap.sizeCell
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-            us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+            # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
             # print(distance)
             if distance < 14.5:
                 self.setSpeed(-3,0)
@@ -746,8 +748,8 @@ class Robot:
                 return False
             if len(fst_des) < MIN_MATCH_COUNT or len(snd_des) < MIN_MATCH_COUNT:
                 print("WARNING -- Not enough features (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
-                return False
                 cam.close()
+                return False
             print (" FEATURES extracted (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
 
             # Matching
@@ -837,12 +839,13 @@ class Robot:
             return
         # Variables
         dynamic_walls = []
+        checkWall = True
         # Velocidades
         v = 10
         w = 0.75
         # Valores de los ultrasonidos
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
-        us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
+        # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         # 4 vecindad
         if self.rmap.neighborhood == 4:
             # Recorrido del camino encontrado
@@ -869,7 +872,7 @@ class Robot:
                     reaching_cell_transform = Transform(next_pos, forward=dir)
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == transform:
-                        if not recogn:
+                        if recogn:
                             state = "RECOGN"
                             print("START_CELL_ADVENTURE -> RECOGN")
                         else:
@@ -977,11 +980,11 @@ class Robot:
                     # Obtenemos los datos del ultrasonido
                     us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
                     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-                    us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+                    # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if us_position_reached:
+                        if us_position_reached or not checkWall:
                             self.setSpeed(0, 0)
                             # Si ha llegado al centro y era la ultima celda, termina
                             print("next_cell", next_cell, " goal", self.rmap.goal)

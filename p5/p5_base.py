@@ -19,11 +19,11 @@ def main():
             print("Cargando parametros para la salida desde A")
             # points = [[0,0], [35,0], [80,-35], [160,35], [195,0], [200,0]]
             # points = [[0,0], [35,0], [80,-35], [160,35], [200,0]]
-            # points = [[0,0], [35,0], [75,-30], [85,-30], [155,30], [165,30], [200,0]]
+            points = [[0,0], [35,0], [75,-30], [85,-30], [155,30], [165,30], [200,0]]
             rmap = Map("mapaA_CARRERA.txt", [2,1], [3,3])
             rmap_ref = rmap.cell2pos([7,1], list) + [-90]
             robot.loadMap(rmap, rmap_ref)
-            # img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
+            img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
             exit_cells = [[6,3], [6,6]]
             end_cells  = [[7,3], [7,6]]
             sense = -1
@@ -47,16 +47,16 @@ def main():
         # 3. Ejecutar recorrido
         # . 1a fase. Ejecucion de trayectoria
         print("Recorriendo trayectoria. . .")
-        # robot.playTrajectory(points, 30)
+        # robot.playTrajectory(points, 30, False, False)
         # Centramos robot en su celda
         # robot.centerRobot(sense)
         # . 2a fase. Navegacion
         print("Realizando navegacion. . .")
         # robot.playMap()
         # . 3a fase. Obtencion de la salida
-        # print("Searching ...")
         print("Encontrando robot para determinar la salida. . .")
         #found = robot.matchObject(img_R2D2_or_BB8, showMatches=True)
+        # [TODO] Cambiar por lo comentado
         exit_cell = exit_cells[0] #exit_cells[int(not found)]
         end_cell  = end_cells[0] #end_cells[int(not found)]
         # . 4a fase. Tracking (mascara con colores negativos)
@@ -65,16 +65,21 @@ def main():
         # . 5a fase. Salida
         print("Saliendo del mapa. . .")
         #x, y, _, _ = robot.readOdometry()
+
         # [TODO] Eliminar esta prueba ad-hoc
         x, y       = 120, -120.0
         robot.lock_odometry.acquire()
         robot.x.value = x
         robot.y.value = y
         robot.lock_odometry.release()
+        # Eliminar hasta aqui 
+
         gpos = robot.ltow * Vector2(x, y, 1)
-        rmap.setPath_4N(rmap.cell2pos(gpos.x, gpos.y), exit_cell)
-        rmap.path.append(end_cell)
-        robot.playMap()
+        rmap.setPath_4N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
+        rmap.path = [end_cell] + rmap.path
+        print(rmap)
+        rmap.goal = end_cell
+        robot.playMap(recogn=False)
         #rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
         #points = rmap.path
@@ -98,6 +103,7 @@ def main():
     except Exception as e: #KeyboardInterrupt: 
     # Except the program gets interrupted by Ctrl+C on the keyboard.
     # THIS IS IMPORTANT if we want that motors STOP when we Ctrl+C ...
+        robot.setSpeed(0,0,0)
         robot.stopOdometry()
         print(e)
         traceback.print_exc()
