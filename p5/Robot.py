@@ -823,7 +823,7 @@ class Robot:
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
         self.wtol = self.ltow.invert()
 
-    def playMap(self):
+    def playMap(self, recogn=True):
         '''
             Navegacion a traves de un mapa cargado
         '''
@@ -869,8 +869,13 @@ class Robot:
                     reaching_cell_transform = Transform(next_pos, forward=dir)
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == transform:
-                        state = "RECOGN"
-                        print("START_CELL_ADVENTURE -> RECOGN")
+                        if not recogn:
+                            state = "RECOGN"
+                            print("START_CELL_ADVENTURE -> RECOGN")
+                        else:
+                            state = "FORWARD"
+                            print("START_CELL_ADVENTURE -> FORWARD")
+                            self.setSpeed(0, 0)
                     # Si no, primero rotamos el robot
                     else:
                         state = "ROTATION"
@@ -879,10 +884,15 @@ class Robot:
                 # B. Estado de rotacion
                 elif state == "ROTATION":
                     if rotation_transform == transform:
-                        state = "RECOGN"
-                        print("ROTATION -> RECOGN")
-                        print("Odometry:", x, y, th)
-                        self.setSpeed(0, 0)
+                        if not recogn:
+                            state = "FORWARD"
+                            print("ROTATION -> FORWARD")
+                            self.setSpeed(v, 0)
+                        else:
+                            state = "RECOGN"
+                            print("ROTATION -> RECOGN")
+                            print("Odometry:", x, y, th)
+                            self.setSpeed(0, 0)
 
                 # C. Estado de reconomiento del entorno
                 elif state == "RECOGN":
