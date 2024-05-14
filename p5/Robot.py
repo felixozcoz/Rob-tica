@@ -838,11 +838,10 @@ class Robot:
             print("Goal Reached!", cell, self.rmap.goal)
             return
         # Variables
-        dynamic_walls = []
-        checkWall = True
+        are_there_walls = False
+        dynamic_walls   = []
         # Velocidades
-        v = 10
-        w = 0.75
+        v, w = 10, 0.75
         # Valores de los ultrasonidos
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -866,6 +865,7 @@ class Robot:
                     # Extraer siguiente posición
                     _, next_cell, next_pos = self.rmap.travel()
                     dir = (next_pos - pos).normalize()
+                    are_there_walls = self.rmap.areThereWalls(cell, [next_cell[0] - cell[0], next_cell[1] - cell[1]])
                     # Obtenemos las transformaciones representativas del destino
                     rotation_transform      = Transform(pos, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
@@ -984,28 +984,28 @@ class Robot:
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if us_position_reached or not checkWall:
-                            self.setSpeed(0, 0)
-                            # Si ha llegado al centro y era la ultima celda, termina
-                            print("next_cell", next_cell, " goal", self.rmap.goal)
-                            if next_cell == self.rmap.goal:
-                                print("Goal Reached!: ", next_cell, self.rmap.goal)
-                                break
-                            # Si no, avanzamos a la siguiente celda
-                            else:
-                                # Se actualiza a la siguiente celda
-                                cell  = next_cell
-                                pos   = next_pos
-                                # Se actualiza la odometria
-                                lpos = self.wtol * pos
-                                self.lock_odometry.acquire()
-                                self.x.value = lpos.x
-                                self.y.value = lpos.y
-                                self.lock_odometry.release()
-                                # Siguiente estado
-                                state = "START_CELL_ADVENTURE"
-                                print("FORWARD -> START_CELL_ADVENTURE")
-                                self.setSpeed(0, 0)
+                        if are_there_walls and not us_position_reached:
+                            continue
+                        # Si ha llegado al centro y era la ultima celda, termina
+                        self.setSpeed(0, 0)
+                        print("next_cell", next_cell, " goal", self.rmap.goal)
+                        if next_cell == self.rmap.goal:
+                            print("Goal Reached!: ", next_cell, self.rmap.goal)
+                            break
+                        # Si no, avanzamos a la siguiente celda
+                        else:
+                            # Se actualiza a la siguiente celda
+                            cell  = next_cell
+                            pos   = next_pos
+                            # Se actualiza la odometria
+                            lpos = self.wtol * pos
+                            self.lock_odometry.acquire()
+                            self.x.value = lpos.x
+                            self.y.value = lpos.y
+                            self.lock_odometry.release()
+                            # Siguiente estado
+                            state = "START_CELL_ADVENTURE"
+                            print("FORWARD -> START_CELL_ADVENTURE")
         # 8 vecindad
         elif self.rmap.neighborhood == 8:
             # Variables extra para la 8 vecindad
@@ -1030,6 +1030,7 @@ class Robot:
                     # Obtenemos los datos de la siguiente celda
                     _, next_cell, next_pos  = self.rmap.travel()
                     dir = (next_pos - pos).normalize()
+                    are_there_walls = self.rmap.areThereWalls(cell, [next_cell[0] - cell[0], next_cell[1] - cell[1]])
                     # Obtenemos las transformaciones representativas del destino
                     rotation_transform      = Transform(pos, forward=dir)
                     # entering_cell_transform = Transform(next_pos, forward=dir)
@@ -1153,28 +1154,30 @@ class Robot:
                     # Obtenemos los datos del ultrasonido
                     us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
                     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-                    us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+                    #us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if us_position_reached:
-                            self.setSpeed(0, 0)
-                            # Si ha llegado al centro y era la ultima celda, termina
-                            if next_cell == self.rmap.goal:
-                                print("Goal Reached!: ", next_cell, self.rmap.goal)
-                                break
-                            # Si no, avanzamos a la siguiente celda
-                            else:
-                                # Se actualiza a la siguiente celda
-                                cell  = next_cell
-                                pos   = next_pos
-                                # Se actualiza la odometria
-                                lpos = self.wtol * pos
-                                self.lock_odometry.acquire()
-                                self.x.value = lpos.x
-                                self.y.value = lpos.y
-                                self.lock_odometry.release()
-                                # Siguiente estado
-                                state = "START_CELL_ADVENTURE"
-                                print("FORWARD -> START_CELL_ADVENTURE")
-                                self.setSpeed(0, 0)
+                        # Si el ultrasonido no indica que sea el centro, sigue avanzando
+                        if are_there_walls and not us_position_reached:
+                            continue
+                        # Si ha llegado al centro y era la ultima celda, termina
+                        self.setSpeed(0, 0)
+                        print("next_cell", next_cell, " goal", self.rmap.goal)
+                        if next_cell == self.rmap.goal:
+                            print("Goal Reached!: ", next_cell, self.rmap.goal)
+                            break
+                        # Si no, avanzamos a la siguiente celda
+                        else:
+                            # Se actualiza a la siguiente celda
+                            cell  = next_cell
+                            pos   = next_pos
+                            # Se actualiza la odometria
+                            lpos = self.wtol * pos
+                            self.lock_odometry.acquire()
+                            self.x.value = lpos.x
+                            self.y.value = lpos.y
+                            self.lock_odometry.release()
+                            # Siguiente estado
+                            state = "START_CELL_ADVENTURE"
+                            print("FORWARD -> START_CELL_ADVENTURE")

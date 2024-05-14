@@ -49,113 +49,113 @@ def simulate_robot(key):
 #x = [0,20,20,20,20,20, 40,80,99,100]#[0,20,40,60,80,100]
 #y = [0, 0, 0, 0, 0, 0,-20,20, 0,  0]#[0,0,20,0,-20,0]
 
-x = [0,0,0,0,15,20,20,20,25,30]
-y = [0,0,0,0, 0, 5,20,40,30,30]
+# x = [0,0,0,0,15,20,20,20,25,30]
+# y = [0,0,0,0, 0, 5,20,40,30,30]
 
-x = [0, 15, 20, 20, 20, 25, 30]
-y = [0,  0,  5, 20, 40, 30, 30]
-print(x)
-print(y)
+# x = [0, 15, 20, 20, 20, 25, 30]
+# y = [0,  0,  5, 20, 40, 30, 30]
+# print(x)
+# print(y)
 
 
-a = [x[0]]
-b = [y[0]]
-for i in range(1,len(x)):
-    if not (a[-1] == x[i] and b[-1] == y[i]):
-        a.append(x[i])
-        b.append(y[i])
-x = a
-y = b
-print(x)
-print(y)
+# a = [x[0]]
+# b = [y[0]]
+# for i in range(1,len(x)):
+#     if not (a[-1] == x[i] and b[-1] == y[i]):
+#         a.append(x[i])
+#         b.append(y[i])
+# x = a
+# y = b
+# print(x)
+# print(y)
 
-x_t = []
-y_t = []
+# x_t = []
+# y_t = []
 
-sense = 1
-c = [x[0]]
-d = [y[0]]
-x = x[1:]
-y = y[1:]
-# [0, 15, 20], [ 0,  5, 20, 40, 30], [20, 25, 30]
-# [0,  0,  5], [15, 20, 20, 20, 25], [40, 30, 30]
-ap = False
-while True:
-    # Append
-    e = x.pop(0)
-    f = y.pop(0)
-    if sense == 1:
-        if not c[-1] == e:
-            ap = False
-            c.append(e)
-            d.append(f)
-        else:
-            ap = True
-            x_t.append(c)
-            y_t.append(d)
-            sense *= -1
-            c,d = c[1:]+[e], d[1:]+[f]
-    else:
-        if not c[-1] == f:
-            ap = False
-            c.append(f)
-            d.append(e)
-        else:
-            ap = True
-            x_t.append(c)
-            y_t.append(d)
-            sense *= -1
-            c, d = d[1:]+[e], c[1:]+[f]
-    # Salir
-    if len(x) == 0 or len(y) == 0:
-        if sense == 1:
-            x_t.append(c)
-            y_t.append(d)
-        else:
-            x_t.append(d)
-            y_t.append(c)
-        print("x_t", x_t)
-        print("y_t", y_t)
-        break
+# sense = 1
+# c = [x[0]]
+# d = [y[0]]
+# x = x[1:]
+# y = y[1:]
+# # [0, 15, 20], [ 0,  5, 20, 40, 30], [20, 25, 30]
+# # [0,  0,  5], [15, 20, 20, 20, 25], [40, 30, 30]
+# ap = False
+# while True:
+#     # Append
+#     e = x.pop(0)
+#     f = y.pop(0)
+#     if sense == 1:
+#         if not c[-1] == e:
+#             ap = False
+#             c.append(e)
+#             d.append(f)
+#         else:
+#             ap = True
+#             x_t.append(c)
+#             y_t.append(d)
+#             sense *= -1
+#             c,d = c[1:]+[e], d[1:]+[f]
+#     else:
+#         if not c[-1] == f:
+#             ap = False
+#             c.append(f)
+#             d.append(e)
+#         else:
+#             ap = True
+#             x_t.append(c)
+#             y_t.append(d)
+#             sense *= -1
+#             c, d = d[1:]+[e], c[1:]+[f]
+#     # Salir
+#     if len(x) == 0 or len(y) == 0:
+#         if sense == 1:
+#             x_t.append(c)
+#             y_t.append(d)
+#         else:
+#             x_t.append(d)
+#             y_t.append(c)
+#         print("x_t", x_t)
+#         print("y_t", y_t)
+#         break
 
-exit(0)
+# exit(0)
 #deg = len(x)-1
 #coefficients = np.polyfit(x,y,deg)
 #polynomial = np.poly1d(coefficients)
 #x_values = np.linspace(min(x), max(x), 100)
 #y_values = polynomial(x_values)
 #
-for t in range(len(x_t)):
-    x = x_t[t]
-    y = y_t[t]
-    hermite_interpolator = PchipInterpolator(x, y)
-    x_values = np.linspace(min(x), max(x), 100)
-    y_values = hermite_interpolator(x_values)
-    #
-    #angle    = 0
-    #pos      = Vector2(x_values[0], y_values[0])
-    #a_values = [0, 0, 0]
-    #for i in range(1,99):
-    #    next_pos = Vector2(x_values[i], y_values[i])
-    #    next_next_pos = Vector2(x_values[i+1], y_values[i+1])
-    #    next_dir = next_pos - pos
-    #    next_next_dir = next_next_pos - next_pos
-    #    print(next_pos, "--", a_values)
-    #    a_values = a_values[1:] + [next_dir.sense(next_next_dir) * next_dir.angle(next_next_dir, "RAD")]
+# for t in range(len(x_t)):
+#     x = x_t[t]
+#     y = y_t[t]
+#     hermite_interpolator = PchipInterpolator(x, y)
+#     x_values = np.linspace(min(x), max(x), 100)
+#     y_values = hermite_interpolator(x_values)
+#     #
+#     #angle    = 0
+#     #pos      = Vector2(x_values[0], y_values[0])
+#     #a_values = [0, 0, 0]
+#     #for i in range(1,99):
+#     #    next_pos = Vector2(x_values[i], y_values[i])
+#     #    next_next_pos = Vector2(x_values[i+1], y_values[i+1])
+#     #    next_dir = next_pos - pos
+#     #    next_next_dir = next_next_pos - next_pos
+#     #    print(next_pos, "--", a_values)
+#     #    a_values = a_values[1:] + [next_dir.sense(next_next_dir) * next_dir.angle(next_next_dir, "RAD")]
 
-    plt.figure(figsize=(8,6))
-    plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
-    plt.scatter(x, y, label="Puntos conocidos", color="red")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.title("Interpolacion polinomica")
-    plt.legend()
-    plt.axis("equal")
-    plt.grid(True)
-    plt.show()
+#     plt.figure(figsize=(8,6))
+#     plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
+#     plt.scatter(x, y, label="Puntos conocidos", color="red")
+#     plt.xlabel("x")
+#     plt.ylabel("y")
+#     plt.title("Interpolacion polinomica")
+#     plt.legend()
+#     plt.axis("equal")
+#     plt.grid(True)
+#     plt.show()
 
 
-exit(0)
+# exit(0)
 # Test 2
 #x_lineal = [1,2]
 #y_lineal = [2,4]
@@ -245,9 +245,11 @@ exit(0)
 #print("---------------------------------------------------")
 #rMap = Map("maps/mapa2.txt", [0,0], [4,6])
 
-#print("---------------------------------------------------")
-#rMap = Map("maps/mapa3.txt", [4,2], [0,7], neighborhood=4)
+print("---------------------------------------------------")
+rMap = Map("maps/mapa3.txt", [4,2], [0,7], neighborhood=4)
 
+print(rMap.areThereWalls([0,0], [1,0]))
+exit(0)
 #for i in range(201):
 #    for j in range(201):
 #        print(i, j, "-", rMap.pos2cell(i, j))
