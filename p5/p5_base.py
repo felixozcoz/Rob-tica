@@ -73,9 +73,9 @@ def main():
         gpos = robot.ltow * Vector2(x, y, 1)
         rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         points = list(reversed(rmap.path))
-        for point in points:
-            point = rmap.cell2pos(point)
-            point = list(robot.wtol * point)[:2]
+        for i in range(len(points)):
+            points[i] = rmap.cell2pos(points[i])
+            points[i] = list(robot.wtol * points[i])[:2]
         # Se actualizan los puntos ya que:
         # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
         # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
