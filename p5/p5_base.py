@@ -75,11 +75,11 @@ def main():
         points = list(reversed(rmap.path))
         for point in points:
             point = rmap.cell2pos(point)
-            point = (robot.wtol * point)[:2]
+            point = list(robot.wtol * point)[:2]
         # Se actualizan los puntos ya que:
         # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
         # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
-        points = [x,y] + points[1:] + [robot.wtol * rmap.cell2pos(end_cell)[:2]]        
+        points = [x,y] + points[1:] + [list(robot.wtol * rmap.cell2pos(end_cell))[:2]]        
         print(points)
         robot.playTrajectory(points, 30, True, True)
 
