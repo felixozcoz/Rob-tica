@@ -17,9 +17,9 @@ def main():
         # 2a. Inicializar parametros en base al sensor
         if robot.light_intensity < 2600: 
             print("Cargando parametros para la salida desde A")
-            # points = [[0,0], [35,0], [80,-35], [160,35], [195,0], [200,0]]
+            points = [[0,0], [35,0], [80,-40], [160,40], [195,0], [200,0]]
             # points = [[0,0], [35,0], [80,-35], [160,35], [200,0]]
-            points = [[0,0], [35,0], [75,-30], [85,-30], [155,30], [165,30], [200,0]]
+            # points = [[0,0], [35,0], [75,-30], [85,-30], [155,30], [165,30], [200,0]]
             rmap = Map("mapaA_CARRERA.txt", [2,1], [3,3])
             rmap_ref = rmap.cell2pos([7,1], list) + [-90]
             robot.loadMap(rmap, rmap_ref)
@@ -29,9 +29,9 @@ def main():
             sense = -1
         else:
             print("Cargando parametros para la salida desde B")
-            # points = [[0,0], [35,0], [80,35], [160,-35], [195, 0], [200,0]]
+            points = [[0,0], [35,0], [80,40], [160,-40], [195, 0], [200,0]]
             # points = [[0,0], [35,0], [80,35], [160,-35], [200,0]]
-            points = [[0,0], [35,0], [75,30], [85,30], [155,-30], [165,-30], [200,0]]
+            # points = [[0,0], [35,0], [75,30], [85,30], [155,-30], [165,-30], [200,0]]
             rmap = Map("mapaB_CARRERA.txt", [2,5], [3,3])
             rmap_ref = rmap.cell2pos([7,5], list) + [-90]
             robot.loadMap(rmap, rmap_ref)
@@ -39,6 +39,7 @@ def main():
             exit_cells = [[6,3], [6,0]]
             end_cells  = [[7,3], [7,0]]
             sense =  1 
+        robot.BP.set_sensor_type(robot.PORT_COLOR, robot.BP.SENSOR_TYPE.NONE)
         ## 2b. Iniciar la odometria
         robot.startOdometry()
         ## 2c. Pulsar para comenzar
@@ -47,40 +48,30 @@ def main():
         # 3. Ejecutar recorrido
         # . 1a fase. Ejecucion de trayectoria
         print("Recorriendo trayectoria. . .")
-        # robot.playTrajectory(points, 30, False, False)
+        robot.playTrajectory(points, 30, False, False)
         # Centramos robot en su celda
-        # robot.centerRobot(sense)
+        robot.centerRobot(sense)
         # . 2a fase. Navegacion
         print("Realizando navegacion. . .")
-        # robot.playMap()
+        robot.playMap()
         # . 3a fase. Obtencion de la salida
         print("Encontrando robot para determinar la salida. . .")
-        #found = robot.matchObject(img_R2D2_or_BB8, showMatches=True)
-        # [TODO] Cambiar por lo comentado
-        exit_cell = exit_cells[0] #exit_cells[int(not found)]
-        end_cell  = end_cells[0] #end_cells[int(not found)]
+        found = robot.matchObject(img_R2D2_or_BB8)
+        exit_cell = exit_cells[int(not found)]
+        end_cell = end_cells[int(not found)]
         # . 4a fase. Tracking (mascara con colores negativos)
         print("Realizando seguimiento de la pelota para capturarla. . .")
-        robot.trackObject((80, 70, 50), (100, 255, 255), start_sense=-sense)
+        robot.trackObject((80, 70, 50), (100, 255, 255), -sense)
         # . 5a fase. Salida
         print("Saliendo del mapa. . .")
-        #x, y, _, _ = robot.readOdometry()
+        x, y, _, _ = robot.readOdometry()
 
-        # [TODO] Eliminar esta prueba ad-hoc
-        # x, y       = 120, -120.0
-        # robot.lock_odometry.acquire()
-        # robot.x.value = x
-        # robot.y.value = y
-        # robot.lock_odometry.release()
-        # # Eliminar hasta aqui 
-
-        # gpos = robot.ltow * Vector2(x, y, 1)
-        # robot.rmap.setPath_4N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
-        # robot.rmap.path = [end_cell] + robot.rmap.path
-        # robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
-        # robot.rmap.goal = end_cell
-        # print(robot.rmap)
-        # robot.playMap(recogn=False)
+        gpos = robot.ltow * Vector2(x, y, 1)
+        robot.rmap.setPath_4N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
+        robot.rmap.path = [end_cell] + robot.rmap.path
+        robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
+        robot.rmap.goal = end_cell
+        robot.playMap(recogn=False)
         #rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
         #points = rmap.path

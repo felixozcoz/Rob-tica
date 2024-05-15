@@ -1060,12 +1060,14 @@ class Robot:
                     else:
                         self.setSpeed(v, 0)
                     # Obtenemos los datos del ultrasonido
-                    us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
+                    us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 15.4
                     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                     # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
+                        x, y, _, _ = self.readOdometry()
+                        print("Odometry:", x, y)
                         if are_there_walls and not us_position_reached:
                             continue
                         # Si ha llegado al centro y era la ultima celda, termina
@@ -1085,6 +1087,7 @@ class Robot:
                             self.x.value = lpos.x
                             self.y.value = lpos.y
                             self.lock_odometry.release()
+                            print("Odometry updated:", lpos.x, lpos.y)
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
