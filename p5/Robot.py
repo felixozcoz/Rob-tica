@@ -381,7 +381,7 @@ class Robot:
         position = Vector2(x_values[0], y_values[0], 1)
         next_position = Vector2(x_values[1], y_values[1], 1)
         position_transform = Transform(Vector2.zero)
-        #last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
+        last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
         rotation_reached = False
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -396,8 +396,8 @@ class Robot:
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
                 direction          = next_position - position
-                rotation_transform = Transform(position, forward=direction, CUSTOM_ROTATION_ERROR=5)
-                self.setSpeed(0, direction.sense(forward) * 1)
+                rotation_transform = Transform(position, forward=direction, CUSTOM_ROTATION_ERROR=10)
+                self.setSpeed(0, -direction.sense(forward) * 1)
                 state = "ROTATE"
                 print("START_SEGMENT_ADVENTURE -> ROTATE")
             elif state == "ROTATE":
@@ -449,11 +449,15 @@ class Robot:
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
                         print(segment, "GO -> START_SEGMENT_ADVENTURE")
-                elif ultrasoundStop and np.mean(us_ev3_values) < 3:
+                elif segment < segments and last_transform == Transform(Vector2(x,y), 0):
                     self.setSpeed(0,0)
-                    while np.mean(us_ev3_values) < 3:
-                        us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-                    self.setSpeed(v, sense*w)
+                    break
+                
+                #if ultrasoundStop and np.mean(us_ev3_values) < 3:
+                #    self.setSpeed(0,0)
+                #    while np.mean(us_ev3_values) < 3:
+                #        us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+                #    self.setSpeed(v, sense*w)
 
     def centerRobot(self, sense):
         # Centrar el robot en x en la celda con la distancia al muro de delante
@@ -465,9 +469,9 @@ class Robot:
             # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
             # print(distance)
             if distance < 13.5:
-                self.setSpeed(-5,0)
+                self.setSpeed(-3,0)
             elif distance > 14.5:
-                self.setSpeed(5,0)
+                self.setSpeed(3,0)
             else:
                 self.setSpeed(0,0)
                 break
@@ -554,7 +558,7 @@ class Robot:
         self.ymin_to_stop = self.cam_center.y - 5
                                      # Maxima distancia en y a la que debe estar el blob para
                                      # parar y proceder a capturar la pelota.
-        self.fv = lambda y: -2*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
+        self.fv = lambda y: -2.5*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
                                      # Funcion velocidad lineal dependiente de la distancia
                                      # en y del blob.
         self.fw = lambda x: -1.5*x/self.cam_center.x
@@ -960,7 +964,7 @@ class Robot:
                     rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=4)
                     light_rotation_transform = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=2)
+                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=1)
                     position_reached         = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(Vector2.zero, forward=gfor):

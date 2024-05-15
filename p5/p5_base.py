@@ -160,7 +160,7 @@ def main():
         # Se actualizan los puntos ya que:
         # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
         # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
-        points = [list(robot.wtol * rmap.cell2pos(end_cell))[:2]] + points[:-1] + [[x,y]]      
+        points = [list((robot.wtol * rmap.cell2pos(end_cell)) + Vector2(-10,0))[:2]] + points[:-1] + [[x,y]]      
         print(points)
         robot.playTrajectory(points, 30, True, True, showPlot=False)
 
