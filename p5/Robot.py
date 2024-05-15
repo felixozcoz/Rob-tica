@@ -260,11 +260,72 @@ class Robot:
 
 
     #-- Generacion de trayectorias ---------
+    #-- Generacion de trayectorias ---------
     def playTrajectory(self, trajectoryPoints, segments, reversedX=False, reversedY=False, ultrasoundStop=False, showPlot=False):
         # . Separar coordenadas de la trayectoria
-        
         x = [point[0] for point in trajectoryPoints]
         y = [point[1] for point in trajectoryPoints]
+        print("x inicialmente:", x)
+        print("y inicialmente:", y)
+
+        # Remover aquellos puntos seguidos que sean repetidos
+        x_orig, y_orig = [x[0]], [y[0]]
+        for i in range(1,len(x)):
+            if not (x_orig[-1] == x[i] and y_orig[-1] == y[i]):
+                x_orig.append(x[i])
+                y_orig.append(y[i])
+        x, y = list(x_orig), list(y_orig)
+        print("x tras remover repetidos:", x)
+
+        # Interpolar aquellos puntos cuya x sea igual
+        i, j =  1, -1
+        indexes = []
+        while True:
+            if not x[i-1] == x[i]:
+                if not j == -1:
+                    indexes.append((j, i-1))
+                    j = -1
+            else:
+                if j == -1:
+                    j = i-1
+            i += 1
+            if  i >= len(x):
+                if j != -1 and (not indexes or indexes[-1] != (j, i-1)):
+                    indexes.append((j, i-1))
+                for i,j in indexes:
+                    # print("(", i-1 < 0, ",", j+1 >= len(x), ")")
+                    if i-1 < 0 and j+1 >= len(x):
+                        x          = np.linspace(x[0]-1, x[-1]+1, len(x), endpoint=True)
+                        break
+                    elif i-1 < 0:
+                        x[0:j+2]   = np.linspace(x[0], x[j+1], j+2-i, endpoint=True)
+                    elif j+1 >= len(x):
+                        x[i-1:]    = np.linspace(x[i-1], x[-1], j+2-i, endpoint=True)
+                    else:
+                        x[i-1:j+2] = np.linspace(x[i-1], x[j+1], j+3-i, endpoint=True)
+                break
+        print("x tras interpolar valores de mismo valor:", x)
+
+        # Transformar los puntos para que sean x-positivo estricto
+        i, j = 1, 0
+        symm_x = []
+        symm_y = []
+        while True:
+            if x[i-1] > x[i]:
+                while i < len(x):
+                    mirror = 2*(x[j] - x[i])
+                    x[i]  += mirror
+                    i += 1
+                symm_x.append(x[j])
+                symm_y.append(y[j])
+                i = j
+            elif x[i-1] < x[i]:
+                j = i
+            i += 1
+            if i >= len(x):
+                break
+        print("simetrias para estrictizar la x:", symm_x)
+
         # . (DEPRECATED) Funcion interpolada respecto de los
         #  puntos dados mediante interpolacion polinomica
         # deg          = len(x)-1
@@ -276,17 +337,39 @@ class Robot:
         trajectory = PchipInterpolator(x, y)
         x_values = np.linspace(min(x), max(x), segments)
         y_values = trajectory(x_values)
+        # Aplicar los puntos de simetria para recuperar la trayectoria inicial tras
+        # la interpolacion
+        if symm_x:
+            symm_x.append(np.Infinity)
+            for i in range(len(x_values)):
+                for j in range(len(symm_x)):
+                    if symm_x[j] >= x_values[i]:
+                        # print(x_values[i], j)
+                        for k in range(j-1,-1,-1):
+                            x_values[i] -= 2*(x_values[i] - symm_x[k])
+                        break
+        # Invertir el orden de los puntos de la trayectoria
         if reversedX:
+            x_orig   = list(reversed(x_orig))
             x_values = list(reversed(x_values))
         if reversedY:
+            y_orig   = list(reversed(y_orig))
             y_values = list(reversed(y_values))
 
         if showPlot:
             plt.figure(figsize=(8,6))
             plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
             plt.scatter(x, y, label="Puntos conocidos", color="red")
-            plt.xlabel("x")
-            plt.ylabel("y")
+            if symm_x:
+                plt.scatter(symm_x[:-1], symm_y, label="Puntos de simetria", color="orange")
+            if not reversedX:
+                plt.xlabel("x")
+            else:
+                plt.xlabel("x (revertido)")
+            if not reversedY:
+                plt.ylabel("y")
+            else:
+                plt.ylabel("y (revertido)")
             plt.title("Interpolacion polinomica")
             plt.legend()
             plt.axis("equal")
@@ -310,7 +393,6 @@ class Robot:
         while True:
             # Leer odometria
             _, _, th, _    = self.readOdometry()
-
             forward        = Vector2.right.rotate(th)
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
@@ -341,7 +423,7 @@ class Robot:
                 w      = forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
                 state = "GO"
-                # print("Position:", position, "Next position:", next_position)
+                print("Position:", position, "Next position:", next_position)
                 print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 if not rotation_reached:
@@ -353,7 +435,7 @@ class Robot:
                         self.setSpeed(v, sense*w)
 
                 if position_transform == Transform(Vector2(x,y), 0):
-                    # print("Position transform:", position_transform, "robot position:", Vector2(x,y))
+                    print("Position transform:", position_transform, "robot position:", Vector2(x,y))
                     segment += 1
                     if segment >= segments:
                         # Orientar el robot a th 0
@@ -984,8 +1066,16 @@ class Robot:
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if are_there_walls and not us_position_reached:
-                            continue
+                        if are_there_walls:
+                            if not us_position_reached:
+                                continue
+                            else:
+                                # Se actualiza la odometria
+                                lpos = self.wtol * pos
+                                self.lock_odometry.acquire()
+                                self.x.value = lpos.x
+                                self.y.value = lpos.y
+                                self.lock_odometry.release()
                         # Si ha llegado al centro y era la ultima celda, termina
                         self.setSpeed(0, 0)
                         print("next_cell", next_cell, " goal", self.rmap.goal)
@@ -997,12 +1087,6 @@ class Robot:
                             # Se actualiza a la siguiente celda
                             cell  = next_cell
                             pos   = next_pos
-                            # Se actualiza la odometria
-                            lpos = self.wtol * pos
-                            self.lock_odometry.acquire()
-                            self.x.value = lpos.x
-                            self.y.value = lpos.y
-                            self.lock_odometry.release()
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
@@ -1158,9 +1242,16 @@ class Robot:
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if are_there_walls and not us_position_reached:
-                            continue
+                        if are_there_walls:
+                            if not us_position_reached:
+                                continue
+                            else:
+                                # Se actualiza la odometria
+                                lpos = self.wtol * pos
+                                self.lock_odometry.acquire()
+                                self.x.value = lpos.x
+                                self.y.value = lpos.y
+                                self.lock_odometry.release()
                         # Si ha llegado al centro y era la ultima celda, termina
                         self.setSpeed(0, 0)
                         print("next_cell", next_cell, " goal", self.rmap.goal)
@@ -1172,12 +1263,6 @@ class Robot:
                             # Se actualiza a la siguiente celda
                             cell  = next_cell
                             pos   = next_pos
-                            # Se actualiza la odometria
-                            lpos = self.wtol * pos
-                            self.lock_odometry.acquire()
-                            self.x.value = lpos.x
-                            self.y.value = lpos.y
-                            self.lock_odometry.release()
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
