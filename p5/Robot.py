@@ -260,7 +260,6 @@ class Robot:
 
 
     #-- Generacion de trayectorias ---------
-    #-- Generacion de trayectorias ---------
     def playTrajectory(self, trajectoryPoints, segments, reversedX=False, reversedY=False, ultrasoundStop=False, showPlot=False):
         # . Separar coordenadas de la trayectoria
         x = [point[0] for point in trajectoryPoints]
@@ -1067,16 +1066,8 @@ class Robot:
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if are_there_walls:
-                            if not us_position_reached:
-                                continue
-                            else:
-                                # Se actualiza la odometria
-                                lpos = self.wtol * pos
-                                self.lock_odometry.acquire()
-                                self.x.value = lpos.x
-                                self.y.value = lpos.y
-                                self.lock_odometry.release()
+                        if are_there_walls and not us_position_reached:
+                            continue
                         # Si ha llegado al centro y era la ultima celda, termina
                         self.setSpeed(0, 0)
                         print("next_cell", next_cell, " goal", self.rmap.goal)
@@ -1088,6 +1079,12 @@ class Robot:
                             # Se actualiza a la siguiente celda
                             cell  = next_cell
                             pos   = next_pos
+                            # Se actualiza la odometria
+                            lpos = self.wtol * pos
+                            self.lock_odometry.acquire()
+                            self.x.value = lpos.x
+                            self.y.value = lpos.y
+                            self.lock_odometry.release()
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
@@ -1239,20 +1236,12 @@ class Robot:
                     # Obtenemos los datos del ultrasonido
                     us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 14
                     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-                    #us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
+                    # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
                     if reaching_cell_transform == transform:
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
-                        if are_there_walls:
-                            if not us_position_reached:
-                                continue
-                            else:
-                                # Se actualiza la odometria
-                                lpos = self.wtol * pos
-                                self.lock_odometry.acquire()
-                                self.x.value = lpos.x
-                                self.y.value = lpos.y
-                                self.lock_odometry.release()
+                        if are_there_walls and not us_position_reached:
+                            continue
                         # Si ha llegado al centro y era la ultima celda, termina
                         self.setSpeed(0, 0)
                         print("next_cell", next_cell, " goal", self.rmap.goal)
@@ -1264,6 +1253,12 @@ class Robot:
                             # Se actualiza a la siguiente celda
                             cell  = next_cell
                             pos   = next_pos
+                            # Se actualiza la odometria
+                            lpos = self.wtol * pos
+                            self.lock_odometry.acquire()
+                            self.x.value = lpos.x
+                            self.y.value = lpos.y
+                            self.lock_odometry.release()
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
