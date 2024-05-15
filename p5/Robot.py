@@ -336,7 +336,7 @@ class Robot:
                 direction          = next_position - position
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 rotation_reached   = False
-                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=2)
+                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=1)
                 sense  = forward.sense(direction)
                 w      = forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
@@ -867,7 +867,7 @@ class Robot:
                     dir = (next_pos - pos).normalize()
                     are_there_walls = self.rmap.areThereWalls(cell, [next_cell[0] - cell[0], next_cell[1] - cell[1]])
                     # Obtenemos las transformaciones representativas del destino
-                    rotation_transform      = Transform(pos, forward=dir)
+                    rotation_transform      = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
                     reaching_cell_transform = Transform(next_pos, forward=dir)
                     # Si la rotacion ya coincide, pasamos a reconocimiento
@@ -886,6 +886,7 @@ class Robot:
                         self.setSpeed(0, gfor.sense(dir) * w)
                 # B. Estado de rotacion
                 elif state == "ROTATION":
+                    transform = Transform(Vector2.zero, forward=gfor)
                     if rotation_transform == transform:
                         if not recogn:
                             state = "FORWARD"
