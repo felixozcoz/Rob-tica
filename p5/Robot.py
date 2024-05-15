@@ -386,7 +386,7 @@ class Robot:
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         # Velocidades
-        v = 15
+        v = 20
 
         # Rotacion inicial si la orientacion del robot no coincide con el inicio
         while True:
@@ -932,7 +932,7 @@ class Robot:
         are_there_walls = False
         dynamic_walls   = []
         # Velocidades
-        v, w = 10, 0.75
+        v, w = 15, 1
         # Valores de los ultrasonidos
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -960,7 +960,7 @@ class Robot:
                     rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=4)
                     light_rotation_transform = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=2.5)
+                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=2)
                     position_reached         = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(Vector2.zero, forward=gfor):
