@@ -61,26 +61,26 @@ def main():
         end_cell  = end_cells[0] #end_cells[int(not found)]
         # . 4a fase. Tracking (mascara con colores negativos)
         print("Realizando seguimiento de la pelota para capturarla. . .")
-        # robot.trackObject((80, 70, 50), (100, 255, 255), sense)
+        robot.trackObject((80, 70, 50), (100, 255, 255), start_sense=-sense)
         # . 5a fase. Salida
         print("Saliendo del mapa. . .")
         #x, y, _, _ = robot.readOdometry()
 
         # [TODO] Eliminar esta prueba ad-hoc
-        x, y       = 120, -120.0
-        robot.lock_odometry.acquire()
-        robot.x.value = x
-        robot.y.value = y
-        robot.lock_odometry.release()
-        # Eliminar hasta aqui 
+        # x, y       = 120, -120.0
+        # robot.lock_odometry.acquire()
+        # robot.x.value = x
+        # robot.y.value = y
+        # robot.lock_odometry.release()
+        # # Eliminar hasta aqui 
 
-        gpos = robot.ltow * Vector2(x, y, 1)
-        robot.rmap.setPath_4N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
-        robot.rmap.path = [end_cell] + robot.rmap.path
-        robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
-        robot.rmap.goal = end_cell
-        print(robot.rmap)
-        robot.playMap(recogn=False)
+        # gpos = robot.ltow * Vector2(x, y, 1)
+        # robot.rmap.setPath_4N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
+        # robot.rmap.path = [end_cell] + robot.rmap.path
+        # robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
+        # robot.rmap.goal = end_cell
+        # print(robot.rmap)
+        # robot.playMap(recogn=False)
         #rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
         #points = rmap.path
