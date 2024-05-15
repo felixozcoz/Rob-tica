@@ -50,7 +50,7 @@ class Robot:
         #self.BP.set_sensor_type(self.PORT_ULTRASONIC_NXT, self.BP.SENSOR_TYPE.NXT_ULTRASONIC)
         # . Sensor de luz
         self.PORT_COLOR = self.BP.PORT_3
-        # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
+        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NXT_LIGHT_ON)
         # . Giroscopio
         self.PORT_GYROSCOPE = self.BP.PORT_4
         self.BP.set_sensor_type(self.PORT_GYROSCOPE, self.BP.SENSOR_TYPE.EV3_GYRO_ABS_DPS)
@@ -77,12 +77,12 @@ class Robot:
         #      time.sleep(self.P)
 
         # [TODO] Descomentar cuando se use
-        self.light_intensity = 2700
-        # self.light_intensity = 0         # Ultimo nivel de luz detectado por el sensor de luz
-        # for _ in range(3):
-        #     self.light_intensity = self.BP.get_sensor(self.PORT_COLOR)
-        #     time.sleep(self.P)
-        # self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
+        # self.light_intensity = 2700
+        self.light_intensity = 0         # Ultimo nivel de luz detectado por el sensor de luz
+        for _ in range(3):
+            self.light_intensity = self.BP.get_sensor(self.PORT_COLOR)
+            time.sleep(self.P)
+        self.BP.set_sensor_type(self.PORT_COLOR, self.BP.SENSOR_TYPE.NONE)
         
         ##################################################
         # Odometria
@@ -586,12 +586,12 @@ class Robot:
         detector             = self.initMyBlobDetector()
         # Parametros de rango de los pixeles
         rotation_reached     = False # Indica si el robot tiene el blob centrado en x
-        rotation_pixel       = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=15)
-        outbound_pixel_xback = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=self.xmin_to_backwards)
-        outbound_pixel_xmin  = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=self.xmin_to_rotate) 
-        outbound_pixel_xmax  = Pixel(Vector2.zero, CUSTOM_COORDS_ERROR=self.cam_center.x)  
-        outbound_pixel_y     = Pixel(Vector2(0, self.cam_center.y//4), CUSTOM_COORDS_ERROR=10)
-        position_pixel       = Pixel(Vector2(0, self.ymin_to_stop), CUSTOM_COORDS_ERROR=10)
+        rotation_pixel       = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=15)
+        outbound_pixel_xback = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.xmin_to_backwards)
+        outbound_pixel_xmin  = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.xmin_to_rotate) 
+        outbound_pixel_xmax  = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.cam_center.x)  
+        outbound_pixel_y     = Pixel(Vector2(0, self.cam_center.y//4), CUSTOM_COORDS_RANGE=10)
+        position_pixel       = Pixel(Vector2(0, self.ymin_to_stop), CUSTOM_COORDS_RANGE=10)
         # Object positional information
         side          = start_sense # Ultima zona por la que se ha visto la pelota (izq = -1, dch = 1)    
         nextToMe      = False       # Indica si la pelota estaba al lado del robot la ultima vez que la vio.
