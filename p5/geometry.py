@@ -645,12 +645,12 @@ class Transform:
         """
         # VERIFICAR POSICION
         # A. Area
-        self.POSITION |= (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
+        POSITION = (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y)
         #if  transform.position != Vector2.zero and (self.position_inf.x <= transform.position.x < self.position_sup.x) and (self.position_inf.y <= transform.position.y < self.position_sup.y):
         #    print("Check por area:", self.position_inf, ">", transform.position, "<", self.position_sup)
         # B. Distancia (cm)
         distance = (self.position - transform.position).magnitude()
-        self.POSITION |= self.POSITION_ERROR > distance
+        POSITION |= self.POSITION_ERROR > distance
         #if self.POSITION_ERROR > distance and transform.position != Vector2.zero:
         #    print("Check por distancia de posiciones:", self.POSITION_ERROR, ">", distance)
         # C. Minimo local en distancia (cm)
@@ -661,7 +661,7 @@ class Transform:
         #if self.dmin[0] > self.dmin[1] < self.dmin[2] and 0.001 <= (self.dmin[0]-self.dmin[1]) and 0.001 <= (self.dmin[2]-self.dmin[1]):
 
         distance = round(distance)
-        self.POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2]
+        POSITION |= self.dmin[0] > self.dmin[1] < self.dmin[2]
         # if self.dmin[0] > self.dmin[1] < self.dmin[2]:
             # print("Check por minimo local de distancia:", self.dmin)
         if not self.dmin[-1] == distance:
@@ -679,7 +679,7 @@ class Transform:
         #    print("Check por area:", self.rotation_inf, ">", transform.rotation, "<", self.rotation_sup)
         # B. Distancia (grados)
         distance = abs((self.rotation - transform.rotation + 180) % 360 - 180)
-        self.ROTATION |= self.ROTATION_ERROR > distance
+        ROTATION = self.ROTATION_ERROR > distance
         #if (self.ROTATION_ERROR >= distance):
         #    print("Check por distancia de angulos:", self.ROTATION_ERROR, ">", distance, "(", self.rotation, ",", transform.rotation, ")")
         # C. Minimo local en distancia (grados)
@@ -694,7 +694,7 @@ class Transform:
         #    self.rmin_counter += 1
         # D. Orientacion    
         distance = abs((self.forward.angle(transform.forward) + 180) % 360 - 180)
-        self.ROTATION |= self.ROTATION_ERROR >= distance
+        ROTATION |= self.ROTATION_ERROR >= distance
         # if (self.ROTATION_ERROR >= distance):
         #     print("Check por angulo de vectores:", self.ROTATION_ERROR, ">", distance, "(", self.forward, ",", transform.forward, ")")
         # E. Minimo local en orientacion (grados)
@@ -708,7 +708,7 @@ class Transform:
         #else:
         #    self.omin_counter += 1
         # Si cumple posicion y rotacion, ha llegado
-        return self.POSITION and self.ROTATION
+        return POSITION and ROTATION
         #if self.POSITION and self.ROTATION:
         #    # Reset state
         #    self.POSITION = False

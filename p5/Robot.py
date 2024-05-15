@@ -386,7 +386,7 @@ class Robot:
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         # Velocidades
-        v = 10
+        v = 15
 
         # Rotacion inicial si la orientacion del robot no coincide con el inicio
         while True:
@@ -396,7 +396,7 @@ class Robot:
             # Estados
             if state == "START_SEGMENT_ADVENTURE":
                 direction          = next_position - position
-                rotation_transform = Transform(position, forward=direction)
+                rotation_transform = Transform(position, forward=direction, CUSTOM_ROTATION_ERROR=5)
                 self.setSpeed(0, direction.sense(forward) * 1)
                 state = "ROTATE"
                 print("START_SEGMENT_ADVENTURE -> ROTATE")
@@ -417,9 +417,9 @@ class Robot:
                 direction          = next_position - position
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 rotation_reached   = False
-                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=1)
+                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=5)
                 sense  = forward.sense(direction)
-                w      = forward.angle(direction, "RAD")
+                w      = 1.5 * forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
                 state = "GO"
                 print("Position:", position, "Next position:", next_position)
@@ -438,11 +438,11 @@ class Robot:
                     segment += 1
                     if segment >= segments:
                         # Orientar el robot a th 0
-                        rotation_transform = Transform(Vector2.zero, rotation=th)
-                        while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
-                            x, y, th, _ = self.readOdometry()
-                            rotation_transform = Transform(Vector2.zero, rotation=th)
-                            self.setSpeed(0, -np.sign(th) * 0.5)
+                        #rotation_transform = Transform(Vector2.zero, rotation=th)
+                        #while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
+                        #    x, y, th, _ = self.readOdometry()
+                        #    rotation_transform = Transform(Vector2.zero, rotation=th)
+                        #    self.setSpeed(0, -np.sign(th) * 0.5)
                         self.setSpeed(0, 0)
                         break
                     else:
@@ -465,9 +465,9 @@ class Robot:
             # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
             # print(distance)
             if distance < 13.5:
-                self.setSpeed(-3,0)
+                self.setSpeed(-5,0)
             elif distance > 14.5:
-                self.setSpeed(3,0)
+                self.setSpeed(5,0)
             else:
                 self.setSpeed(0,0)
                 break
@@ -516,6 +516,15 @@ class Robot:
         x, y, th, _ = self.readOdometry()
         print("Robot centered at", x, y, th)
 
+    def centerTh(self, new_th):
+        _, _, th, _ = self.readOdometry()
+        odom_rotation_transform = Transform(Vector2.zero, rotation=abs(th))
+        rotation_transform = Transform(Vector2.zero, rotation=new_th)
+        while not rotation_transform == odom_rotation_transform:
+            self.setSpeed(0, -np.sign(th)*0.5)
+            _, _, th, _ = self.readOdometry()
+            odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+        self.setSpeed(0,0)
 
     #-- Seguimiento de objetos -------------
     def initCamera(self, resolution=(320, 240), framerate=32):
@@ -542,7 +551,7 @@ class Robot:
         self.xmin_to_backwards = 3*self.cam_center.x//4
                                      # Minima distancia en x a la que debe estar el blob para
                                      # dar marcha atras y no rotar.
-        self.ymin_to_stop = self.cam_center.y - 10
+        self.ymin_to_stop = self.cam_center.y - 5
                                      # Maxima distancia en y a la que debe estar el blob para
                                      # parar y proceder a capturar la pelota.
         self.fv = lambda y: -2*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
@@ -733,6 +742,7 @@ class Robot:
                         else:
                             # The basket has caught the object
                             print("Ball caught")
+                            self.setSpeed(0, 0)
                             return
 
                     # Checking y coordinate location of the blob within the catchment region
@@ -878,8 +888,8 @@ class Robot:
                         res = cv.drawMatches(imgRef, fst_kp, frame, snd_kp, good, None, **draw_params)
                     if res.shape[1] > 1920 or res.shape[0] > 1080:
                         res = cv.resize(res, (int(res.shape[1]/2.5), int(res.shape[0]/2.5)), interpolation=cv.INTER_LINEAR)
-                    cv.imshow("INLIERS", res)
-                    cv.waitKey(0)
+                    cv.imwrite("INLIERS.jpg", res)
+                    # cv.waitKey(0)
                 if num_robuts_matches < MIN_MATCH_OBJECTFOUND:
                     print(" NOT enough ROBUST matches - %d (required %d)" % (num_robuts_matches, MIN_MATCH_OBJECTFOUND))
                     cam.close()
@@ -939,7 +949,6 @@ class Robot:
                 #   - Despues se pasa a global.
                 gpos = self.ltow * Vector2(x,y,1)
                 gfor = self.ltow * Vector2.right.rotate(th)
-                transform = Transform(gpos, forward=gfor)
 
                 # A. Estado de inicializacion. Obtiene los parametros para la siguiente aventura
                 if state == "START_CELL_ADVENTURE":
@@ -948,11 +957,13 @@ class Robot:
                     dir = (next_pos - pos).normalize()
                     are_there_walls = self.rmap.areThereWalls(cell, [next_cell[0] - cell[0], next_cell[1] - cell[1]])
                     # Obtenemos las transformaciones representativas del destino
-                    rotation_transform      = Transform(Vector2.zero, forward=dir)
+                    rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=4)
+                    light_rotation_transform = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    reaching_cell_transform = Transform(next_pos, forward=dir)
+                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=2.5)
+                    position_reached         = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
-                    if rotation_transform == transform:
+                    if rotation_transform == Transform(Vector2.zero, forward=gfor):
                         if recogn:
                             state = "RECOGN"
                             print("START_CELL_ADVENTURE -> RECOGN")
@@ -967,8 +978,7 @@ class Robot:
                         self.setSpeed(0, gfor.sense(dir) * w)
                 # B. Estado de rotacion
                 elif state == "ROTATION":
-                    transform = Transform(Vector2.zero, forward=gfor)
-                    if rotation_transform == transform:
+                    if rotation_transform == Transform(Vector2.zero, forward=gfor):
                         if not recogn:
                             state = "FORWARD"
                             print("ROTATION -> FORWARD")
@@ -1055,19 +1065,20 @@ class Robot:
                 elif state == "FORWARD":
                     # Si el vector orientacion del robot no coincide con el vector direccion de 
                     # la posicion actual a la siguiente, corrige trayectoria
-                    if not rotation_transform == Transform(Vector2.zero, forward=gfor):
-                        self.setSpeed(v, gfor.sense(rotation_transform.forward)*0.15)
+                    if not light_rotation_transform == Transform(Vector2.zero, forward=gfor):
+                        self.setSpeed(v, gfor.sense(light_rotation_transform.forward)*0.15)
                     else:
                         self.setSpeed(v, 0)
                     # Obtenemos los datos del ultrasonido
-                    us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 15.4
+                    us_position_reached = Decimal(np.mean(us_ev3_values)) % Decimal(self.rmap.sizeCell) <= 15
                     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
                     # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
                     # Si la posicion coincide, he llegado a la celda
-                    if reaching_cell_transform == transform:
+                    if position_reached or reaching_cell_transform == Transform(gpos):
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
                         x, y, _, _ = self.readOdometry()
                         print("Odometry:", x, y)
+                        position_reached = True
                         if are_there_walls and not us_position_reached:
                             continue
                         # Si ha llegado al centro y era la ultima celda, termina
