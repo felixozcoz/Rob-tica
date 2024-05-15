@@ -461,7 +461,7 @@ class Robot:
         self.xmin_to_backwards = 3*self.cam_center.x//4
                                      # Minima distancia en x a la que debe estar el blob para
                                      # dar marcha atras y no rotar.
-        self.ymin_to_stop = self.cam_center.y - 20
+        self.ymin_to_stop = self.cam_center.y - 10
                                      # Maxima distancia en y a la que debe estar el blob para
                                      # parar y proceder a capturar la pelota.
         self.fv = lambda y: -2*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
