@@ -386,7 +386,7 @@ class Robot:
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         # Velocidades
-        v = 20
+        v, o = 20, 1.5
 
         # Rotacion inicial si la orientacion del robot no coincide con el inicio
         while True:
@@ -397,7 +397,7 @@ class Robot:
             if state == "START_SEGMENT_ADVENTURE":
                 direction          = next_position - position
                 rotation_transform = Transform(position, forward=direction, CUSTOM_ROTATION_ERROR=10)
-                self.setSpeed(0, -direction.sense(forward) * 1)
+                self.setSpeed(0, -direction.sense(forward) * o)
                 state = "ROTATE"
                 print("START_SEGMENT_ADVENTURE -> ROTATE")
             elif state == "ROTATE":
@@ -419,7 +419,7 @@ class Robot:
                 rotation_reached   = False
                 position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=5)
                 sense  = forward.sense(direction)
-                w      = 1.5 * forward.angle(direction, "RAD")
+                w      = o * forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
                 state = "GO"
                 print("Position:", position, "Next position:", next_position)
@@ -460,6 +460,8 @@ class Robot:
                 #    self.setSpeed(v, sense*w)
 
     def centerRobot(self, sense):
+        v = 3
+        w = 1
         # Centrar el robot en x en la celda con la distancia al muro de delante
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -469,9 +471,9 @@ class Robot:
             # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
             # print(distance)
             if distance < 13.5:
-                self.setSpeed(-3,0)
+                self.setSpeed(-v,0)
             elif distance > 14.5:
-                self.setSpeed(3,0)
+                self.setSpeed(v,0)
             else:
                 self.setSpeed(0,0)
                 break
@@ -493,9 +495,9 @@ class Robot:
             # us_nxt_values = us_nxt_values[1:] + [self.us_nxt.value]
             # print(distance)
             if distance < 14.5:
-                self.setSpeed(-3,0)
+                self.setSpeed(-v,0)
             elif distance > 15.5:
-                self.setSpeed(3,0)
+                self.setSpeed(v,0)
             else:
                 self.setSpeed(0,0)
                 break
@@ -506,7 +508,7 @@ class Robot:
         rotation_transform = Transform(Vector2.zero, rotation=0.0)
         while not rotation_transform == odom_rotation_transform:
             us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-            self.setSpeed(0, -sense*0.5)
+            self.setSpeed(0, -sense*w)
             _, _, th, _ = self.readOdometry()
             odom_rotation_transform = Transform(Vector2.zero, rotation=th)
 
@@ -520,15 +522,16 @@ class Robot:
         x, y, th, _ = self.readOdometry()
         print("Robot centered at", x, y, th)
 
-    def centerTh(self, new_th):
-        _, _, th, _ = self.readOdometry()
-        odom_rotation_transform = Transform(Vector2.zero, rotation=abs(th))
-        rotation_transform = Transform(Vector2.zero, rotation=new_th)
-        while not rotation_transform == odom_rotation_transform:
-            self.setSpeed(0, -np.sign(th)*0.5)
-            _, _, th, _ = self.readOdometry()
-            odom_rotation_transform = Transform(Vector2.zero, rotation=th)
-        self.setSpeed(0,0)
+    #def centerTh(self, new_th):
+    #    _, _, th, _ = self.readOdometry()
+    #    odom_rotation_transform = Transform(Vector2.zero, rotation=abs(th))
+    #    rotation_transform = Transform(Vector2.zero, rotation=new_th)
+    #    while not rotation_transform == odom_rotation_transform:
+    #        self.setSpeed(0, -np.sign(th)*w)
+    #        _, _, th, _ = self.readOdometry()
+    #        odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+    #    self.setSpeed(0,0)
+    
 
     #-- Seguimiento de objetos -------------
     def initCamera(self, resolution=(320, 240), framerate=32):
@@ -936,7 +939,7 @@ class Robot:
         are_there_walls = False
         dynamic_walls   = []
         # Velocidades
-        v, w = 15, 1
+        v, w = 20, 1
         # Valores de los ultrasonidos
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -964,7 +967,7 @@ class Robot:
                     rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=4)
                     light_rotation_transform = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=1)
+                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=2)
                     position_reached         = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(Vector2.zero, forward=gfor):
