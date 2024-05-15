@@ -1,14 +1,11 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-import time
 import cv2 as cv
 import traceback
 
 from Robot import Robot
 from ReMapLib import Map
-from geometry import Vector2, Transform
-from decimal import Decimal
-import numpy as np
+from geometry import Vector2
 
 def main():    
     try:
@@ -150,7 +147,7 @@ def main():
             #        robot.setSpeed(0,0)
             #        break
         #robot.playMap(recogn=False)
-        
+        robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
         rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
         # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
         points = rmap.path

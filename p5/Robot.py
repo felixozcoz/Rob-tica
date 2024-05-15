@@ -26,6 +26,8 @@ from ReMapLib import Map
                     # To load and play a map
 from scipy.interpolate import PchipInterpolator
                     # To interpolate a set of points and obtain a trajectory
+from plot_robot import dibrobot
+                    # To plot the odometry of the robot
 
 # Robot class
 class Robot:
@@ -199,6 +201,7 @@ class Robot:
         sys.stdout.write("Stopping odometry ... X=  %.2f, \
                 Y=  %.2f, th=  %.2f \n" %(self.x.value, self.y.value, self.th.value))
         self.BP.reset_all()
+        self.plot_log(LOG_NAME, self.rmap)
 
     def stopOdometry(self):
         """ Stop the odometry thread """
@@ -520,18 +523,7 @@ class Robot:
         self.y.value = lpos.y
         self.lock_odometry.release()
         x, y, th, _ = self.readOdometry()
-        print("Robot centered at", x, y, th)
-
-    #def centerTh(self, new_th):
-    #    _, _, th, _ = self.readOdometry()
-    #    odom_rotation_transform = Transform(Vector2.zero, rotation=abs(th))
-    #    rotation_transform = Transform(Vector2.zero, rotation=new_th)
-    #    while not rotation_transform == odom_rotation_transform:
-    #        self.setSpeed(0, -np.sign(th)*w)
-    #        _, _, th, _ = self.readOdometry()
-    #        odom_rotation_transform = Transform(Vector2.zero, rotation=th)
-    #    self.setSpeed(0,0)
-    
+        print("Robot centered at", x, y, th)    
 
     #-- Seguimiento de objetos -------------
     def initCamera(self, resolution=(320, 240), framerate=32):
@@ -1283,3 +1275,23 @@ class Robot:
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
+    # Mostrar odometria
+    def plot_log(self, log_name,rMap):
+        # create a new figure and set it as current axis
+        current_fig = plt.figure()
+        rMap.current_ax = current_fig.add_subplot(111)
+        rMap._drawGrid()
+        with open(log_name, "r") as log_file:
+            # Creamos el lector de fichero de CSV
+            reader = csv.reader(log_file) 
+            # Saltamos la cabecera
+            next(reader, None)
+            # Iteramos sobre cada fila del log, que corresponden a los valores de la odometría
+            for row in reader:
+                gpos        = self.ltow * Vector2(np.float32(row[1]), np.float32(row[2]), 1)
+                # Ploteamos cada nueva posición de la odometría
+                # dibrobot([np.float32(row[1])+20,np.float32(row[2])+20,np.float32(row[3])], 'b', 'g')
+                dibrobot([gpos.x,gpos.y,np.float32(row[3])], 'b', 'g')
+        # plt.savefig(f"{log_name}.png")
+        plt.show()
+        plt.close()
