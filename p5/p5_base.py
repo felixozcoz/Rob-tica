@@ -25,7 +25,6 @@ def main():
             img_R2D2_or_BB8 = cv.imread("images/R2-D2_s.png", cv.IMREAD_COLOR)
             exit_cells = [[6,3], [6,6]]
             end_cells  = [[7,3], [7,6]]
-            direction  = [Vector2.down, Vector2.up]
             sense = -1
         else:
             print("Cargando parametros para la salida desde B")
@@ -50,7 +49,7 @@ def main():
         print(points)
         robot.playTrajectory(points, 30, showPlot=False)
         # Centramos robot en su celda
-        robot.centerRobot(sense)
+        #robot.centerRobot(sense)
         # . 2a fase. Navegacion
         print("Realizando navegacion. . .")
         robot.playMap()
@@ -78,7 +77,7 @@ def main():
         # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
         # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
         points = [list((robot.wtol * rmap.cell2pos(end_cell)) + Vector2(-10,0))[:2]] + points[:-1] + [[x,y]]      
-        print(points)
+        # print(points)
         robot.playTrajectory(points, 30, True, True, True, showPlot=False)
 
         # 4. Wrap up and close stuff ...

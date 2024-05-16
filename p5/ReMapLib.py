@@ -34,7 +34,7 @@ class Map:
         # Parametros para visualizar
         self.mapLineStyle="r-"
         self.costValueStyle="g*"
-        self.verbose = True
+        self.verbose = False
         # set to False to stop displaying plots interactively (and maybe just save the screenshots)
         # self.verbose = False
         self.current_ax = None
@@ -176,7 +176,6 @@ class Map:
                     # se obtiene el vecino, pero al sumarselo a la conexion, da la direccion al vecino
                     neighbor = [cell[0], cell[1]]
                     neighbor[dy] += dx
-                    print(neighbor, self.sizeX, self.sizeY)
                     if neighbor[0] < 0 or neighbor[0] >= self.sizeY or neighbor[1] < 0 or neighbor[1] >= self.sizeX:
                         continue
                     neighbor_conn = [conn[0],conn[1]]

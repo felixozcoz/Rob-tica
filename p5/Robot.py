@@ -406,7 +406,7 @@ class Robot:
                 rotation_transform = Transform(position, forward=direction, CUSTOM_ROTATION_ERROR=10)
                 self.setSpeed(0, -direction.sense(forward) * o)
                 state = "ROTATE"
-                print("START_SEGMENT_ADVENTURE -> ROTATE")
+                # print("START_SEGMENT_ADVENTURE -> ROTATE")
             elif state == "ROTATE":
                 if rotation_transform == Transform(position, forward=forward):
                     self.setSpeed(0, 0)
@@ -430,7 +430,7 @@ class Robot:
                 self.setSpeed(v, sense * w)
                 state = "GO"
                 # print("Position:", position, "Next position:", next_position)
-                print("START_SEGMENT_ADVENTURE -> GO")
+                # print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 if not rotation_reached:
                     if rotation_transform == Transform(Vector2.zero, forward=forward):
@@ -449,7 +449,7 @@ class Robot:
                     else:
                         position = next_position
                         state    = "START_SEGMENT_ADVENTURE"
-                        print(segment, "GO -> START_SEGMENT_ADVENTURE")
+                        # print(segment, "GO -> START_SEGMENT_ADVENTURE")
                 elif segment < segments and last_transform == Transform(Vector2(x,y), 0):
                     self.setSpeed(0,0)
                     break
@@ -558,7 +558,7 @@ class Robot:
         self.ymin_to_stop = self.cam_center.y - 5
                                      # Maxima distancia en y a la que debe estar el blob para
                                      # parar y proceder a capturar la pelota.
-        self.fv = lambda y: -3*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
+        self.fv = lambda y: -2.5*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
                                      # Funcion velocidad lineal dependiente de la distancia
                                      # en y del blob.
         self.fw = lambda x: -1.5*x/self.cam_center.x
@@ -641,7 +641,7 @@ class Robot:
         '''
         # If there are no blobs, there is no better blob
         if not blobs:
-            print("No hay blobs")
+            # print("No hay blobs")
             return None
         # Criterio: largest and most centered if equal, if not largest
         best_blob = None
@@ -738,7 +738,8 @@ class Robot:
                     # Target position
                     if not position_pixel == blob_position:
                         # Velocidad del robot. Se capa a 15cm/s como maximo.
-                        v = np.clip(self.fv(blob_position.coords.y), -20, 20)
+                        # v = np.clip(self.fv(blob_position.coords.y), -20, 20)
+                        v = self.fv(blob_position.coords.y)
                         if ultrasoundStop:
                             if not detect_moving_object:
                                 detect_moving_object = True
@@ -761,7 +762,7 @@ class Robot:
                             wb = 1
                         else:
                             # The basket has caught the object
-                            print("Ball caught")
+                            # print("Ball caught")
                             self.setSpeed(0, 0)
                             return
 
@@ -854,14 +855,14 @@ class Robot:
             fst_kp, fst_des = detector.detectAndCompute(fst_img, None)
             snd_kp, snd_des = detector.detectAndCompute(snd_img, None)
             if fst_des is None or snd_des is None:
-                print("WARNING -- Empty detection?")
+                # print("WARNING -- Empty detection?")
                 cam.close()
                 return False
             if len(fst_des) < MIN_MATCH_COUNT or len(snd_des) < MIN_MATCH_COUNT:
-                print("WARNING -- Not enough features (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
+                # print("WARNING -- Not enough features (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
                 cam.close()
                 return False
-            print (" FEATURES extracted (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
+            # print (" FEATURES extracted (FST: %d, SND: %d)" % (len(fst_des), len(snd_des)))
 
             # Matching
             if binary_features:
@@ -879,7 +880,7 @@ class Robot:
                 for m,n in matches:
                     if m.distance < 0.7*n.distance:
                         good.append(m)
-            print(" Initial matches found: %d" %(len(good)))
+            # print(" Initial matches found: %d" %(len(good)))
 
             # Find coincidence
             if len(good) > MIN_MATCH_COUNT:
@@ -911,15 +912,15 @@ class Robot:
                     cv.imwrite("INLIERS.jpg", res)
                     # cv.waitKey(0)
                 if num_robuts_matches < MIN_MATCH_OBJECTFOUND:
-                    print(" NOT enough ROBUST matches - %d (required %d)" % (num_robuts_matches, MIN_MATCH_OBJECTFOUND))
+                    # print(" NOT enough ROBUST matches - %d (required %d)" % (num_robuts_matches, MIN_MATCH_OBJECTFOUND))
                     cam.close()
                     return False
         
-                print(" ROBUST matches found - %d (out of %d) --> OBJECT FOUND!" % (np.sum(matches_mask), len(good)))
+                # print(" ROBUST matches found - %d (out of %d) --> OBJECT FOUND!" % (np.sum(matches_mask), len(good)))
                 cam.close()
                 return True
             else:
-                print(" Not enough initial matches are found - %d (required %d)" % (len(good), MIN_MATCH_COUNT))
+                # print(" Not enough initial matches are found - %d (required %d)" % (len(good), MIN_MATCH_COUNT))
                 cam.close()
                 return False
 
@@ -946,13 +947,13 @@ class Robot:
         _, cell, pos = self.rmap.travel()
         # Si la celda actual es la meta, hemos terminado
         if cell == self.rmap.goal:
-            print("Goal Reached!", cell, self.rmap.goal)
+            # print("Goal Reached!", cell, self.rmap.goal)
             return
         # Variables
         are_there_walls = False
         dynamic_walls   = []
         # Velocidades
-        v, w = 20, 1
+        v, w = 25, 1.5
         # Valores de los ultrasonidos
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -980,32 +981,32 @@ class Robot:
                     rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=4)
                     light_rotation_transform = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=2)
+                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=5)
                     position_reached         = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(Vector2.zero, forward=gfor):
                         if recogn:
                             state = "RECOGN"
-                            print("START_CELL_ADVENTURE -> RECOGN")
+                            # print("START_CELL_ADVENTURE -> RECOGN")
                         else:
                             state = "FORWARD"
-                            print("START_CELL_ADVENTURE -> FORWARD")
+                            # print("START_CELL_ADVENTURE -> FORWARD")
                             self.setSpeed(0, 0)
                     # Si no, primero rotamos el robot
                     else:
                         state = "ROTATION"
-                        print("START_CELL_ADVENTURE -> ROTATION")
+                        # print("START_CELL_ADVENTURE -> ROTATION")
                         self.setSpeed(0, gfor.sense(dir) * w)
                 # B. Estado de rotacion
                 elif state == "ROTATION":
                     if rotation_transform == Transform(Vector2.zero, forward=gfor):
                         if not recogn:
                             state = "FORWARD"
-                            print("ROTATION -> FORWARD")
+                            # print("ROTATION -> FORWARD")
                             self.setSpeed(v, 0)
                         else:
                             state = "RECOGN"
-                            print("ROTATION -> RECOGN")
+                            # print("ROTATION -> RECOGN")
                             # print("Odometry:", x, y, th)
                             self.setSpeed(0, 0)
 
@@ -1030,13 +1031,13 @@ class Robot:
                                 if dynamic_walls:
                                     dynamic_walls.append(wall)
                                     state = "BACKTRACKING"
-                                    print("RECOGN -> BACKTRACKING")
-                                else:
-                                    print("RECOGN -> RECOGN")
+                                    # print("RECOGN -> BACKTRACKING")
+                                # else:
+                                    # print("RECOGN -> RECOGN")
                             else:
                                 dynamic_walls.append(wall)
                                 state = "START_CELL_ADVENTURE"
-                                print("RECOGN -> START_CELL_ADVENTURE")
+                                # print("RECOGN -> START_CELL_ADVENTURE")
                     # Si no detecto obstucalo pero lo habia antes
                     elif not self.rmap.connectionMatrix[neighbor_conn[0]][neighbor_conn[1]]:
                         if wall in dynamic_walls:
@@ -1051,15 +1052,15 @@ class Robot:
                             if dynamic_walls:
                                 dynamic_walls.append(wall)
                                 state = "BACKTRACKING"
-                                print("RECOGN -> BACKTRACKING")
-                            else:
-                                print("RECOGN -> RECOGN")
+                                # print("RECOGN -> BACKTRACKING")
+                            # else:
+                                # print("RECOGN -> RECOGN")
                         else:
                             state = "START_CELL_ADVENTURE"
-                            print("RECOGN -> START_CELL_ADVENTURE")
+                            # print("RECOGN -> START_CELL_ADVENTURE")
                     else:
                         state = "FORWARD"
-                        print("RECOGN -> FORWARD")
+                        # print("RECOGN -> FORWARD")
                         self.setSpeed(v, 0)
 
                 # D. Estado de backtracking. Vuelve a un camino anterior
@@ -1074,12 +1075,12 @@ class Robot:
                     if not self.rmap.path:
                         if not dynamic_walls:
                             state = "RECOGN"
-                            print("BACKTRACKING -> RECOGN")
-                        else:
-                            print("BACKTRACKING -> BACKTRACKING")
+                            # print("BACKTRACKING -> RECOGN")
+                        # else:
+                            # print("BACKTRACKING -> BACKTRACKING")
                     else:
                         state = "START_CELL_ADVENTURE"
-                        print("BACKTRACKING -> START_CELL_ADVENTURE")
+                        # print("BACKTRACKING -> START_CELL_ADVENTURE")
 
                 # E. Estado de avance hacia la siguiente celda
                 elif state == "FORWARD":
@@ -1105,7 +1106,7 @@ class Robot:
                         self.setSpeed(0, 0)
                         # print("next_cell", next_cell, " goal", self.rmap.goal)
                         if next_cell == self.rmap.goal:
-                            print("Goal Reached!: ", next_cell, self.rmap.goal)
+                            # print("Goal Reached!: ", next_cell, self.rmap.goal)
                             break
                         # Si no, avanzamos a la siguiente celda
                         else:
@@ -1121,7 +1122,7 @@ class Robot:
                             # print("Odometry updated:", lpos.x, lpos.y)
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
-                            print("FORWARD -> START_CELL_ADVENTURE")
+                            # print("FORWARD -> START_CELL_ADVENTURE")
         # 8 vecindad
         elif self.rmap.neighborhood == 8:
             # Variables extra para la 8 vecindad
@@ -1154,11 +1155,11 @@ class Robot:
                     # - Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(position=pos, forward=gfor):
                         state = "RECOGN"
-                        print("START_CELL_ADVENTURE -> RECOGN")
+                        # print("START_CELL_ADVENTURE -> RECOGN")
                     # - Si no, rotamos el robot
                     else:
                         state = "ROTATION"
-                        print("START_CELL_ADVENTURE -> ROTATION")
+                        # print("START_CELL_ADVENTURE -> ROTATION")
                         self.setSpeed(0, gfor.angle_sense(dir) * w)
 
                 # B. Estado de rotacion
@@ -1166,7 +1167,7 @@ class Robot:
                     transform = Transform(Vector2.zero, forward=gfor)
                     if rotation_transform == transform:
                         state = "BEGIN_RECOGN"
-                        print("ROTATION -> BEGIN_RECOGN")
+                        # print("ROTATION -> BEGIN_RECOGN")
                         self.setSpeed(0, 0)
 
                 # C. Estado de inicializacion del reconocimiento del entorno
@@ -1178,7 +1179,7 @@ class Robot:
                         Transform(gpos, th)
                     ]
                     state = "RECOGN"
-                    print("BEGIN_RECOGN -> RECOGN")
+                    # print("BEGIN_RECOGN -> RECOGN")
                     self.setSpeed(0, sense*w)
 
                 # D. Estado de reconocimiento
@@ -1215,11 +1216,11 @@ class Robot:
                         if not stops:
                             if changes:
                                 state = "RECALCULATE_MAP"
-                                print("RECOGN -> RECALCULATE_MAP")
+                                # print("RECOGN -> RECALCULATE_MAP")
                                 self.setSpeed(0, 0)
                             else:
                                 state = "FORWARD"
-                                print("RECOGN -> FORWARD")
+                                # print("RECOGN -> FORWARD")
                                 self.setSpeed(v, 0)
                         else:
                             sense *= -1
@@ -1232,13 +1233,13 @@ class Robot:
                         if not dynamic_walls and len(dynamic_walls) == 1:
                             dynamic_walls = []
                             state = "BEGIN_RECOGN"
-                            print("RECALCULATE_MAP -> BEGIN_RECOGN")
+                            # print("RECALCULATE_MAP -> BEGIN_RECOGN")
                         else:
                             state = "BACKTRACKING"
-                            print("RECALCULATE_MAP -> BACKTRACKING")
+                            # print("RECALCULATE_MAP -> BACKTRACKING")
                     else:
                         state = "START_CELL_ADVENTURE"
-                        print("RECALCULATE_MAP -> START_CELL_ADVENTURE")
+                        # print("RECALCULATE_MAP -> START_CELL_ADVENTURE")
 
                 # F. Estado de backtracking. Vuelve a un camino anterior
                 elif state == "BACKTRACKING":
@@ -1252,12 +1253,12 @@ class Robot:
                     if not self.rmap.path:
                         if not dynamic_walls:
                             state = "BEGIN_RECOGN"
-                            print("BACKTRACKING -> BEGIN_RECOGN")
-                        else:
-                            print("BACKTRACKING -> BACKTRACKING")
+                            # print("BACKTRACKING -> BEGIN_RECOGN")
+                        # else:
+                            # print("BACKTRACKING -> BACKTRACKING")
                     else:
                         state = "START_CELL_ADVENTURE"
-                        print("BACKTRACKING -> START_CELL_ADVENTURE")
+                        # print("BACKTRACKING -> START_CELL_ADVENTURE")
 
                 # G. Estado de avance hacia la siguiente celda
                 elif state == "FORWARD":
@@ -1280,7 +1281,7 @@ class Robot:
                         self.setSpeed(0, 0)
                         # print("next_cell", next_cell, " goal", self.rmap.goal)
                         if next_cell == self.rmap.goal:
-                            print("Goal Reached!: ", next_cell, self.rmap.goal)
+                            # print("Goal Reached!: ", next_cell, self.rmap.goal)
                             break
                         # Si no, avanzamos a la siguiente celda
                         else:
@@ -1295,7 +1296,7 @@ class Robot:
                             self.lock_odometry.release()
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
-                            print("FORWARD -> START_CELL_ADVENTURE")
+                            # print("FORWARD -> START_CELL_ADVENTURE")
 
     # Mostrar odometria
     def plot_log(self, log_name,rMap):
