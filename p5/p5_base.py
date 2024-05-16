@@ -43,8 +43,8 @@ def main():
         ## 2c. Iniciar la odometria
         robot.startOdometry()
 
-        KILL = True
-        if not KILL:
+        SEXMODE = True
+        if not SEXMODE:
             # 3. Ejecutar recorrido
             # . 1a fase. Ejecucion de trayectoria
             print("Recorriendo trayectoria. . .")
@@ -80,7 +80,7 @@ def main():
             # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
             points = [list((robot.wtol * rmap.cell2pos(end_cell)) + Vector2(-10,0))[:2]] + points[:-1] + [[x,y]]      
             # print(points)
-            robot.playTrajectory(points, 30, v_0=20, o_0=1.5, reversedX=True, reversedY=True, ultrasoundStop=True, showPlot=False)
+            robot.playTrajectory(points, 30, v_0=20, o_0=1.5, reversedX=True, reversedY=True, ultrasoundStop=False, showPlot=False)
         else:
             # 3. Ejecutar recorrido
             # . 1a fase. Ejecucion de trayectoria
@@ -117,7 +117,7 @@ def main():
             # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
             points = [list((robot.wtol * rmap.cell2pos(end_cell)) + Vector2(-10,0))[:2]] + points[:-1] + [[x,y]]      
             # print(points)
-            robot.playTrajectory(points, 30, v_0=30, o_0=2, reversedX=True, reversedY=True, ultrasoundStop=True, showPlot=False)
+            robot.playTrajectory(points, 30, v_0=30, o_0=2, reversedX=True, reversedY=True, ultrasoundStop=False, showPlot=False)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

@@ -978,7 +978,10 @@ class Robot:
                     dir = (next_pos - pos).normalize()
                     are_there_walls = self.rmap.areThereWalls(cell, [next_cell[0] - cell[0], next_cell[1] - cell[1]])
                     # Obtenemos las transformaciones representativas del destino
-                    error = 5 if np.mean(us_ev3_values) < self.rmap.sizeCell*4 else 2
+                    if np.mean(us_ev3_values) < self.rmap.sizeCell*4:
+                        error = 2
+                    else:
+                        error = 4
                     rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=4)
                     light_rotation_transform = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
