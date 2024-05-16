@@ -43,42 +43,81 @@ def main():
         ## 2c. Iniciar la odometria
         robot.startOdometry()
 
-        # 3. Ejecutar recorrido
-        # . 1a fase. Ejecucion de trayectoria
-        print("Recorriendo trayectoria. . .")
-        print(points)
-        robot.playTrajectory(points, 30, showPlot=False)
-        # Centramos robot en su celda
-        #robot.centerRobot(sense)
-        # . 2a fase. Navegacion
-        print("Realizando navegacion. . .")
-        robot.playMap()
-        # . 3a fase. Obtencion de la salida
-        print("Encontrando robot para determinar la salida. . .")
-        found = robot.matchObject(img_R2D2_or_BB8, False)
-        exit_cell = exit_cells[int(not found)]
-        end_cell = end_cells[int(not found)]
-        # . 4a fase. Tracking (mascara con colores negativos)
-        print("Realizando seguimiento de la pelota para capturarla. . .")
-        robot.trackObject((80, 70, 50), (100, 255, 255), -sense)
-        # . 5a fase. Salida
-        print("Saliendo del mapa. . .")
-        x, y, _, _ = robot.readOdometry()
-        gpos = robot.ltow * Vector2(x, y, 1)
-        rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
-        robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
+        KILL = True
+        if not KILL:
+            # 3. Ejecutar recorrido
+            # . 1a fase. Ejecucion de trayectoria
+            print("Recorriendo trayectoria. . .")
+            print(points)
+            robot.playTrajectory(points, 30, v_0=20, o_0=1.5, showPlot=False)
+            # Centramos robot en su celda
+            #robot.centerRobot(sense)
+            # . 2a fase. Navegacion
+            print("Realizando navegacion. . .")
+            robot.playMap(v_0=20, w_0=1)
+            # . 3a fase. Obtencion de la salida
+            print("Encontrando robot para determinar la salida. . .")
+            found = robot.matchObject(img_R2D2_or_BB8, False)
+            exit_cell = exit_cells[int(not found)]
+            end_cell = end_cells[int(not found)]
+            # . 4a fase. Tracking (mascara con colores negativos)
+            print("Realizando seguimiento de la pelota para capturarla. . .")
+            robot.trackObject((80, 70, 50), (100, 255, 255), -sense)
+            # . 5a fase. Salida
+            print("Saliendo del mapa. . .")
+            x, y, _, _ = robot.readOdometry()
+            gpos = robot.ltow * Vector2(x, y, 1)
+            rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
+            robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
 
-        # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
-        points = rmap.path
-        for i in range(len(points)):
-            points[i] = rmap.cell2pos(points[i])
-            points[i] = list(robot.wtol * points[i])[:2]
-        # Se actualizan los puntos ya que:
-        # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
-        # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
-        points = [list((robot.wtol * rmap.cell2pos(end_cell)) + Vector2(-10,0))[:2]] + points[:-1] + [[x,y]]      
-        # print(points)
-        robot.playTrajectory(points, 30, True, True, True, showPlot=False)
+            # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
+            points = rmap.path
+            for i in range(len(points)):
+                points[i] = rmap.cell2pos(points[i])
+                points[i] = list(robot.wtol * points[i])[:2]
+            # Se actualizan los puntos ya que:
+            # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
+            # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
+            points = [list((robot.wtol * rmap.cell2pos(end_cell)) + Vector2(-10,0))[:2]] + points[:-1] + [[x,y]]      
+            # print(points)
+            robot.playTrajectory(points, 30, v_0=20, o_0=1.5, reversedX=True, reversedY=True, ultrasoundStop=True, showPlot=False)
+        else:
+            # 3. Ejecutar recorrido
+            # . 1a fase. Ejecucion de trayectoria
+            print("Recorriendo trayectoria. . .")
+            print(points)
+            robot.playTrajectory(points, 30, v_0=25, o_0=1.5, showPlot=False)
+            # Centramos robot en su celda
+            #robot.centerRobot(sense)
+            # . 2a fase. Navegacion
+            print("Realizando navegacion. . .")
+            robot.playMap(v_0=25, w_0=1.5)
+            # . 3a fase. Obtencion de la salida
+            print("Encontrando robot para determinar la salida. . .")
+            found = robot.matchObject(img_R2D2_or_BB8, False)
+            exit_cell = exit_cells[int(not found)]
+            end_cell = end_cells[int(not found)]
+            # . 4a fase. Tracking (mascara con colores negativos)
+            print("Realizando seguimiento de la pelota para capturarla. . .")
+            robot.trackObject((80, 70, 50), (100, 255, 255), -sense)
+            # . 5a fase. Salida
+            print("Saliendo del mapa. . .")
+            x, y, _, _ = robot.readOdometry()
+            gpos = robot.ltow * Vector2(x, y, 1)
+            rmap.setPath_8N(rmap.pos2cell(gpos.x, gpos.y), exit_cell)
+            robot.rmap.connectionMatrix[2*end_cell[0]+1-1][2*end_cell[1]+1] = 1
+
+            # cambio de celdas a posiciones locales (inicio lista = última celda, final lista = primera celda)
+            points = rmap.path
+            for i in range(len(points)):
+                points[i] = rmap.cell2pos(points[i])
+                points[i] = list(robot.wtol * points[i])[:2]
+            # Se actualizan los puntos ya que:
+            # 1. El primer punto es erroneo, podria no empezar desde el centro de la celda, entonces añadimos la posicion del robot
+            # 2. El ultimo punto a de ser la casilla final que es la que esta fuera del mapa.
+            points = [list((robot.wtol * rmap.cell2pos(end_cell)) + Vector2(-10,0))[:2]] + points[:-1] + [[x,y]]      
+            # print(points)
+            robot.playTrajectory(points, 30, v_0=30, o_0=2, reversedX=True, reversedY=True, ultrasoundStop=True, showPlot=False)
 
         # 4. Wrap up and close stuff ...
         # This currently unconfigure the sensors, disable the motors, 

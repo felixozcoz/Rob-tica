@@ -267,7 +267,7 @@ class Robot:
 
 
     #-- Generacion de trayectorias ---------
-    def playTrajectory(self, trajectoryPoints, segments, reversedX=False, reversedY=False, ultrasoundStop=False, showPlot=False):
+    def playTrajectory(self, trajectoryPoints, segments, v_0=20, o_0=1.5, reversedX=False, reversedY=False, ultrasoundStop=False, showPlot=False):
         # . Separar coordenadas de la trayectoria
         x = [point[0] for point in trajectoryPoints]
         y = [point[1] for point in trajectoryPoints]
@@ -393,7 +393,7 @@ class Robot:
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         # Velocidades
-        v, o = 20, 1.5
+        v, o = v_0, o_0
 
         # Rotacion inicial si la orientacion del robot no coincide con el inicio
         while True:
@@ -424,7 +424,7 @@ class Robot:
                 direction          = next_position - position
                 rotation_transform = Transform(Vector2.zero, forward=direction)
                 rotation_reached   = False
-                position_transform = Transform(next_position, 0, CUSTOM_POSITION_ERROR=5)
+                position_transform = Transform(next_position, CUSTOM_POSITION_ERROR=5)
                 sense  = forward.sense(direction)
                 w      = o * forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
@@ -754,12 +754,12 @@ class Robot:
                                         rotation_reached = False
                                         v = 0
                         # Raise the basket till intial position (0º)
-                        wb = int(bh > 5) * -1
+                        wb = int(bh > 5) * -1.5
                     else:
                         nextToMe = not outbound_pixel_xback == blob_rotation
                         # Object found. Lower the basket 90º
                         if bh < 90:
-                            wb = 1
+                            wb = 1.5
                         else:
                             # The basket has caught the object
                             # print("Ball caught")
@@ -787,7 +787,7 @@ class Robot:
                     # Rotate until ball found. Set max angular speed.
                     w = side * self.fw_max
                     # If the basket has been lowered, it will be raised again.
-                    wb = int(bh > 5) * -0.75
+                    wb = int(bh > 5) * -1
                     rotation_reached = False
     
                 # Robot speed
@@ -937,7 +937,7 @@ class Robot:
         self.ltow = Matrix2.transform(Vector2(self.gx, self.gy, 0), self.gth)
         self.wtol = self.ltow.invert()
 
-    def playMap(self, recogn=True):
+    def playMap(self, recogn=True, v_0=20, w_0=1):
         '''
             Navegacion a traves de un mapa cargado
         '''
@@ -953,7 +953,7 @@ class Robot:
         are_there_walls = False
         dynamic_walls   = []
         # Velocidades
-        v, w = 25, 1.5
+        v, w = v_0, w_0
         # Valores de los ultrasonidos
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -978,10 +978,11 @@ class Robot:
                     dir = (next_pos - pos).normalize()
                     are_there_walls = self.rmap.areThereWalls(cell, [next_cell[0] - cell[0], next_cell[1] - cell[1]])
                     # Obtenemos las transformaciones representativas del destino
+                    error = 5 if np.mean(us_ev3_values) < self.rmap.sizeCell*4 else 2
                     rotation_transform       = Transform(Vector2.zero, forward=dir, CUSTOM_ROTATION_ERROR=4)
                     light_rotation_transform = Transform(Vector2.zero, forward=dir)
                     #entering_cell_transform = Transform(next_pos - self.rmap.halfCell*dir, forward=dir)
-                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=5)
+                    reaching_cell_transform  = Transform(next_pos,CUSTOM_POSITION_ERROR=error)
                     position_reached         = False
                     # Si la rotacion ya coincide, pasamos a reconocimiento
                     if rotation_transform == Transform(Vector2.zero, forward=gfor):
@@ -1100,7 +1101,7 @@ class Robot:
                         x, y, _, _ = self.readOdometry()
                         # print("Odometry:", x, y)
                         position_reached = True
-                        if are_there_walls and not us_position_reached:
+                        if np.mean(us_ev3_values) <= 3*self.rmap.sizeCell and are_there_walls and not us_position_reached:
                             continue
                         # Si ha llegado al centro y era la ultima celda, termina
                         self.setSpeed(0, 0)
