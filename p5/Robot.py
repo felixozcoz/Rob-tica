@@ -37,6 +37,7 @@ class Robot:
 
         Initialize Motors and Sensors according to the set up in your robot
         """
+        self.name = "Nombre del log"
         # Robot construction parameters
         self.R             = 2.8           # Wheels' radius (cm)
         self.L             = 15.25         # Wheels' axis length (cm)
@@ -130,11 +131,13 @@ class Robot:
     def updateOdometry(self): 
         """ This function calculates and updates the odometry of the robot """
         LOG_NAME = "ODOMETRYLOG_" + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".csv"
+        self.name = LOG_NAME
         with open(LOG_NAME, "w", newline="") as LOG:
             # Logger
             LOG_WRITER = csv.writer(LOG)
             LOG_WRITER.writerow(["Timestamp", "X position", "Y position", "Orientation"])
             # Main odometry loop
+            updateOdometryCount = 0
             while not self.finished.value:
                 # current processor time in a floating point value, in seconds
                 tIni = time.clock()
@@ -190,8 +193,9 @@ class Robot:
                 #    self.us_nxt.value   = right_sensor
                 self.lock_odometry.release()
                 # Save LOG
-                LOG_WRITER.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), round(self.x.value, 4), round(self.y.value, 4), round(self.th.value, 4)])
-
+                if updateOdometryCount % 25 == 0:
+                    LOG_WRITER.writerow([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), round(self.x.value, 4), round(self.y.value, 4), round(self.th.value, 4)])
+                updateOdometryCount += 1
                 ######## UPDATE UNTIL HERE with your code ########
                 tEnd = time.clock()
                 time.sleep(self.P - (tEnd-tIni))
@@ -267,8 +271,8 @@ class Robot:
         # . Separar coordenadas de la trayectoria
         x = [point[0] for point in trajectoryPoints]
         y = [point[1] for point in trajectoryPoints]
-        print("x inicialmente:", x)
-        print("y inicialmente:", y)
+        # print("x inicialmente:", x)
+        # print("y inicialmente:", y)
 
         # Remover aquellos puntos seguidos que sean repetidos
         x_orig, y_orig = [x[0]], [y[0]]
@@ -277,7 +281,7 @@ class Robot:
                 x_orig.append(x[i])
                 y_orig.append(y[i])
         x, y = list(x_orig), list(y_orig)
-        print("x tras remover repetidos:", x)
+        # print("x tras remover repetidos:", x)
 
         # Interpolar aquellos puntos cuya x sea igual
         i, j =  1, -1
@@ -306,7 +310,7 @@ class Robot:
                     else:
                         x[i-1:j+2] = np.linspace(x[i-1], x[j+1], j+3-i, endpoint=True)
                 break
-        print("x tras interpolar valores de mismo valor:", x)
+        # print("x tras interpolar valores de mismo valor:", x)
 
         # Transformar los puntos para que sean x-positivo estricto
         i, j = 1, 0
@@ -326,7 +330,7 @@ class Robot:
             i += 1
             if i >= len(x):
                 break
-        print("simetrias para estrictizar la x:", symm_x)
+        # print("simetrias para estrictizar la x:", symm_x)
 
         # . (DEPRECATED) Funcion interpolada respecto de los
         #  puntos dados mediante interpolacion polinomica
@@ -386,7 +390,7 @@ class Robot:
         position_transform = Transform(Vector2.zero)
         last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
         rotation_reached = False
-        # us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
+        us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         # Velocidades
         v, o = 20, 1.5
@@ -425,7 +429,7 @@ class Robot:
                 w      = o * forward.angle(direction, "RAD")
                 self.setSpeed(v, sense * w)
                 state = "GO"
-                print("Position:", position, "Next position:", next_position)
+                # print("Position:", position, "Next position:", next_position)
                 print("START_SEGMENT_ADVENTURE -> GO")
             elif state == "GO":
                 if not rotation_reached:
@@ -437,15 +441,9 @@ class Robot:
                         self.setSpeed(v, sense*w)
 
                 if position_transform == Transform(Vector2(x,y), 0):
-                    print("Position transform:", position_transform, "robot position:", Vector2(x,y))
+                    # print("Position transform:", position_transform, "robot position:", Vector2(x,y))
                     segment += 1
                     if segment >= segments:
-                        # Orientar el robot a th 0
-                        #rotation_transform = Transform(Vector2.zero, rotation=th)
-                        #while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
-                        #    x, y, th, _ = self.readOdometry()
-                        #    rotation_transform = Transform(Vector2.zero, rotation=th)
-                        #    self.setSpeed(0, -np.sign(th) * 0.5)
                         self.setSpeed(0, 0)
                         break
                     else:
@@ -456,15 +454,22 @@ class Robot:
                     self.setSpeed(0,0)
                     break
                 
-                #if ultrasoundStop and np.mean(us_ev3_values) < 3:
-                #    self.setSpeed(0,0)
-                #    while np.mean(us_ev3_values) < 3:
-                #        us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-                #    self.setSpeed(v, sense*w)
+                if ultrasoundStop and np.mean(us_ev3_values) < 3:
+                    self.setSpeed(0,0)
+                    while np.mean(us_ev3_values) < 3:
+                        us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+                    self.setSpeed(v, sense*w)
 
     def centerRobot(self, sense):
         v = 3
         w = 1
+        # Orientar el robot a th 0
+        x, y, th, _ = self.readOdometry()
+        rotation_transform = Transform(Vector2.zero, rotation=th)
+        while not rotation_transform == Transform(Vector2.zero, rotation=0.0):
+            x, y, th, _ = self.readOdometry()
+            rotation_transform = Transform(Vector2.zero, rotation=th)
+            self.setSpeed(0, -np.sign(th) * 0.5)
         # Centrar el robot en x en la celda con la distancia al muro de delante
         us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
@@ -506,14 +511,14 @@ class Robot:
                 break
         
         # Rotar el robot hacia su orientacion inicial
-        _, _, th, _ = self.readOdometry()
-        odom_rotation_transform = Transform(Vector2.zero, rotation=th)
-        rotation_transform = Transform(Vector2.zero, rotation=0.0)
-        while not rotation_transform == odom_rotation_transform:
-            us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
-            self.setSpeed(0, -sense*w)
-            _, _, th, _ = self.readOdometry()
-            odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+        # _, _, th, _ = self.readOdometry()
+        # odom_rotation_transform = Transform(Vector2.zero, rotation=th)
+        # rotation_transform = Transform(Vector2.zero, rotation=0.0)
+        # while not rotation_transform == odom_rotation_transform:
+        #     us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+        #     self.setSpeed(0, -sense*w)
+        #     _, _, th, _ = self.readOdometry()
+        #     odom_rotation_transform = Transform(Vector2.zero, rotation=th)
 
         # Actualizar odometria
         pos = [self.rmap.start[1] * self.rmap.sizeCell + self.rmap.halfCell, self.rmap.start[0] * self.rmap.sizeCell + self.rmap.halfCell]
@@ -523,7 +528,7 @@ class Robot:
         self.y.value = lpos.y
         self.lock_odometry.release()
         x, y, th, _ = self.readOdometry()
-        print("Robot centered at", x, y, th)    
+        # print("Robot centered at", x, y, th)    
 
     #-- Seguimiento de objetos -------------
     def initCamera(self, resolution=(320, 240), framerate=32):
@@ -553,7 +558,7 @@ class Robot:
         self.ymin_to_stop = self.cam_center.y - 5
                                      # Maxima distancia en y a la que debe estar el blob para
                                      # parar y proceder a capturar la pelota.
-        self.fv = lambda y: -2.5*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
+        self.fv = lambda y: -3*(y - self.ymin_to_stop)/np.sqrt(abs(y - self.ymin_to_stop))
                                      # Funcion velocidad lineal dependiente de la distancia
                                      # en y del blob.
         self.fw = lambda x: -1.5*x/self.cam_center.x
@@ -1001,7 +1006,7 @@ class Robot:
                         else:
                             state = "RECOGN"
                             print("ROTATION -> RECOGN")
-                            print("Odometry:", x, y, th)
+                            # print("Odometry:", x, y, th)
                             self.setSpeed(0, 0)
 
                 # C. Estado de reconomiento del entorno
@@ -1092,13 +1097,13 @@ class Robot:
                     if position_reached or reaching_cell_transform == Transform(gpos):
                         # Si el ultrasonido no indica que sea el centro, sigue avanzando
                         x, y, _, _ = self.readOdometry()
-                        print("Odometry:", x, y)
+                        # print("Odometry:", x, y)
                         position_reached = True
                         if are_there_walls and not us_position_reached:
                             continue
                         # Si ha llegado al centro y era la ultima celda, termina
                         self.setSpeed(0, 0)
-                        print("next_cell", next_cell, " goal", self.rmap.goal)
+                        # print("next_cell", next_cell, " goal", self.rmap.goal)
                         if next_cell == self.rmap.goal:
                             print("Goal Reached!: ", next_cell, self.rmap.goal)
                             break
@@ -1113,7 +1118,7 @@ class Robot:
                             self.x.value = lpos.x
                             self.y.value = lpos.y
                             self.lock_odometry.release()
-                            print("Odometry updated:", lpos.x, lpos.y)
+                            # print("Odometry updated:", lpos.x, lpos.y)
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
@@ -1273,7 +1278,7 @@ class Robot:
                             continue
                         # Si ha llegado al centro y era la ultima celda, termina
                         self.setSpeed(0, 0)
-                        print("next_cell", next_cell, " goal", self.rmap.goal)
+                        # print("next_cell", next_cell, " goal", self.rmap.goal)
                         if next_cell == self.rmap.goal:
                             print("Goal Reached!: ", next_cell, self.rmap.goal)
                             break
@@ -1308,7 +1313,7 @@ class Robot:
                 gpos        = self.ltow * Vector2(np.float32(row[1]), np.float32(row[2]), 1)
                 # Ploteamos cada nueva posición de la odometría
                 # dibrobot([np.float32(row[1])+20,np.float32(row[2])+20,np.float32(row[3])], 'b', 'g')
-                dibrobot([gpos.x,gpos.y,np.float32(row[3])], 'b', 'g')
+                dibrobot([gpos.x,gpos.y,np.float32(row[3])], 'b-', 'g')
         # plt.savefig(f"{log_name}.png")
         plt.show()
         plt.close()
