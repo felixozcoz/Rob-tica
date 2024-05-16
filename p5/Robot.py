@@ -386,7 +386,7 @@ class Robot:
         position_transform = Transform(Vector2.zero)
         last_transform = Transform(Vector2(x_values[-1], y_values[-1]), 0)
         rotation_reached = False
-        us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
+        # us_ev3_values = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         #us_nxt_values = [self.us_nxt.value, self.us_nxt.value, self.us_nxt.value]
         # Velocidades
         v, o = 20, 1.5
@@ -658,7 +658,7 @@ class Robot:
         # Se obtiene el mejor blob
         return best_blob
 
-    def trackObject(self, colorRangeMin, colorRangeMax, start_sense=1, showFrame=False):
+    def trackObject(self, colorRangeMin, colorRangeMax, start_sense=1, ultrasoundStop=False, showFrame=False):
         '''
             Track the object
 
@@ -671,16 +671,19 @@ class Robot:
                 finished = True if the tracking is finished
         '''
         # Initializations
-        cam, rawCapture      = self.initCamera()
-        detector             = self.initMyBlobDetector()
+        cam, rawCapture       = self.initCamera()
+        detector              = self.initMyBlobDetector()
         # Parametros de rango de los pixeles
-        rotation_reached     = False # Indica si el robot tiene el blob centrado en x
-        rotation_pixel       = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=15)
-        outbound_pixel_xback = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.xmin_to_backwards)
-        outbound_pixel_xmin  = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.xmin_to_rotate) 
-        outbound_pixel_xmax  = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.cam_center.x)  
-        outbound_pixel_y     = Pixel(Vector2(0, self.cam_center.y//4), CUSTOM_COORDS_RANGE=10)
-        position_pixel       = Pixel(Vector2(0, self.ymin_to_stop), CUSTOM_COORDS_RANGE=10)
+        rotation_reached      = False # Indica si el robot tiene el blob centrado en x
+        rotation_pixel        = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=15)
+        outbound_pixel_xback  = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.xmin_to_backwards)
+        outbound_pixel_xmin   = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.xmin_to_rotate) 
+        outbound_pixel_xmax   = Pixel(Vector2.zero, CUSTOM_COORDS_RANGE=self.cam_center.x)  
+        outbound_pixel_y      = Pixel(Vector2(0, self.cam_center.y//4), CUSTOM_COORDS_RANGE=10)
+        position_pixel        = Pixel(Vector2(0, self.ymin_to_stop), CUSTOM_COORDS_RANGE=10)
+        is_moving             = [0,0]
+        detect_moving_object  = False
+        us_ev3_values         = [self.us_ev3.value, self.us_ev3.value, self.us_ev3.value]
         # Object positional information
         side          = start_sense # Ultima zona por la que se ha visto la pelota (izq = -1, dch = 1)    
         nextToMe      = False       # Indica si la pelota estaba al lado del robot la ultima vez que la vio.
@@ -730,7 +733,20 @@ class Robot:
                     # Target position
                     if not position_pixel == blob_position:
                         # Velocidad del robot. Se capa a 15cm/s como maximo.
-                        v = np.clip(self.fv(blob_position.coords.y), -15, 15)
+                        v = np.clip(self.fv(blob_position.coords.y), -20, 20)
+                        if ultrasoundStop:
+                            if not detect_moving_object:
+                                detect_moving_object = True
+                            else:
+                                us_ev3_values = us_ev3_values[1:] + [self.us_ev3.value]
+                                if np.mean(us_ev3_values) <= 5:
+                                    is_moving[0] += 1
+                                is_moving[1] += 1
+                                if is_moving[1] >= 200:
+                                    detect_moving_object = False
+                                    if not is_moving[1] - is_moving[0] > 5 :
+                                        rotation_reached = False
+                                        v = 0
                         # Raise the basket till intial position (0º)
                         wb = int(bh > 5) * -1
                     else:
@@ -1275,6 +1291,7 @@ class Robot:
                             # Siguiente estado
                             state = "START_CELL_ADVENTURE"
                             print("FORWARD -> START_CELL_ADVENTURE")
+
     # Mostrar odometria
     def plot_log(self, log_name,rMap):
         # create a new figure and set it as current axis
