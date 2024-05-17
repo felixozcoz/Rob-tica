@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.__config__ import show
 from geometry import Vector2, Matrix2, Transform
 # from pynput import keyboard
 # from pynput.keyboard import Key
@@ -44,6 +45,129 @@ def simulate_robot(key):
     new_lfor = [lfor[0]*np.cos(aux) - lfor[1]*np.sin(aux), lfor[0]*np.sin(aux) + lfor[1]*np.cos(aux)]
     #print(f"LOCAL: {lpos} - {round_list(new_lfor)} | {round_list(new_lrig)}, GLOBAL: {np.matmul(ltow, lpos[:2] + [1])} - {round_list(list(np.matmul(ltow, new_lfor + [0])[:2]))} | {round_list(list(np.matmul(ltow, new_lrig + [0])[:2]))}")
     print(f"LOCAL: {lpos} - {round_list(new_lfor)}, GLOBAL: {np.matmul(ltow, lpos[:2] + [1])} - {round_list(list(np.matmul(ltow, new_lfor + [0])[:2]))}")
+
+
+def playTrajectory(trajectoryPoints, segments, reversedX=False, reversedY=False, showPlot=False):
+    # . Separar coordenadas de la trayectoria
+    x = [point[0] for point in trajectoryPoints]
+    y = [point[1] for point in trajectoryPoints]
+    # print("x inicialmente:", x)
+    # print("y inicialmente:", y)
+
+    # Remover aquellos puntos seguidos que sean repetidos
+    x_orig, y_orig = [x[0]], [y[0]]
+    for i in range(1,len(x)):
+        if not (x_orig[-1] == x[i] and y_orig[-1] == y[i]):
+            x_orig.append(x[i])
+            y_orig.append(y[i])
+    x, y = list(x_orig), list(y_orig)
+    # print("x tras remover repetidos:", x)
+
+    # Interpolar aquellos puntos cuya x sea igual
+    i, j =  1, -1
+    indexes = []
+    while True:
+        if not x[i-1] == x[i]:
+            if not j == -1:
+                indexes.append((j, i-1))
+                j = -1
+        else:
+            if j == -1:
+                j = i-1
+        i += 1
+        if  i >= len(x):
+            if j != -1 and (not indexes or indexes[-1] != (j, i-1)):
+                indexes.append((j, i-1))
+            for i,j in indexes:
+                # print("(", i-1 < 0, ",", j+1 >= len(x), ")")
+                if i-1 < 0 and j+1 >= len(x):
+                    x          = np.linspace(x[0]-1, x[-1]+1, len(x), endpoint=True)
+                    break
+                elif i-1 < 0:
+                    x[0:j+2]   = np.linspace(x[0], x[j+1], j+2-i, endpoint=True)
+                elif j+1 >= len(x):
+                    x[i-1:]    = np.linspace(x[i-1], x[-1], j+2-i, endpoint=True)
+                else:
+                    x[i-1:j+2] = np.linspace(x[i-1], x[j+1], j+3-i, endpoint=True)
+            break
+    # print("x tras interpolar valores de mismo valor:", x)
+
+    # Transformar los puntos para que sean x-positivo estricto
+    i, j = 1, 0
+    symm_x = []
+    symm_y = []
+    while True:
+        if x[i-1] > x[i]:
+            while i < len(x):
+                mirror = 2*(x[j] - x[i])
+                x[i]  += mirror
+                i += 1
+            symm_x.append(x[j])
+            symm_y.append(y[j])
+            i = j
+        elif x[i-1] < x[i]:
+            j = i
+        i += 1
+        if i >= len(x):
+            break
+    # print("simetrias para estrictizar la x:", symm_x)
+
+    # . (DEPRECATED) Funcion interpolada respecto de los
+    #  puntos dados mediante interpolacion polinomica
+    # deg          = len(x)-1
+    # coefficients = np.polyfit(x,y,deg)
+    # trajectory   = np.poly1d(coefficients)
+    # . Funcion interpolada respecto de los puntos dados
+    #  mediante PCHIP (quita los minimos y maximos que 
+    #  agrega la polinomica)
+    trajectory = PchipInterpolator(x, y)
+    x_values = np.linspace(min(x), max(x), segments)
+    y_values = trajectory(x_values)
+    # Aplicar los puntos de simetria para recuperar la trayectoria inicial tras
+    # la interpolacion
+    if symm_x:
+        symm_x.append(np.Infinity)
+        for i in range(len(x_values)):
+            for j in range(len(symm_x)):
+                if symm_x[j] >= x_values[i]:
+                    # print(x_values[i], j)
+                    for k in range(j-1,-1,-1):
+                        x_values[i] -= 2*(x_values[i] - symm_x[k])
+                    break
+    # Invertir el orden de los puntos de la trayectoria
+    if reversedX:
+        x_orig   = list(reversed(x_orig))
+        x_values = list(reversed(x_values))
+    if reversedY:
+        y_orig   = list(reversed(y_orig))
+        y_values = list(reversed(y_values))
+
+    if showPlot:
+        plt.figure(figsize=(8,6))
+        plt.plot(x_values, y_values, label="Polinomio interpolado", color="blue")
+        plt.scatter(x, y, label="Puntos conocidos", color="red")
+        if symm_x:
+            plt.scatter(symm_x[:-1], symm_y, label="Puntos de simetria", color="orange")
+        if not reversedX:
+            plt.xlabel("x")
+        else:
+            plt.xlabel("x (revertido)")
+        if not reversedY:
+            plt.ylabel("y")
+        else:
+            plt.ylabel("y (revertido)")
+        plt.title("Interpolacion polinomica")
+        plt.legend()
+        plt.axis("equal")
+        plt.grid(True)
+        plt.show()
+
+points = [[0,0],[0.7,0.3],[1,1],[0.7,1.7],[0,2],[-0.7,2.3],[-1,3],[-0.7,3.7],[0,4],[0.7,3.7], [1,3],[0.7,2.3],[0,2],[-0.7,1.7],[-1,1],[-0.7,0.3],[0,0]]
+points = [[0,0],[0.7,0.3],[1,1],[1.5,3],[2,5],[1,6.75],[0,7],[-1,6.75],[-2,5],[-1.5,3],[-1,1],[-0.7,0.3],[0,0]]
+points = [[0,0],[0.7,-0.3],[1,-1],[0.7,-1.7],[0.35,-2],[2.35,-4],[2,-4.5], [1.5,-4.5],[-1.5,-2],[0,0]]
+playTrajectory(points, 30, showPlot=True)
+exit(0)
+
 
 # Test 1
 #x = [0,20,20,20,20,20, 40,80,99,100]#[0,20,40,60,80,100]
