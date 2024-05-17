@@ -34,7 +34,7 @@ class Map:
         # Parametros para visualizar
         self.mapLineStyle="r-"
         self.costValueStyle="g*"
-        self.verbose = False
+        self.verbose = True
         # set to False to stop displaying plots interactively (and maybe just save the screenshots)
         # self.verbose = False
         self.current_ax = None

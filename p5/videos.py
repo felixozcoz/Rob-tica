@@ -16,4 +16,4 @@ rmap = Map("mapa_video0.txt", [0,1], [2,1])
 rmap = Map("mapa_video1.txt", [0,0], [2,2])
 robot.playMap(v_0=20, w_0=1)
 
-robot.trackObject((80, 70, 50), (100, 255, 255))
+robot.trackObject((80, 70, 50), (100, 255, 255), showFrame=True)
