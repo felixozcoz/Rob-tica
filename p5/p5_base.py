@@ -43,8 +43,8 @@ def main():
         ## 2c. Iniciar la odometria
         robot.startOdometry()
 
-        SEXMODE = True
-        if not SEXMODE:
+        DRIFTO = True
+        if not DRIFTO:
             # 3. Ejecutar recorrido
             # . 1a fase. Ejecucion de trayectoria
             print("Recorriendo trayectoria. . .")
